@@ -1,0 +1,2594 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><title>ATRED Quantitative Trading Analysis</title><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}@keyframes marquee{0%{transform:translateX(0%);}100%{transform:translateX(-50%);}}.animate-marquee{display:flex;width:max-content;animation:marquee 32s linear infinite;}.animate-marquee:hover{animation-play-state:paused;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={"darkMode":"class","theme":{"extend":{"colors":{"on-surface-variant":"#a1a1aa","secondary-fixed-dim":"#71717a","secondary":"#71717a","surface-bright":"#18181b","on-primary-fixed-variant":"#5b21b6","outline":"#52525b","surface-dim":"#0c0c0f","on-tertiary":"#001a12","on-secondary-fixed":"#18181b","on-error":"#1a0000","surface-container-lowest":"#09090b","on-tertiary-fixed-variant":"#047857","tertiary-fixed":"#bbf7d0","surface-container-high":"#18181b","inverse-on-surface":"#09090b","primary-container":"#7c3aed","surface":"#0c0c0f","tertiary-fixed-dim":"#6ee7b7","surface-variant":"#18181b","primary-fixed-dim":"#c4b5fd","surface-container-low":"#0f0f12","tertiary":"#34d399","error-container":"#3b1111","on-primary-container":"#ede9fe","secondary-container":"#27272a","primary":"#a78bfa","on-primary":"#0a0012","inverse-primary":"#5b21b6","secondary-fixed":"#a1a1aa","on-tertiary-container":"#bbf7d0","error":"#ef4444","surface-container":"#121215","on-background":"#fafafa","on-secondary":"#09090b","on-tertiary-fixed":"#003318","tertiary-container":"#065f46","surface-container-highest":"#1e1e22","background":"#09090b","on-secondary-fixed-variant":"#3f3f46","on-secondary-container":"#a1a1aa","surface-tint":"#a78bfa","inverse-surface":"#fafafa","outline-variant":"#27272a","on-surface":"#fafafa","primary-fixed":"#ede9fe","on-error-container":"#fca5a5","on-primary-fixed":"#2e1065"},"borderRadius":{"DEFAULT":"0.25rem","lg":"0.5rem","xl":"0.75rem","full":"9999px"},"spacing":{},"fontFamily":{"headline":["Geist"],"display":["Geist"],"body":["Geist"],"label":["Geist"],"mono":["JetBrains Mono","monospace"]},"fontSize":{}}}}</script></head><body class="bg-background font-body text-on-surface antialiased selection:bg-primary-container selection:text-on-primary-container min-h-screen flex flex-col"><header class="fixed top-0 w-full z-50 bg-surface/90 backdrop-blur-xl border-b border-outline-variant/60"><div class="w-full h-8 bg-surface-container-lowest border-b border-outline-variant/40 overflow-hidden flex items-center select-none"><div class="animate-marquee flex items-center gap-8 text-[11px] font-mono tracking-tight text-on-surface-variant"><div class="flex items-center gap-8"><span class="flex items-center gap-1.5"><span class="text-on-surface font-semibold">BTC/USD</span><span>$76,927.40</span><span class="text-tertiary font-medium">+4.2%</span></span><span class="text-outline">|</span><span class="flex items-center gap-1.5"><span class="text-on-surface font-semibold">ETH/USD</span><span>$3,420.15</span><span class="text-tertiary font-medium">+2.8%</span></span><span class="text-outline">|</span><span class="flex items-center gap-1.5"><span class="text-on-surface font-semibold">SOL/USD</span><span>$182.40</span><span class="text-tertiary font-medium">+6.1%</span></span><span class="text-outline">|</span><span class="flex items-center gap-1.5"><span class="text-on-surface font-semibold">AAPL</span><span>$234.10</span><span class="text-tertiary font-medium">+0.9%</span></span><span class="text-outline">|</span><span class="flex items-center gap-1.5"><span class="text-on-surface font-semibold">NVDA</span><span>$128.50</span><span class="text-tertiary font-medium">+3.4%</span></span><span class="text-outline">|</span><span class="flex items-center gap-1.5"><span class="text-on-surface font-semibold">EUR/USD</span><span>1.0842</span><span class="text-error font-medium">-0.15%</span></span><span class="text-outline">|</span><span class="flex items-center gap-1.5"><span class="text-on-surface font-semibold">XAU/USD</span><span>$2,684.20</span><span class="text-tertiary font-medium">+0.8%</span></span><span class="text-outline">|</span></div><div class="flex items-center gap-8"><span class="flex items-center gap-1.5"><span class="text-on-surface font-semibold">BTC/USD</span><span>$76,927.40</span><span class="text-tertiary font-medium">+4.2%</span></span><span class="text-outline">|</span><span class="flex items-center gap-1.5"><span class="text-on-surface font-semibold">ETH/USD</span><span>$3,420.15</span><span class="text-tertiary font-medium">+2.8%</span></span><span class="text-outline">|</span><span class="flex items-center gap-1.5"><span class="text-on-surface font-semibold">SOL/USD</span><span>$182.40</span><span class="text-tertiary font-medium">+6.1%</span></span><span class="text-outline">|</span><span class="flex items-center gap-1.5"><span class="text-on-surface font-semibold">AAPL</span><span>$234.10</span><span class="text-tertiary font-medium">+0.9%</span></span><span class="text-outline">|</span><span class="flex items-center gap-1.5"><span class="text-on-surface font-semibold">NVDA</span><span>$128.50</span><span class="text-tertiary font-medium">+3.4%</span></span><span class="text-outline">|</span><span class="flex items-center gap-1.5"><span class="text-on-surface font-semibold">EUR/USD</span><span>1.0842</span><span class="text-error font-medium">-0.15%</span></span><span class="text-outline">|</span><span class="flex items-center gap-1.5"><span class="text-on-surface font-semibold">XAU/USD</span><span>$2,684.20</span><span class="text-tertiary font-medium">+0.8%</span></span><span class="text-outline">|</span></div></div></div><div class="h-16 max-w-[1720px] mx-auto px-6 xl:px-10 flex items-center justify-between gap-6"><div class="flex items-center gap-8"><div class="flex items-center gap-3"><img alt="ATRED Logo" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1WndG8kXu2-5XvjeByi-m6IdHU88qNT39owo8AgJaL2WpiZmt9Di7IijTpo7uX-Mjxq60g6pbCScREGoAYiK1WDhOhp64UNGtl0bKBgi8HdVcVtuqKL4ZBjdu8xOpjIiiYRxvDyZU0ZVFhTEVa8N00wmV7N1GIvOB6E7T-gGtWA_1R1N0-iMjLctccTiYWx1Knu6EOlA5ZRjp5Zntv9xE6HdLoFAf5mtu170BqlrTYj-pKqMXBuh9ZyYbOY"/><div class="flex items-center gap-2"><span class="text-lg font-headline font-bold tracking-tight text-on-surface">ATRED</span><span class="px-2 py-0.5 text-[10px] font-mono font-semibold tracking-wider uppercase rounded bg-surface-container-highest text-primary border border-outline-variant">QUANT v2.4</span></div></div><nav class="hidden xl:flex items-center gap-1 h-16" data-active-classes="bg-surface-container-high text-primary font-semibold border-b-2 border-primary"><a class="px-3.5 py-2 rounded text-sm font-medium text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-all flex items-center" data-path="opportunity-screener" href="#">Opportunity Screener</a><a class="px-3.5 py-2 rounded text-sm font-medium text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-all flex items-center" data-path="stocks" href="#">Stocks</a><a aria-current="page" class="px-3.5 py-2 rounded transition-all flex items-center bg-surface-container-high text-primary font-semibold border-b-2 border-primary" data-path="crypto" href="#">Crypto</a><a class="px-3.5 py-2 rounded text-sm font-medium text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-all flex items-center" data-path="forex" href="#">Forex</a><a class="px-3.5 py-2 rounded text-sm font-medium text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-all flex items-center" data-path="deep-analysis" href="#">Deep Analysis</a></nav></div><div class="flex items-center gap-3.5"><div class="hidden md:flex items-center gap-2 px-2.5 py-1 rounded bg-surface-container border border-outline-variant/60 text-[11px] font-mono"><span class="h-2 w-2 rounded-full bg-tertiary animate-pulse"></span><span class="text-tertiary font-semibold uppercase tracking-wider">MARKET LIVE</span></div><div class="hidden lg:flex items-center gap-1 px-2.5 py-1 rounded bg-surface-container border border-outline-variant/60 text-[11px] font-mono text-on-surface-variant"><span class="text-primary">⚡</span><span class="text-on-surface">142</span><span>ops/sec</span></div><div class="relative hidden sm:flex items-center"><span class="material-symbols-outlined absolute left-2.5 text-[18px] text-on-surface-variant pointer-events-none">search</span><input class="w-56 lg:w-64 pl-8 pr-3 py-1.5 text-xs font-mono rounded-lg bg-surface-container text-on-surface border border-outline-variant focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary placeholder:text-secondary transition-all" placeholder="⌘K Search symbol..." readonly="" type="text"/></div><button aria-label="Notifications" class="relative p-2 rounded-lg bg-surface-container border border-outline-variant/60 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors"><span class="material-symbols-outlined text-[20px]">notifications</span><span class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-primary"></span></button><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div></header><main class="w-full pt-24 bg-background flex-1"><div class="max-w-[1720px] mx-auto px-6 xl:px-10 py-6"><div class="flex flex-col w-full space-y-6">
+<!-- Micro Banner / Sub-Header -->
+<div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-surface-container-low p-5 rounded-xl shadow-sm">
+<div class="space-y-1">
+<div class="flex items-center gap-2">
+<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-mono font-medium bg-primary-container/30 text-primary">
+<span class="w-1.5 h-1.5 rounded-full bg-primary animate-ping"></span>
+          ACTIVE REGIME: MOMENTUM EXPANSION
+        </span>
+<span class="text-xs text-on-surface-variant font-mono">| Equities Live Feed (NYSE/NASDAQ)</span>
+</div>
+<h1 class="text-xl font-headline font-semibold tracking-tight text-on-surface">
+        Stock Quantitative Momentum Engine &amp; Sector Rotation
+      </h1>
+<p class="text-xs text-on-surface-variant max-w-3xl">
+        Algorithmic equity screener tracking institutional block flow, cross-asset momentum, and volatility compression setups with stochastic factor scoring.
+      </p>
+</div>
+<div class="flex items-center gap-3">
+<div class="flex flex-col items-end text-right font-mono">
+<span class="text-[10px] uppercase tracking-wider text-on-surface-variant">Scanner Refresh</span>
+<span class="text-xs font-semibold text-tertiary flex items-center gap-1">
+<span class="w-2 h-2 rounded-full bg-tertiary"></span>
+          SYNCHRONIZED (186 ops/s)
+        </span>
+</div>
+<button class="px-3.5 py-2 rounded-lg bg-surface-container-highest text-xs font-mono font-medium text-on-surface hover:bg-surface-bright transition-colors flex items-center gap-2 shadow-sm">
+<span class="material-symbols-outlined text-[16px] text-primary">download</span>
+        Export Screener (.CSV)
+      </button>
+<button class="px-3.5 py-2 rounded-lg bg-primary text-xs font-mono font-semibold text-on-primary hover:opacity-90 transition-opacity flex items-center gap-2 shadow-sm">
+<span class="material-symbols-outlined text-[16px]">tune</span>
+        Custom Strategy
+      </button>
+</div>
+</div>
+<!-- Section 2: Institutional Momentum Heat Bar / 4 Metric Cards -->
+<div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+<!-- Metric 1: SPX Momentum Regime -->
+<!-- View Mode Switcher Header -->
+<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-surface-container-low p-3 rounded-xl border border-outline-variant/40">
+<div class="flex items-center gap-2">
+<span class="text-xs font-mono uppercase text-on-surface-variant font-semibold tracking-wider flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[16px] text-primary">dashboard</span>
+      Display Mode:
+    </span>
+<div class="inline-flex p-1 rounded-lg bg-surface-container-highest border border-outline-variant/60 font-mono text-xs">
+<button class="px-3 py-1.5 rounded-md font-semibold text-on-surface-variant hover:text-on-surface transition-all flex items-center gap-1.5" id="btn-view-table" onclick="document.getElementById('screener-table-view').classList.remove('hidden'); document.getElementById('screener-treemap-view').classList.add('hidden'); this.classList.replace('text-on-surface-variant','bg-primary'); this.classList.replace('hover:text-on-surface','text-on-primary'); document.getElementById('btn-view-treemap').classList.replace('bg-primary','text-on-surface-variant'); document.getElementById('btn-view-treemap').classList.replace('text-on-primary','hover:text-on-surface');">
+<span class="material-symbols-outlined text-[15px]">table_chart</span>
+        Screener Table
+      </button>
+<button class="px-3 py-1.5 rounded-md font-semibold bg-primary text-on-primary shadow-sm transition-all flex items-center gap-1.5" id="btn-view-treemap" onclick="document.getElementById('screener-treemap-view').classList.remove('hidden'); document.getElementById('screener-table-view').classList.add('hidden'); this.classList.replace('text-on-surface-variant','bg-primary'); this.classList.replace('hover:text-on-surface','text-on-primary'); document.getElementById('btn-view-table').classList.replace('bg-primary','text-on-surface-variant'); document.getElementById('btn-view-table').classList.replace('text-on-primary','hover:text-on-surface');">
+<span class="material-symbols-outlined text-[15px]">grid_view</span>
+        Sektor Treemap Heatmap (Finviz Style)
+        <span class="px-1.5 py-0.2 rounded text-[9px] bg-tertiary-container text-on-tertiary font-bold">PRO</span>
+</button>
+</div>
+</div>
+<div class="flex items-center gap-3 font-mono text-xs text-on-surface-variant">
+<span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-tertiary animate-pulse"></span>Real-Time Tick Depth: 500+ Equities</span>
+</div>
+</div>
+<!-- Interactive Treemap Heatmap (Finviz Style Quant Mode) -->
+<div class="space-y-4" id="screener-treemap-view">
+<!-- Heatmap Control Bar & Color Scale Legend -->
+<div class="bg-surface-container rounded-xl p-4 shadow-sm flex flex-col xl:flex-row xl:items-center justify-between gap-4 border border-outline-variant/40">
+<div class="flex flex-wrap items-center gap-3">
+<div class="flex items-center gap-2 bg-surface-container-high px-3 py-1.5 rounded-lg text-xs font-mono">
+<span class="text-on-surface-variant">Grouping:</span>
+<select class="bg-transparent text-on-surface focus:outline-none cursor-pointer font-medium">
+<option selected="">S&amp;P 500 by Sector</option>
+<option>NASDAQ 100 by Industry</option>
+<option>Market Cap Tier (Mega/Large/Mid)</option>
+<option>High Dark Pool Liquidity Pool</option>
+</select>
+</div>
+<div class="flex items-center gap-2 bg-surface-container-high px-3 py-1.5 rounded-lg text-xs font-mono">
+<span class="text-on-surface-variant">Performance Metric:</span>
+<select class="bg-transparent text-on-surface focus:outline-none cursor-pointer font-medium text-tertiary">
+<option selected="">1D Performance (Session %)</option>
+<option>1W Rolling Alpha</option>
+<option>1M Stochastic Momentum</option>
+<option>YTD Performance</option>
+<option>Dark Pool Net Institutional Flow</option>
+</select>
+</div>
+<div class="flex items-center gap-2 bg-surface-container-high px-3 py-1.5 rounded-lg text-xs font-mono">
+<span class="text-on-surface-variant">Box Size:</span>
+<select class="bg-transparent text-on-surface focus:outline-none cursor-pointer font-medium">
+<option selected="">Market Capitalization</option>
+<option>Daily Dollar Volume</option>
+<option>Dark Pool Dollar Volume</option>
+</select>
+</div>
+</div>
+<!-- Quantitative Legend Color Scale -->
+<div class="flex items-center gap-2 font-mono text-[10px] text-on-surface-variant">
+<span class="text-error font-semibold">-3.0%</span>
+<div class="flex items-center rounded overflow-hidden border border-outline-variant/60 h-4">
+<span class="w-6 h-full bg-[#7f1d1d]" title="-3% or lower"></span>
+<span class="w-6 h-full bg-[#991b1b]/80" title="-2%"></span>
+<span class="w-6 h-full bg-[#450a0a]" title="-1%"></span>
+<span class="w-6 h-full bg-[#27272a]" title="0% Flat"></span>
+<span class="w-6 h-full bg-[#064e3b]" title="+1%"></span>
+<span class="w-6 h-full bg-[#047857]" title="+2%"></span>
+<span class="w-6 h-full bg-[#059669]" title="+3%"></span>
+<span class="w-6 h-full bg-[#10b981]" title="+5% Super Alpha"></span>
+</div>
+<span class="text-tertiary font-semibold">+5.0%</span>
+</div>
+</div>
+<!-- Finviz-Style Proportional Treemap Grid Canvas -->
+<div class="bg-surface-container rounded-xl p-3 border border-outline-variant/50 shadow-md">
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-2 min-h-[620px]">
+<!-- SECTOR 1: TECHNOLOGY (Dominant Tile 5 cols) -->
+<div class="lg:col-span-5 bg-surface-container-lowest/80 p-2.5 rounded-lg border border-outline-variant/60 flex flex-col space-y-2">
+<div class="flex items-center justify-between border-b border-outline-variant/40 pb-1.5">
+<span class="text-[11px] font-mono font-bold tracking-wider uppercase text-on-surface flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span>Technology
+          </span>
+<span class="text-[10px] font-mono text-tertiary font-semibold">+2.45% Avg</span>
+</div>
+<div class="grid grid-cols-6 grid-rows-6 gap-1.5 flex-1 min-h-[280px]">
+<!-- NVDA (Dominant) -->
+<div class="col-span-3 row-span-4 bg-[#059669] hover:bg-[#10b981] transition-all p-2 rounded-md flex flex-col justify-between cursor-pointer group shadow-sm relative overflow-hidden">
+<div class="flex justify-between items-start">
+<span class="font-mono font-bold text-sm sm:text-base text-white tracking-tight">NVDA</span>
+<span class="text-[9px] font-mono bg-black/40 px-1 py-0.5 rounded text-tertiary-fixed font-bold">+3.42%</span>
+</div>
+<div>
+<div class="text-[11px] font-mono text-white/90 truncate font-medium">NVIDIA</div>
+<div class="text-[9px] font-mono text-emerald-100/70">$3.15T · Vol 54M</div>
+</div>
+</div>
+<!-- AAPL -->
+<div class="col-span-3 row-span-3 bg-[#047857] hover:bg-[#059669] transition-all p-2 rounded-md flex flex-col justify-between cursor-pointer shadow-sm">
+<div class="flex justify-between items-start">
+<span class="font-mono font-bold text-xs sm:text-sm text-white">AAPL</span>
+<span class="text-[9px] font-mono bg-black/40 px-1 py-0.5 rounded text-emerald-200">+0.92%</span>
+</div>
+<div>
+<div class="text-[10px] font-mono text-white/90 truncate">Apple Inc</div>
+<div class="text-[9px] font-mono text-emerald-100/70">$3.54T · Vol 38M</div>
+</div>
+</div>
+<!-- MSFT -->
+<div class="col-span-3 row-span-3 bg-[#047857] hover:bg-[#059669] transition-all p-2 rounded-md flex flex-col justify-between cursor-pointer shadow-sm">
+<div class="flex justify-between items-start">
+<span class="font-mono font-bold text-xs sm:text-sm text-white">MSFT</span>
+<span class="text-[9px] font-mono bg-black/40 px-1 py-0.5 rounded text-emerald-200">+1.40%</span>
+</div>
+<div>
+<div class="text-[10px] font-mono text-white/90 truncate">Microsoft</div>
+<div class="text-[9px] font-mono text-emerald-100/70">$3.18T · Vol 22M</div>
+</div>
+</div>
+<!-- AVGO -->
+<div class="col-span-3 row-span-2 bg-[#059669] hover:bg-[#10b981] transition-all p-1.5 rounded-md flex flex-col justify-between cursor-pointer shadow-sm">
+<div class="flex justify-between items-center">
+<span class="font-mono font-bold text-xs text-white">AVGO</span>
+<span class="text-[9px] font-mono text-white font-semibold">+2.15%</span>
+</div>
+<div class="text-[9px] font-mono text-white/80 truncate">Broadcom · $815B</div>
+</div>
+<!-- AMD -->
+<div class="col-span-2 row-span-1 bg-[#10b981] hover:bg-tertiary transition-all p-1 rounded-md flex items-center justify-between cursor-pointer text-white shadow-sm">
+<span class="font-mono font-bold text-[10px]">AMD</span>
+<span class="font-mono text-[9px] font-bold">+4.10%</span>
+</div>
+<!-- ORCL -->
+<div class="col-span-2 row-span-1 bg-[#047857] hover:bg-[#059669] transition-all p-1 rounded-md flex items-center justify-between cursor-pointer text-white shadow-sm">
+<span class="font-mono font-bold text-[10px]">ORCL</span>
+<span class="font-mono text-[9px]">+1.85%</span>
+</div>
+<!-- CRM -->
+<div class="col-span-1 row-span-1 bg-[#450a0a] hover:bg-[#7f1d1d] transition-all p-1 rounded-md flex flex-col justify-center items-center cursor-pointer text-white shadow-sm">
+<span class="font-mono font-bold text-[9px]">CRM</span>
+<span class="font-mono text-[8px] text-red-200">-0.65%</span>
+</div>
+<!-- INTC -->
+<div class="col-span-1 row-span-1 bg-[#991b1b] hover:bg-[#b91c1c] transition-all p-1 rounded-md flex flex-col justify-center items-center cursor-pointer text-white shadow-sm">
+<span class="font-mono font-bold text-[9px]">INTC</span>
+<span class="font-mono text-[8px] text-red-100">-1.20%</span>
+</div>
+</div>
+</div>
+<!-- SECTOR 2: COMMUNICATION SERVICES (3 cols) -->
+<div class="lg:col-span-4 bg-surface-container-lowest/80 p-2.5 rounded-lg border border-outline-variant/60 flex flex-col space-y-2">
+<div class="flex items-center justify-between border-b border-outline-variant/40 pb-1.5">
+<span class="text-[11px] font-mono font-bold tracking-wider uppercase text-on-surface flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span>Communication Services
+          </span>
+<span class="text-[10px] font-mono text-tertiary font-semibold">+1.78% Avg</span>
+</div>
+<div class="grid grid-cols-4 grid-rows-6 gap-1.5 flex-1 min-h-[280px]">
+<!-- META -->
+<div class="col-span-2 row-span-4 bg-[#059669] hover:bg-[#10b981] transition-all p-2 rounded-md flex flex-col justify-between cursor-pointer shadow-sm">
+<div class="flex justify-between items-start">
+<span class="font-mono font-bold text-sm text-white">META</span>
+<span class="text-[9px] font-mono bg-black/40 px-1 py-0.5 rounded text-tertiary-fixed font-bold">+2.80%</span>
+</div>
+<div>
+<div class="text-[10px] font-mono text-white/90 truncate">Meta Platforms</div>
+<div class="text-[9px] font-mono text-emerald-100/70">$1.46T · Vol 19M</div>
+</div>
+</div>
+<!-- GOOGL -->
+<div class="col-span-2 row-span-4 bg-[#047857] hover:bg-[#059669] transition-all p-2 rounded-md flex flex-col justify-between cursor-pointer shadow-sm">
+<div class="flex justify-between items-start">
+<span class="font-mono font-bold text-sm text-white">GOOGL</span>
+<span class="text-[9px] font-mono bg-black/40 px-1 py-0.5 rounded text-emerald-200">+1.65%</span>
+</div>
+<div>
+<div class="text-[10px] font-mono text-white/90 truncate">Alphabet Inc</div>
+<div class="text-[9px] font-mono text-emerald-100/70">$2.12T · Vol 24M</div>
+</div>
+</div>
+<!-- NFLX -->
+<div class="col-span-2 row-span-2 bg-[#064e3b] hover:bg-[#047857] transition-all p-1.5 rounded-md flex flex-col justify-between cursor-pointer shadow-sm">
+<div class="flex justify-between items-center">
+<span class="font-mono font-bold text-xs text-white">NFLX</span>
+<span class="text-[9px] font-mono text-white font-semibold">+1.10%</span>
+</div>
+<div class="text-[9px] font-mono text-white/80 truncate">Netflix · $312B</div>
+</div>
+<!-- TMUS -->
+<div class="col-span-1 row-span-2 bg-[#27272a] hover:bg-surface-bright transition-all p-1 rounded-md flex flex-col justify-center items-center cursor-pointer text-white shadow-sm">
+<span class="font-mono font-bold text-[9px]">TMUS</span>
+<span class="font-mono text-[8px] text-tertiary">+0.40%</span>
+</div>
+<!-- DIS -->
+<div class="col-span-1 row-span-2 bg-[#7f1d1d] hover:bg-[#991b1b] transition-all p-1 rounded-md flex flex-col justify-center items-center cursor-pointer text-white shadow-sm">
+<span class="font-mono font-bold text-[9px]">DIS</span>
+<span class="font-mono text-[8px] text-red-200">-0.80%</span>
+</div>
+</div>
+</div>
+<!-- SECTOR 3: CONSUMER CYCLICAL (3 cols) -->
+<div class="lg:col-span-3 bg-surface-container-lowest/80 p-2.5 rounded-lg border border-outline-variant/60 flex flex-col space-y-2">
+<div class="flex items-center justify-between border-b border-outline-variant/40 pb-1.5">
+<span class="text-[11px] font-mono font-bold tracking-wider uppercase text-on-surface flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span>Consumer Cyclical
+          </span>
+<span class="text-[10px] font-mono text-tertiary font-semibold">+1.92% Avg</span>
+</div>
+<div class="grid grid-cols-4 grid-rows-6 gap-1.5 flex-1 min-h-[280px]">
+<!-- AMZN -->
+<div class="col-span-4 row-span-3 bg-[#047857] hover:bg-[#059669] transition-all p-2 rounded-md flex flex-col justify-between cursor-pointer shadow-sm">
+<div class="flex justify-between items-start">
+<span class="font-mono font-bold text-sm text-white">AMZN</span>
+<span class="text-[9px] font-mono bg-black/40 px-1 py-0.5 rounded text-emerald-200 font-bold">+1.95%</span>
+</div>
+<div>
+<div class="text-[10px] font-mono text-white/90 truncate">Amazon.com Inc</div>
+<div class="text-[9px] font-mono text-emerald-100/70">$2.05T · Vol 44M</div>
+</div>
+</div>
+<!-- TSLA -->
+<div class="col-span-4 row-span-2 bg-[#10b981] hover:bg-tertiary transition-all p-1.5 rounded-md flex flex-col justify-between cursor-pointer shadow-sm">
+<div class="flex justify-between items-center">
+<span class="font-mono font-bold text-xs text-white">TSLA</span>
+<span class="text-[9px] font-mono text-white font-bold bg-black/30 px-1 rounded">+4.12%</span>
+</div>
+<div class="text-[9px] font-mono text-white/90 truncate">Tesla, Inc · $840B · Vol 88M</div>
+</div>
+<!-- HD -->
+<div class="col-span-2 row-span-1 bg-[#27272a] hover:bg-surface-bright transition-all p-1 rounded-md flex items-center justify-between cursor-pointer text-white shadow-sm">
+<span class="font-mono font-bold text-[9px]">HD</span>
+<span class="font-mono text-[8px] text-tertiary">+0.50%</span>
+</div>
+<!-- NKE -->
+<div class="col-span-2 row-span-1 bg-[#991b1b] hover:bg-[#b91c1c] transition-all p-1 rounded-md flex items-center justify-between cursor-pointer text-white shadow-sm">
+<span class="font-mono font-bold text-[9px]">NKE</span>
+<span class="font-mono text-[8px] text-red-100">-1.45%</span>
+</div>
+</div>
+</div>
+<!-- SECTOR 4: FINANCIAL SERVICES (4 cols) -->
+<div class="lg:col-span-4 bg-surface-container-lowest/80 p-2.5 rounded-lg border border-outline-variant/60 flex flex-col space-y-2">
+<div class="flex items-center justify-between border-b border-outline-variant/40 pb-1.5">
+<span class="text-[11px] font-mono font-bold tracking-wider uppercase text-on-surface flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span>Financial Services
+          </span>
+<span class="text-[10px] font-mono text-tertiary font-semibold">+0.65% Avg</span>
+</div>
+<div class="grid grid-cols-4 grid-rows-4 gap-1.5 flex-1 min-h-[180px]">
+<!-- JPM -->
+<div class="col-span-2 row-span-4 bg-[#064e3b] hover:bg-[#047857] transition-all p-2 rounded-md flex flex-col justify-between cursor-pointer shadow-sm">
+<div class="flex justify-between items-start">
+<span class="font-mono font-bold text-xs sm:text-sm text-white">JPM</span>
+<span class="text-[9px] font-mono bg-black/40 px-1 py-0.5 rounded text-emerald-200">+1.20%</span>
+</div>
+<div>
+<div class="text-[10px] font-mono text-white/90 truncate">JPMorgan Chase</div>
+<div class="text-[9px] font-mono text-emerald-100/70">$640B · Vol 12M</div>
+</div>
+</div>
+<!-- V & MA -->
+<div class="col-span-2 row-span-2 bg-[#064e3b] hover:bg-[#047857] transition-all p-1.5 rounded-md flex flex-col justify-between cursor-pointer shadow-sm">
+<div class="flex justify-between items-center">
+<span class="font-mono font-bold text-xs text-white">V</span>
+<span class="text-[9px] font-mono text-emerald-200 font-semibold">+0.85%</span>
+</div>
+<div class="text-[9px] font-mono text-white/80 truncate">Visa Inc · $580B</div>
+</div>
+<div class="col-span-1 row-span-2 bg-[#27272a] hover:bg-surface-bright transition-all p-1 rounded-md flex flex-col justify-center items-center cursor-pointer text-white shadow-sm">
+<span class="font-mono font-bold text-[9px]">BAC</span>
+<span class="font-mono text-[8px] text-tertiary">+0.40%</span>
+</div>
+<div class="col-span-1 row-span-2 bg-[#27272a] hover:bg-surface-bright transition-all p-1 rounded-md flex flex-col justify-center items-center cursor-pointer text-white shadow-sm">
+<span class="font-mono font-bold text-[9px]">WFC</span>
+<span class="font-mono text-[8px] text-tertiary">+0.60%</span>
+</div>
+</div>
+</div>
+<!-- SECTOR 5: HEALTHCARE (4 cols) -->
+<div class="lg:col-span-4 bg-surface-container-lowest/80 p-2.5 rounded-lg border border-outline-variant/60 flex flex-col space-y-2">
+<div class="flex items-center justify-between border-b border-outline-variant/40 pb-1.5">
+<span class="text-[11px] font-mono font-bold tracking-wider uppercase text-on-surface flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-error"></span>Healthcare
+          </span>
+<span class="text-[10px] font-mono text-error font-semibold">-0.42% Avg</span>
+</div>
+<div class="grid grid-cols-4 grid-rows-4 gap-1.5 flex-1 min-h-[180px]">
+<!-- LLY -->
+<div class="col-span-2 row-span-4 bg-[#450a0a] hover:bg-[#7f1d1d] transition-all p-2 rounded-md flex flex-col justify-between cursor-pointer shadow-sm">
+<div class="flex justify-between items-start">
+<span class="font-mono font-bold text-xs sm:text-sm text-white">LLY</span>
+<span class="text-[9px] font-mono bg-black/40 px-1 py-0.5 rounded text-red-200 font-bold">-0.45%</span>
+</div>
+<div>
+<div class="text-[10px] font-mono text-white/90 truncate">Eli Lilly</div>
+<div class="text-[9px] font-mono text-red-200/70">$820B · Vol 3.8M</div>
+</div>
+</div>
+<!-- UNH -->
+<div class="col-span-2 row-span-2 bg-[#064e3b] hover:bg-[#047857] transition-all p-1.5 rounded-md flex flex-col justify-between cursor-pointer shadow-sm">
+<div class="flex justify-between items-center">
+<span class="font-mono font-bold text-xs text-white">UNH</span>
+<span class="text-[9px] font-mono text-emerald-200 font-semibold">+0.80%</span>
+</div>
+<div class="text-[9px] font-mono text-white/80 truncate">UnitedHealth · $540B</div>
+</div>
+<!-- JNJ -->
+<div class="col-span-1 row-span-2 bg-[#27272a] hover:bg-surface-bright transition-all p-1 rounded-md flex flex-col justify-center items-center cursor-pointer text-white shadow-sm">
+<span class="font-mono font-bold text-[9px]">JNJ</span>
+<span class="font-mono text-[8px] text-tertiary">+0.25%</span>
+</div>
+<!-- ABBV -->
+<div class="col-span-1 row-span-2 bg-[#991b1b] hover:bg-[#b91c1c] transition-all p-1 rounded-md flex flex-col justify-center items-center cursor-pointer text-white shadow-sm">
+<span class="font-mono font-bold text-[9px]">ABBV</span>
+<span class="font-mono text-[8px] text-red-100">-1.10%</span>
+</div>
+</div>
+</div>
+<!-- SECTOR 6: INDUSTRIALS & ENERGY (4 cols) -->
+<div class="lg:col-span-4 bg-surface-container-lowest/80 p-2.5 rounded-lg border border-outline-variant/60 flex flex-col space-y-2">
+<div class="flex items-center justify-between border-b border-outline-variant/40 pb-1.5">
+<span class="text-[11px] font-mono font-bold tracking-wider uppercase text-on-surface flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span>Industrials &amp; Energy
+          </span>
+<span class="text-[10px] font-mono text-tertiary font-semibold">+1.12% Avg</span>
+</div>
+<div class="grid grid-cols-4 grid-rows-4 gap-1.5 flex-1 min-h-[180px]">
+<!-- GE -->
+<div class="col-span-2 row-span-2 bg-[#059669] hover:bg-[#10b981] transition-all p-1.5 rounded-md flex flex-col justify-between cursor-pointer shadow-sm">
+<div class="flex justify-between items-center">
+<span class="font-mono font-bold text-xs text-white">GE</span>
+<span class="text-[9px] font-mono text-white font-bold">+2.10%</span>
+</div>
+<div class="text-[9px] font-mono text-white/80 truncate">GE Aerospace · $208B</div>
+</div>
+<!-- CAT -->
+<div class="col-span-2 row-span-2 bg-[#047857] hover:bg-[#059669] transition-all p-1.5 rounded-md flex flex-col justify-between cursor-pointer shadow-sm">
+<div class="flex justify-between items-center">
+<span class="font-mono font-bold text-xs text-white">CAT</span>
+<span class="text-[9px] font-mono text-white">+1.40%</span>
+</div>
+<div class="text-[9px] font-mono text-white/80 truncate">Caterpillar · $192B</div>
+</div>
+<!-- XOM -->
+<div class="col-span-2 row-span-2 bg-[#064e3b] hover:bg-[#047857] transition-all p-1.5 rounded-md flex flex-col justify-between cursor-pointer shadow-sm">
+<div class="flex justify-between items-center">
+<span class="font-mono font-bold text-xs text-white">XOM</span>
+<span class="text-[9px] font-mono text-emerald-200">+0.90%</span>
+</div>
+<div class="text-[9px] font-mono text-white/80 truncate">Exxon Mobil · $460B</div>
+</div>
+<!-- CVX -->
+<div class="col-span-2 row-span-2 bg-[#27272a] hover:bg-surface-bright transition-all p-1.5 rounded-md flex flex-col justify-between cursor-pointer text-white shadow-sm">
+<div class="flex justify-between items-center">
+<span class="font-mono font-bold text-xs">CVX</span>
+<span class="text-[9px] font-mono text-tertiary">+0.45%</span>
+</div>
+<div class="text-[9px] font-mono text-on-surface-variant truncate">Chevron · $284B</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div><div class="bg-surface-container rounded-xl p-4 shadow-sm relative overflow-hidden flex flex-col justify-between hidden" id="screener-table-view">
+<div class="flex items-start justify-between">
+<div>
+<span class="text-[10px] font-mono uppercase tracking-wider text-on-surface-variant">Momentum Regime</span>
+<div class="text-lg font-headline font-bold text-on-surface mt-0.5">Bullish Expansion</div>
+<span class="text-[11px] font-mono text-tertiary flex items-center gap-1 mt-0.5">
+<span class="material-symbols-outlined text-[14px]">trending_up</span>
+            Regime IV (+1.84σ Z-Score)
+          </span>
+</div>
+<div class="w-10 h-10 rounded-lg bg-surface-container-high flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-[20px]">speed</span>
+</div>
+</div>
+<div class="mt-4 pt-3 flex items-center justify-between text-[11px] font-mono text-on-surface-variant bg-surface-container-lowest/50 px-2.5 py-1.5 rounded">
+<span>SPX 5,864.20 (+0.65%)</span>
+<span class="text-tertiary">Vol Compression: Low</span>
+</div>
+</div>
+<!-- Metric 2: Dark Pool Net Flow -->
+<!-- View Mode Switcher Header -->
+<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-surface-container-low p-3 rounded-xl border border-outline-variant/40">
+<div class="flex items-center gap-2">
+<span class="text-xs font-mono uppercase text-on-surface-variant font-semibold tracking-wider flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[16px] text-primary">dashboard</span>
+      Display Mode:
+    </span>
+<div class="inline-flex p-1 rounded-lg bg-surface-container-highest border border-outline-variant/60 font-mono text-xs">
+<button class="px-3 py-1.5 rounded-md font-semibold text-on-surface-variant hover:text-on-surface transition-all flex items-center gap-1.5" id="btn-view-table" onclick="document.getElementById('screener-table-view').classList.remove('hidden'); document.getElementById('screener-treemap-view').classList.add('hidden'); this.classList.replace('text-on-surface-variant','bg-primary'); this.classList.replace('hover:text-on-surface','text-on-primary'); document.getElementById('btn-view-treemap').classList.replace('bg-primary','text-on-surface-variant'); document.getElementById('btn-view-treemap').classList.replace('text-on-primary','hover:text-on-surface');">
+<span class="material-symbols-outlined text-[15px]">table_chart</span>
+        Screener Table
+      </button>
+<button class="px-3 py-1.5 rounded-md font-semibold bg-primary text-on-primary shadow-sm transition-all flex items-center gap-1.5" id="btn-view-treemap" onclick="document.getElementById('screener-treemap-view').classList.remove('hidden'); document.getElementById('screener-table-view').classList.add('hidden'); this.classList.replace('text-on-surface-variant','bg-primary'); this.classList.replace('hover:text-on-surface','text-on-primary'); document.getElementById('btn-view-table').classList.replace('bg-primary','text-on-surface-variant'); document.getElementById('btn-view-table').classList.replace('text-on-primary','hover:text-on-surface');">
+<span class="material-symbols-outlined text-[15px]">grid_view</span>
+        Sektor Treemap Heatmap (Finviz Style)
+        <span class="px-1.5 py-0.2 rounded text-[9px] bg-tertiary-container text-on-tertiary font-bold">PRO</span>
+</button>
+</div>
+</div>
+<div class="flex items-center gap-3 font-mono text-xs text-on-surface-variant">
+<span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-tertiary animate-pulse"></span>Real-Time Tick Depth: 500+ Equities</span>
+</div>
+</div>
+<!-- Interactive Treemap Heatmap (Finviz Style Quant Mode) -->
+<div class="space-y-4" id="screener-treemap-view">
+<!-- Heatmap Control Bar & Color Scale Legend -->
+<div class="bg-surface-container rounded-xl p-4 shadow-sm flex flex-col xl:flex-row xl:items-center justify-between gap-4 border border-outline-variant/40">
+<div class="flex flex-wrap items-center gap-3">
+<div class="flex items-center gap-2 bg-surface-container-high px-3 py-1.5 rounded-lg text-xs font-mono">
+<span class="text-on-surface-variant">Grouping:</span>
+<select class="bg-transparent text-on-surface focus:outline-none cursor-pointer font-medium">
+<option selected="">S&amp;P 500 by Sector</option>
+<option>NASDAQ 100 by Industry</option>
+<option>Market Cap Tier (Mega/Large/Mid)</option>
+<option>High Dark Pool Liquidity Pool</option>
+</select>
+</div>
+<div class="flex items-center gap-2 bg-surface-container-high px-3 py-1.5 rounded-lg text-xs font-mono">
+<span class="text-on-surface-variant">Performance Metric:</span>
+<select class="bg-transparent text-on-surface focus:outline-none cursor-pointer font-medium text-tertiary">
+<option selected="">1D Performance (Session %)</option>
+<option>1W Rolling Alpha</option>
+<option>1M Stochastic Momentum</option>
+<option>YTD Performance</option>
+<option>Dark Pool Net Institutional Flow</option>
+</select>
+</div>
+<div class="flex items-center gap-2 bg-surface-container-high px-3 py-1.5 rounded-lg text-xs font-mono">
+<span class="text-on-surface-variant">Box Size:</span>
+<select class="bg-transparent text-on-surface focus:outline-none cursor-pointer font-medium">
+<option selected="">Market Capitalization</option>
+<option>Daily Dollar Volume</option>
+<option>Dark Pool Dollar Volume</option>
+</select>
+</div>
+</div>
+<!-- Quantitative Legend Color Scale -->
+<div class="flex items-center gap-2 font-mono text-[10px] text-on-surface-variant">
+<span class="text-error font-semibold">-3.0%</span>
+<div class="flex items-center rounded overflow-hidden border border-outline-variant/60 h-4">
+<span class="w-6 h-full bg-[#7f1d1d]" title="-3% or lower"></span>
+<span class="w-6 h-full bg-[#991b1b]/80" title="-2%"></span>
+<span class="w-6 h-full bg-[#450a0a]" title="-1%"></span>
+<span class="w-6 h-full bg-[#27272a]" title="0% Flat"></span>
+<span class="w-6 h-full bg-[#064e3b]" title="+1%"></span>
+<span class="w-6 h-full bg-[#047857]" title="+2%"></span>
+<span class="w-6 h-full bg-[#059669]" title="+3%"></span>
+<span class="w-6 h-full bg-[#10b981]" title="+5% Super Alpha"></span>
+</div>
+<span class="text-tertiary font-semibold">+5.0%</span>
+</div>
+</div>
+<!-- Finviz-Style Proportional Treemap Grid Canvas -->
+<div class="bg-surface-container rounded-xl p-3 border border-outline-variant/50 shadow-md">
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-2 min-h-[620px]">
+<!-- SECTOR 1: TECHNOLOGY (Dominant Tile 5 cols) -->
+<div class="lg:col-span-5 bg-surface-container-lowest/80 p-2.5 rounded-lg border border-outline-variant/60 flex flex-col space-y-2">
+<div class="flex items-center justify-between border-b border-outline-variant/40 pb-1.5">
+<span class="text-[11px] font-mono font-bold tracking-wider uppercase text-on-surface flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span>Technology
+          </span>
+<span class="text-[10px] font-mono text-tertiary font-semibold">+2.45% Avg</span>
+</div>
+<div class="grid grid-cols-6 grid-rows-6 gap-1.5 flex-1 min-h-[280px]">
+<!-- NVDA (Dominant) -->
+<div class="col-span-3 row-span-4 bg-[#059669] hover:bg-[#10b981] transition-all p-2 rounded-md flex flex-col justify-between cursor-pointer group shadow-sm relative overflow-hidden">
+<div class="flex justify-between items-start">
+<span class="font-mono font-bold text-sm sm:text-base text-white tracking-tight">NVDA</span>
+<span class="text-[9px] font-mono bg-black/40 px-1 py-0.5 rounded text-tertiary-fixed font-bold">+3.42%</span>
+</div>
+<div>
+<div class="text-[11px] font-mono text-white/90 truncate font-medium">NVIDIA</div>
+<div class="text-[9px] font-mono text-emerald-100/70">$3.15T · Vol 54M</div>
+</div>
+</div>
+<!-- AAPL -->
+<div class="col-span-3 row-span-3 bg-[#047857] hover:bg-[#059669] transition-all p-2 rounded-md flex flex-col justify-between cursor-pointer shadow-sm">
+<div class="flex justify-between items-start">
+<span class="font-mono font-bold text-xs sm:text-sm text-white">AAPL</span>
+<span class="text-[9px] font-mono bg-black/40 px-1 py-0.5 rounded text-emerald-200">+0.92%</span>
+</div>
+<div>
+<div class="text-[10px] font-mono text-white/90 truncate">Apple Inc</div>
+<div class="text-[9px] font-mono text-emerald-100/70">$3.54T · Vol 38M</div>
+</div>
+</div>
+<!-- MSFT -->
+<div class="col-span-3 row-span-3 bg-[#047857] hover:bg-[#059669] transition-all p-2 rounded-md flex flex-col justify-between cursor-pointer shadow-sm">
+<div class="flex justify-between items-start">
+<span class="font-mono font-bold text-xs sm:text-sm text-white">MSFT</span>
+<span class="text-[9px] font-mono bg-black/40 px-1 py-0.5 rounded text-emerald-200">+1.40%</span>
+</div>
+<div>
+<div class="text-[10px] font-mono text-white/90 truncate">Microsoft</div>
+<div class="text-[9px] font-mono text-emerald-100/70">$3.18T · Vol 22M</div>
+</div>
+</div>
+<!-- AVGO -->
+<div class="col-span-3 row-span-2 bg-[#059669] hover:bg-[#10b981] transition-all p-1.5 rounded-md flex flex-col justify-between cursor-pointer shadow-sm">
+<div class="flex justify-between items-center">
+<span class="font-mono font-bold text-xs text-white">AVGO</span>
+<span class="text-[9px] font-mono text-white font-semibold">+2.15%</span>
+</div>
+<div class="text-[9px] font-mono text-white/80 truncate">Broadcom · $815B</div>
+</div>
+<!-- AMD -->
+<div class="col-span-2 row-span-1 bg-[#10b981] hover:bg-tertiary transition-all p-1 rounded-md flex items-center justify-between cursor-pointer text-white shadow-sm">
+<span class="font-mono font-bold text-[10px]">AMD</span>
+<span class="font-mono text-[9px] font-bold">+4.10%</span>
+</div>
+<!-- ORCL -->
+<div class="col-span-2 row-span-1 bg-[#047857] hover:bg-[#059669] transition-all p-1 rounded-md flex items-center justify-between cursor-pointer text-white shadow-sm">
+<span class="font-mono font-bold text-[10px]">ORCL</span>
+<span class="font-mono text-[9px]">+1.85%</span>
+</div>
+<!-- CRM -->
+<div class="col-span-1 row-span-1 bg-[#450a0a] hover:bg-[#7f1d1d] transition-all p-1 rounded-md flex flex-col justify-center items-center cursor-pointer text-white shadow-sm">
+<span class="font-mono font-bold text-[9px]">CRM</span>
+<span class="font-mono text-[8px] text-red-200">-0.65%</span>
+</div>
+<!-- INTC -->
+<div class="col-span-1 row-span-1 bg-[#991b1b] hover:bg-[#b91c1c] transition-all p-1 rounded-md flex flex-col justify-center items-center cursor-pointer text-white shadow-sm">
+<span class="font-mono font-bold text-[9px]">INTC</span>
+<span class="font-mono text-[8px] text-red-100">-1.20%</span>
+</div>
+</div>
+</div>
+<!-- SECTOR 2: COMMUNICATION SERVICES (3 cols) -->
+<div class="lg:col-span-4 bg-surface-container-lowest/80 p-2.5 rounded-lg border border-outline-variant/60 flex flex-col space-y-2">
+<div class="flex items-center justify-between border-b border-outline-variant/40 pb-1.5">
+<span class="text-[11px] font-mono font-bold tracking-wider uppercase text-on-surface flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span>Communication Services
+          </span>
+<span class="text-[10px] font-mono text-tertiary font-semibold">+1.78% Avg</span>
+</div>
+<div class="grid grid-cols-4 grid-rows-6 gap-1.5 flex-1 min-h-[280px]">
+<!-- META -->
+<div class="col-span-2 row-span-4 bg-[#059669] hover:bg-[#10b981] transition-all p-2 rounded-md flex flex-col justify-between cursor-pointer shadow-sm">
+<div class="flex justify-between items-start">
+<span class="font-mono font-bold text-sm text-white">META</span>
+<span class="text-[9px] font-mono bg-black/40 px-1 py-0.5 rounded text-tertiary-fixed font-bold">+2.80%</span>
+</div>
+<div>
+<div class="text-[10px] font-mono text-white/90 truncate">Meta Platforms</div>
+<div class="text-[9px] font-mono text-emerald-100/70">$1.46T · Vol 19M</div>
+</div>
+</div>
+<!-- GOOGL -->
+<div class="col-span-2 row-span-4 bg-[#047857] hover:bg-[#059669] transition-all p-2 rounded-md flex flex-col justify-between cursor-pointer shadow-sm">
+<div class="flex justify-between items-start">
+<span class="font-mono font-bold text-sm text-white">GOOGL</span>
+<span class="text-[9px] font-mono bg-black/40 px-1 py-0.5 rounded text-emerald-200">+1.65%</span>
+</div>
+<div>
+<div class="text-[10px] font-mono text-white/90 truncate">Alphabet Inc</div>
+<div class="text-[9px] font-mono text-emerald-100/70">$2.12T · Vol 24M</div>
+</div>
+</div>
+<!-- NFLX -->
+<div class="col-span-2 row-span-2 bg-[#064e3b] hover:bg-[#047857] transition-all p-1.5 rounded-md flex flex-col justify-between cursor-pointer shadow-sm">
+<div class="flex justify-between items-center">
+<span class="font-mono font-bold text-xs text-white">NFLX</span>
+<span class="text-[9px] font-mono text-white font-semibold">+1.10%</span>
+</div>
+<div class="text-[9px] font-mono text-white/80 truncate">Netflix · $312B</div>
+</div>
+<!-- TMUS -->
+<div class="col-span-1 row-span-2 bg-[#27272a] hover:bg-surface-bright transition-all p-1 rounded-md flex flex-col justify-center items-center cursor-pointer text-white shadow-sm">
+<span class="font-mono font-bold text-[9px]">TMUS</span>
+<span class="font-mono text-[8px] text-tertiary">+0.40%</span>
+</div>
+<!-- DIS -->
+<div class="col-span-1 row-span-2 bg-[#7f1d1d] hover:bg-[#991b1b] transition-all p-1 rounded-md flex flex-col justify-center items-center cursor-pointer text-white shadow-sm">
+<span class="font-mono font-bold text-[9px]">DIS</span>
+<span class="font-mono text-[8px] text-red-200">-0.80%</span>
+</div>
+</div>
+</div>
+<!-- SECTOR 3: CONSUMER CYCLICAL (3 cols) -->
+<div class="lg:col-span-3 bg-surface-container-lowest/80 p-2.5 rounded-lg border border-outline-variant/60 flex flex-col space-y-2">
+<div class="flex items-center justify-between border-b border-outline-variant/40 pb-1.5">
+<span class="text-[11px] font-mono font-bold tracking-wider uppercase text-on-surface flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span>Consumer Cyclical
+          </span>
+<span class="text-[10px] font-mono text-tertiary font-semibold">+1.92% Avg</span>
+</div>
+<div class="grid grid-cols-4 grid-rows-6 gap-1.5 flex-1 min-h-[280px]">
+<!-- AMZN -->
+<div class="col-span-4 row-span-3 bg-[#047857] hover:bg-[#059669] transition-all p-2 rounded-md flex flex-col justify-between cursor-pointer shadow-sm">
+<div class="flex justify-between items-start">
+<span class="font-mono font-bold text-sm text-white">AMZN</span>
+<span class="text-[9px] font-mono bg-black/40 px-1 py-0.5 rounded text-emerald-200 font-bold">+1.95%</span>
+</div>
+<div>
+<div class="text-[10px] font-mono text-white/90 truncate">Amazon.com Inc</div>
+<div class="text-[9px] font-mono text-emerald-100/70">$2.05T · Vol 44M</div>
+</div>
+</div>
+<!-- TSLA -->
+<div class="col-span-4 row-span-2 bg-[#10b981] hover:bg-tertiary transition-all p-1.5 rounded-md flex flex-col justify-between cursor-pointer shadow-sm">
+<div class="flex justify-between items-center">
+<span class="font-mono font-bold text-xs text-white">TSLA</span>
+<span class="text-[9px] font-mono text-white font-bold bg-black/30 px-1 rounded">+4.12%</span>
+</div>
+<div class="text-[9px] font-mono text-white/90 truncate">Tesla, Inc · $840B · Vol 88M</div>
+</div>
+<!-- HD -->
+<div class="col-span-2 row-span-1 bg-[#27272a] hover:bg-surface-bright transition-all p-1 rounded-md flex items-center justify-between cursor-pointer text-white shadow-sm">
+<span class="font-mono font-bold text-[9px]">HD</span>
+<span class="font-mono text-[8px] text-tertiary">+0.50%</span>
+</div>
+<!-- NKE -->
+<div class="col-span-2 row-span-1 bg-[#991b1b] hover:bg-[#b91c1c] transition-all p-1 rounded-md flex items-center justify-between cursor-pointer text-white shadow-sm">
+<span class="font-mono font-bold text-[9px]">NKE</span>
+<span class="font-mono text-[8px] text-red-100">-1.45%</span>
+</div>
+</div>
+</div>
+<!-- SECTOR 4: FINANCIAL SERVICES (4 cols) -->
+<div class="lg:col-span-4 bg-surface-container-lowest/80 p-2.5 rounded-lg border border-outline-variant/60 flex flex-col space-y-2">
+<div class="flex items-center justify-between border-b border-outline-variant/40 pb-1.5">
+<span class="text-[11px] font-mono font-bold tracking-wider uppercase text-on-surface flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span>Financial Services
+          </span>
+<span class="text-[10px] font-mono text-tertiary font-semibold">+0.65% Avg</span>
+</div>
+<div class="grid grid-cols-4 grid-rows-4 gap-1.5 flex-1 min-h-[180px]">
+<!-- JPM -->
+<div class="col-span-2 row-span-4 bg-[#064e3b] hover:bg-[#047857] transition-all p-2 rounded-md flex flex-col justify-between cursor-pointer shadow-sm">
+<div class="flex justify-between items-start">
+<span class="font-mono font-bold text-xs sm:text-sm text-white">JPM</span>
+<span class="text-[9px] font-mono bg-black/40 px-1 py-0.5 rounded text-emerald-200">+1.20%</span>
+</div>
+<div>
+<div class="text-[10px] font-mono text-white/90 truncate">JPMorgan Chase</div>
+<div class="text-[9px] font-mono text-emerald-100/70">$640B · Vol 12M</div>
+</div>
+</div>
+<!-- V & MA -->
+<div class="col-span-2 row-span-2 bg-[#064e3b] hover:bg-[#047857] transition-all p-1.5 rounded-md flex flex-col justify-between cursor-pointer shadow-sm">
+<div class="flex justify-between items-center">
+<span class="font-mono font-bold text-xs text-white">V</span>
+<span class="text-[9px] font-mono text-emerald-200 font-semibold">+0.85%</span>
+</div>
+<div class="text-[9px] font-mono text-white/80 truncate">Visa Inc · $580B</div>
+</div>
+<div class="col-span-1 row-span-2 bg-[#27272a] hover:bg-surface-bright transition-all p-1 rounded-md flex flex-col justify-center items-center cursor-pointer text-white shadow-sm">
+<span class="font-mono font-bold text-[9px]">BAC</span>
+<span class="font-mono text-[8px] text-tertiary">+0.40%</span>
+</div>
+<div class="col-span-1 row-span-2 bg-[#27272a] hover:bg-surface-bright transition-all p-1 rounded-md flex flex-col justify-center items-center cursor-pointer text-white shadow-sm">
+<span class="font-mono font-bold text-[9px]">WFC</span>
+<span class="font-mono text-[8px] text-tertiary">+0.60%</span>
+</div>
+</div>
+</div>
+<!-- SECTOR 5: HEALTHCARE (4 cols) -->
+<div class="lg:col-span-4 bg-surface-container-lowest/80 p-2.5 rounded-lg border border-outline-variant/60 flex flex-col space-y-2">
+<div class="flex items-center justify-between border-b border-outline-variant/40 pb-1.5">
+<span class="text-[11px] font-mono font-bold tracking-wider uppercase text-on-surface flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-error"></span>Healthcare
+          </span>
+<span class="text-[10px] font-mono text-error font-semibold">-0.42% Avg</span>
+</div>
+<div class="grid grid-cols-4 grid-rows-4 gap-1.5 flex-1 min-h-[180px]">
+<!-- LLY -->
+<div class="col-span-2 row-span-4 bg-[#450a0a] hover:bg-[#7f1d1d] transition-all p-2 rounded-md flex flex-col justify-between cursor-pointer shadow-sm">
+<div class="flex justify-between items-start">
+<span class="font-mono font-bold text-xs sm:text-sm text-white">LLY</span>
+<span class="text-[9px] font-mono bg-black/40 px-1 py-0.5 rounded text-red-200 font-bold">-0.45%</span>
+</div>
+<div>
+<div class="text-[10px] font-mono text-white/90 truncate">Eli Lilly</div>
+<div class="text-[9px] font-mono text-red-200/70">$820B · Vol 3.8M</div>
+</div>
+</div>
+<!-- UNH -->
+<div class="col-span-2 row-span-2 bg-[#064e3b] hover:bg-[#047857] transition-all p-1.5 rounded-md flex flex-col justify-between cursor-pointer shadow-sm">
+<div class="flex justify-between items-center">
+<span class="font-mono font-bold text-xs text-white">UNH</span>
+<span class="text-[9px] font-mono text-emerald-200 font-semibold">+0.80%</span>
+</div>
+<div class="text-[9px] font-mono text-white/80 truncate">UnitedHealth · $540B</div>
+</div>
+<!-- JNJ -->
+<div class="col-span-1 row-span-2 bg-[#27272a] hover:bg-surface-bright transition-all p-1 rounded-md flex flex-col justify-center items-center cursor-pointer text-white shadow-sm">
+<span class="font-mono font-bold text-[9px]">JNJ</span>
+<span class="font-mono text-[8px] text-tertiary">+0.25%</span>
+</div>
+<!-- ABBV -->
+<div class="col-span-1 row-span-2 bg-[#991b1b] hover:bg-[#b91c1c] transition-all p-1 rounded-md flex flex-col justify-center items-center cursor-pointer text-white shadow-sm">
+<span class="font-mono font-bold text-[9px]">ABBV</span>
+<span class="font-mono text-[8px] text-red-100">-1.10%</span>
+</div>
+</div>
+</div>
+<!-- SECTOR 6: INDUSTRIALS & ENERGY (4 cols) -->
+<div class="lg:col-span-4 bg-surface-container-lowest/80 p-2.5 rounded-lg border border-outline-variant/60 flex flex-col space-y-2">
+<div class="flex items-center justify-between border-b border-outline-variant/40 pb-1.5">
+<span class="text-[11px] font-mono font-bold tracking-wider uppercase text-on-surface flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span>Industrials &amp; Energy
+          </span>
+<span class="text-[10px] font-mono text-tertiary font-semibold">+1.12% Avg</span>
+</div>
+<div class="grid grid-cols-4 grid-rows-4 gap-1.5 flex-1 min-h-[180px]">
+<!-- GE -->
+<div class="col-span-2 row-span-2 bg-[#059669] hover:bg-[#10b981] transition-all p-1.5 rounded-md flex flex-col justify-between cursor-pointer shadow-sm">
+<div class="flex justify-between items-center">
+<span class="font-mono font-bold text-xs text-white">GE</span>
+<span class="text-[9px] font-mono text-white font-bold">+2.10%</span>
+</div>
+<div class="text-[9px] font-mono text-white/80 truncate">GE Aerospace · $208B</div>
+</div>
+<!-- CAT -->
+<div class="col-span-2 row-span-2 bg-[#047857] hover:bg-[#059669] transition-all p-1.5 rounded-md flex flex-col justify-between cursor-pointer shadow-sm">
+<div class="flex justify-between items-center">
+<span class="font-mono font-bold text-xs text-white">CAT</span>
+<span class="text-[9px] font-mono text-white">+1.40%</span>
+</div>
+<div class="text-[9px] font-mono text-white/80 truncate">Caterpillar · $192B</div>
+</div>
+<!-- XOM -->
+<div class="col-span-2 row-span-2 bg-[#064e3b] hover:bg-[#047857] transition-all p-1.5 rounded-md flex flex-col justify-between cursor-pointer shadow-sm">
+<div class="flex justify-between items-center">
+<span class="font-mono font-bold text-xs text-white">XOM</span>
+<span class="text-[9px] font-mono text-emerald-200">+0.90%</span>
+</div>
+<div class="text-[9px] font-mono text-white/80 truncate">Exxon Mobil · $460B</div>
+</div>
+<!-- CVX -->
+<div class="col-span-2 row-span-2 bg-[#27272a] hover:bg-surface-bright transition-all p-1.5 rounded-md flex flex-col justify-between cursor-pointer text-white shadow-sm">
+<div class="flex justify-between items-center">
+<span class="font-mono font-bold text-xs">CVX</span>
+<span class="text-[9px] font-mono text-tertiary">+0.45%</span>
+</div>
+<div class="text-[9px] font-mono text-on-surface-variant truncate">Chevron · $284B</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div><div class="bg-surface-container rounded-xl p-4 shadow-sm relative overflow-hidden flex flex-col justify-between hidden" id="screener-table-view">
+<div class="flex items-start justify-between">
+<div>
+<span class="text-[10px] font-mono uppercase tracking-wider text-on-surface-variant">Dark Pool / Block Net Flow</span>
+<div class="text-lg font-headline font-bold text-tertiary mt-0.5">+$4.82 Billion</div>
+<span class="text-[11px] font-mono text-on-surface-variant mt-0.5">
+            72.4% Buy-Side Institutional Inflow
+          </span>
+</div>
+<div class="w-10 h-10 rounded-lg bg-surface-container-high flex items-center justify-center text-tertiary">
+<span class="material-symbols-outlined text-[20px]">account_balance</span>
+</div>
+</div>
+<div class="mt-4 pt-3 flex items-center justify-between text-[11px] font-mono text-on-surface-variant bg-surface-container-lowest/50 px-2.5 py-1.5 rounded">
+<span>1,420 Prints &gt; $5M</span>
+<span class="text-tertiary">Ratio 2.62:1 Bull</span>
+</div>
+</div>
+<!-- Metric 3: Market Breadth -->
+<!-- View Mode Switcher Header -->
+<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-surface-container-low p-3 rounded-xl border border-outline-variant/40">
+<div class="flex items-center gap-2">
+<span class="text-xs font-mono uppercase text-on-surface-variant font-semibold tracking-wider flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[16px] text-primary">dashboard</span>
+      Display Mode:
+    </span>
+<div class="inline-flex p-1 rounded-lg bg-surface-container-highest border border-outline-variant/60 font-mono text-xs">
+<button class="px-3 py-1.5 rounded-md font-semibold text-on-surface-variant hover:text-on-surface transition-all flex items-center gap-1.5" id="btn-view-table" onclick="document.getElementById('screener-table-view').classList.remove('hidden'); document.getElementById('screener-treemap-view').classList.add('hidden'); this.classList.replace('text-on-surface-variant','bg-primary'); this.classList.replace('hover:text-on-surface','text-on-primary'); document.getElementById('btn-view-treemap').classList.replace('bg-primary','text-on-surface-variant'); document.getElementById('btn-view-treemap').classList.replace('text-on-primary','hover:text-on-surface');">
+<span class="material-symbols-outlined text-[15px]">table_chart</span>
+        Screener Table
+      </button>
+<button class="px-3 py-1.5 rounded-md font-semibold bg-primary text-on-primary shadow-sm transition-all flex items-center gap-1.5" id="btn-view-treemap" onclick="document.getElementById('screener-treemap-view').classList.remove('hidden'); document.getElementById('screener-table-view').classList.add('hidden'); this.classList.replace('text-on-surface-variant','bg-primary'); this.classList.replace('hover:text-on-surface','text-on-primary'); document.getElementById('btn-view-table').classList.replace('bg-primary','text-on-surface-variant'); document.getElementById('btn-view-table').classList.replace('text-on-primary','hover:text-on-surface');">
+<span class="material-symbols-outlined text-[15px]">grid_view</span>
+        Sektor Treemap Heatmap (Finviz Style)
+        <span class="px-1.5 py-0.2 rounded text-[9px] bg-tertiary-container text-on-tertiary font-bold">PRO</span>
+</button>
+</div>
+</div>
+<div class="flex items-center gap-3 font-mono text-xs text-on-surface-variant">
+<span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-tertiary animate-pulse"></span>Real-Time Tick Depth: 500+ Equities</span>
+</div>
+</div>
+<!-- Interactive Treemap Heatmap (Finviz Style Quant Mode) -->
+<div class="space-y-4" id="screener-treemap-view">
+<!-- Heatmap Control Bar & Color Scale Legend -->
+<div class="bg-surface-container rounded-xl p-4 shadow-sm flex flex-col xl:flex-row xl:items-center justify-between gap-4 border border-outline-variant/40">
+<div class="flex flex-wrap items-center gap-3">
+<div class="flex items-center gap-2 bg-surface-container-high px-3 py-1.5 rounded-lg text-xs font-mono">
+<span class="text-on-surface-variant">Grouping:</span>
+<select class="bg-transparent text-on-surface focus:outline-none cursor-pointer font-medium">
+<option selected="">S&amp;P 500 by Sector</option>
+<option>NASDAQ 100 by Industry</option>
+<option>Market Cap Tier (Mega/Large/Mid)</option>
+<option>High Dark Pool Liquidity Pool</option>
+</select>
+</div>
+<div class="flex items-center gap-2 bg-surface-container-high px-3 py-1.5 rounded-lg text-xs font-mono">
+<span class="text-on-surface-variant">Performance Metric:</span>
+<select class="bg-transparent text-on-surface focus:outline-none cursor-pointer font-medium text-tertiary">
+<option selected="">1D Performance (Session %)</option>
+<option>1W Rolling Alpha</option>
+<option>1M Stochastic Momentum</option>
+<option>YTD Performance</option>
+<option>Dark Pool Net Institutional Flow</option>
+</select>
+</div>
+<div class="flex items-center gap-2 bg-surface-container-high px-3 py-1.5 rounded-lg text-xs font-mono">
+<span class="text-on-surface-variant">Box Size:</span>
+<select class="bg-transparent text-on-surface focus:outline-none cursor-pointer font-medium">
+<option selected="">Market Capitalization</option>
+<option>Daily Dollar Volume</option>
+<option>Dark Pool Dollar Volume</option>
+</select>
+</div>
+</div>
+<!-- Quantitative Legend Color Scale -->
+<div class="flex items-center gap-2 font-mono text-[10px] text-on-surface-variant">
+<span class="text-error font-semibold">-3.0%</span>
+<div class="flex items-center rounded overflow-hidden border border-outline-variant/60 h-4">
+<span class="w-6 h-full bg-[#7f1d1d]" title="-3% or lower"></span>
+<span class="w-6 h-full bg-[#991b1b]/80" title="-2%"></span>
+<span class="w-6 h-full bg-[#450a0a]" title="-1%"></span>
+<span class="w-6 h-full bg-[#27272a]" title="0% Flat"></span>
+<span class="w-6 h-full bg-[#064e3b]" title="+1%"></span>
+<span class="w-6 h-full bg-[#047857]" title="+2%"></span>
+<span class="w-6 h-full bg-[#059669]" title="+3%"></span>
+<span class="w-6 h-full bg-[#10b981]" title="+5% Super Alpha"></span>
+</div>
+<span class="text-tertiary font-semibold">+5.0%</span>
+</div>
+</div>
+<!-- Finviz-Style Proportional Treemap Grid Canvas -->
+<div class="bg-surface-container rounded-xl p-3 border border-outline-variant/50 shadow-md">
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-2 min-h-[620px]">
+<!-- SECTOR 1: TECHNOLOGY (Dominant Tile 5 cols) -->
+<div class="lg:col-span-5 bg-surface-container-lowest/80 p-2.5 rounded-lg border border-outline-variant/60 flex flex-col space-y-2">
+<div class="flex items-center justify-between border-b border-outline-variant/40 pb-1.5">
+<span class="text-[11px] font-mono font-bold tracking-wider uppercase text-on-surface flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span>Technology
+          </span>
+<span class="text-[10px] font-mono text-tertiary font-semibold">+2.45% Avg</span>
+</div>
+<div class="grid grid-cols-6 grid-rows-6 gap-1.5 flex-1 min-h-[280px]">
+<!-- NVDA (Dominant) -->
+<div class="col-span-3 row-span-4 bg-[#059669] hover:bg-[#10b981] transition-all p-2 rounded-md flex flex-col justify-between cursor-pointer group shadow-sm relative overflow-hidden">
+<div class="flex justify-between items-start">
+<span class="font-mono font-bold text-sm sm:text-base text-white tracking-tight">NVDA</span>
+<span class="text-[9px] font-mono bg-black/40 px-1 py-0.5 rounded text-tertiary-fixed font-bold">+3.42%</span>
+</div>
+<div>
+<div class="text-[11px] font-mono text-white/90 truncate font-medium">NVIDIA</div>
+<div class="text-[9px] font-mono text-emerald-100/70">$3.15T · Vol 54M</div>
+</div>
+</div>
+<!-- AAPL -->
+<div class="col-span-3 row-span-3 bg-[#047857] hover:bg-[#059669] transition-all p-2 rounded-md flex flex-col justify-between cursor-pointer shadow-sm">
+<div class="flex justify-between items-start">
+<span class="font-mono font-bold text-xs sm:text-sm text-white">AAPL</span>
+<span class="text-[9px] font-mono bg-black/40 px-1 py-0.5 rounded text-emerald-200">+0.92%</span>
+</div>
+<div>
+<div class="text-[10px] font-mono text-white/90 truncate">Apple Inc</div>
+<div class="text-[9px] font-mono text-emerald-100/70">$3.54T · Vol 38M</div>
+</div>
+</div>
+<!-- MSFT -->
+<div class="col-span-3 row-span-3 bg-[#047857] hover:bg-[#059669] transition-all p-2 rounded-md flex flex-col justify-between cursor-pointer shadow-sm">
+<div class="flex justify-between items-start">
+<span class="font-mono font-bold text-xs sm:text-sm text-white">MSFT</span>
+<span class="text-[9px] font-mono bg-black/40 px-1 py-0.5 rounded text-emerald-200">+1.40%</span>
+</div>
+<div>
+<div class="text-[10px] font-mono text-white/90 truncate">Microsoft</div>
+<div class="text-[9px] font-mono text-emerald-100/70">$3.18T · Vol 22M</div>
+</div>
+</div>
+<!-- AVGO -->
+<div class="col-span-3 row-span-2 bg-[#059669] hover:bg-[#10b981] transition-all p-1.5 rounded-md flex flex-col justify-between cursor-pointer shadow-sm">
+<div class="flex justify-between items-center">
+<span class="font-mono font-bold text-xs text-white">AVGO</span>
+<span class="text-[9px] font-mono text-white font-semibold">+2.15%</span>
+</div>
+<div class="text-[9px] font-mono text-white/80 truncate">Broadcom · $815B</div>
+</div>
+<!-- AMD -->
+<div class="col-span-2 row-span-1 bg-[#10b981] hover:bg-tertiary transition-all p-1 rounded-md flex items-center justify-between cursor-pointer text-white shadow-sm">
+<span class="font-mono font-bold text-[10px]">AMD</span>
+<span class="font-mono text-[9px] font-bold">+4.10%</span>
+</div>
+<!-- ORCL -->
+<div class="col-span-2 row-span-1 bg-[#047857] hover:bg-[#059669] transition-all p-1 rounded-md flex items-center justify-between cursor-pointer text-white shadow-sm">
+<span class="font-mono font-bold text-[10px]">ORCL</span>
+<span class="font-mono text-[9px]">+1.85%</span>
+</div>
+<!-- CRM -->
+<div class="col-span-1 row-span-1 bg-[#450a0a] hover:bg-[#7f1d1d] transition-all p-1 rounded-md flex flex-col justify-center items-center cursor-pointer text-white shadow-sm">
+<span class="font-mono font-bold text-[9px]">CRM</span>
+<span class="font-mono text-[8px] text-red-200">-0.65%</span>
+</div>
+<!-- INTC -->
+<div class="col-span-1 row-span-1 bg-[#991b1b] hover:bg-[#b91c1c] transition-all p-1 rounded-md flex flex-col justify-center items-center cursor-pointer text-white shadow-sm">
+<span class="font-mono font-bold text-[9px]">INTC</span>
+<span class="font-mono text-[8px] text-red-100">-1.20%</span>
+</div>
+</div>
+</div>
+<!-- SECTOR 2: COMMUNICATION SERVICES (3 cols) -->
+<div class="lg:col-span-4 bg-surface-container-lowest/80 p-2.5 rounded-lg border border-outline-variant/60 flex flex-col space-y-2">
+<div class="flex items-center justify-between border-b border-outline-variant/40 pb-1.5">
+<span class="text-[11px] font-mono font-bold tracking-wider uppercase text-on-surface flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span>Communication Services
+          </span>
+<span class="text-[10px] font-mono text-tertiary font-semibold">+1.78% Avg</span>
+</div>
+<div class="grid grid-cols-4 grid-rows-6 gap-1.5 flex-1 min-h-[280px]">
+<!-- META -->
+<div class="col-span-2 row-span-4 bg-[#059669] hover:bg-[#10b981] transition-all p-2 rounded-md flex flex-col justify-between cursor-pointer shadow-sm">
+<div class="flex justify-between items-start">
+<span class="font-mono font-bold text-sm text-white">META</span>
+<span class="text-[9px] font-mono bg-black/40 px-1 py-0.5 rounded text-tertiary-fixed font-bold">+2.80%</span>
+</div>
+<div>
+<div class="text-[10px] font-mono text-white/90 truncate">Meta Platforms</div>
+<div class="text-[9px] font-mono text-emerald-100/70">$1.46T · Vol 19M</div>
+</div>
+</div>
+<!-- GOOGL -->
+<div class="col-span-2 row-span-4 bg-[#047857] hover:bg-[#059669] transition-all p-2 rounded-md flex flex-col justify-between cursor-pointer shadow-sm">
+<div class="flex justify-between items-start">
+<span class="font-mono font-bold text-sm text-white">GOOGL</span>
+<span class="text-[9px] font-mono bg-black/40 px-1 py-0.5 rounded text-emerald-200">+1.65%</span>
+</div>
+<div>
+<div class="text-[10px] font-mono text-white/90 truncate">Alphabet Inc</div>
+<div class="text-[9px] font-mono text-emerald-100/70">$2.12T · Vol 24M</div>
+</div>
+</div>
+<!-- NFLX -->
+<div class="col-span-2 row-span-2 bg-[#064e3b] hover:bg-[#047857] transition-all p-1.5 rounded-md flex flex-col justify-between cursor-pointer shadow-sm">
+<div class="flex justify-between items-center">
+<span class="font-mono font-bold text-xs text-white">NFLX</span>
+<span class="text-[9px] font-mono text-white font-semibold">+1.10%</span>
+</div>
+<div class="text-[9px] font-mono text-white/80 truncate">Netflix · $312B</div>
+</div>
+<!-- TMUS -->
+<div class="col-span-1 row-span-2 bg-[#27272a] hover:bg-surface-bright transition-all p-1 rounded-md flex flex-col justify-center items-center cursor-pointer text-white shadow-sm">
+<span class="font-mono font-bold text-[9px]">TMUS</span>
+<span class="font-mono text-[8px] text-tertiary">+0.40%</span>
+</div>
+<!-- DIS -->
+<div class="col-span-1 row-span-2 bg-[#7f1d1d] hover:bg-[#991b1b] transition-all p-1 rounded-md flex flex-col justify-center items-center cursor-pointer text-white shadow-sm">
+<span class="font-mono font-bold text-[9px]">DIS</span>
+<span class="font-mono text-[8px] text-red-200">-0.80%</span>
+</div>
+</div>
+</div>
+<!-- SECTOR 3: CONSUMER CYCLICAL (3 cols) -->
+<div class="lg:col-span-3 bg-surface-container-lowest/80 p-2.5 rounded-lg border border-outline-variant/60 flex flex-col space-y-2">
+<div class="flex items-center justify-between border-b border-outline-variant/40 pb-1.5">
+<span class="text-[11px] font-mono font-bold tracking-wider uppercase text-on-surface flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span>Consumer Cyclical
+          </span>
+<span class="text-[10px] font-mono text-tertiary font-semibold">+1.92% Avg</span>
+</div>
+<div class="grid grid-cols-4 grid-rows-6 gap-1.5 flex-1 min-h-[280px]">
+<!-- AMZN -->
+<div class="col-span-4 row-span-3 bg-[#047857] hover:bg-[#059669] transition-all p-2 rounded-md flex flex-col justify-between cursor-pointer shadow-sm">
+<div class="flex justify-between items-start">
+<span class="font-mono font-bold text-sm text-white">AMZN</span>
+<span class="text-[9px] font-mono bg-black/40 px-1 py-0.5 rounded text-emerald-200 font-bold">+1.95%</span>
+</div>
+<div>
+<div class="text-[10px] font-mono text-white/90 truncate">Amazon.com Inc</div>
+<div class="text-[9px] font-mono text-emerald-100/70">$2.05T · Vol 44M</div>
+</div>
+</div>
+<!-- TSLA -->
+<div class="col-span-4 row-span-2 bg-[#10b981] hover:bg-tertiary transition-all p-1.5 rounded-md flex flex-col justify-between cursor-pointer shadow-sm">
+<div class="flex justify-between items-center">
+<span class="font-mono font-bold text-xs text-white">TSLA</span>
+<span class="text-[9px] font-mono text-white font-bold bg-black/30 px-1 rounded">+4.12%</span>
+</div>
+<div class="text-[9px] font-mono text-white/90 truncate">Tesla, Inc · $840B · Vol 88M</div>
+</div>
+<!-- HD -->
+<div class="col-span-2 row-span-1 bg-[#27272a] hover:bg-surface-bright transition-all p-1 rounded-md flex items-center justify-between cursor-pointer text-white shadow-sm">
+<span class="font-mono font-bold text-[9px]">HD</span>
+<span class="font-mono text-[8px] text-tertiary">+0.50%</span>
+</div>
+<!-- NKE -->
+<div class="col-span-2 row-span-1 bg-[#991b1b] hover:bg-[#b91c1c] transition-all p-1 rounded-md flex items-center justify-between cursor-pointer text-white shadow-sm">
+<span class="font-mono font-bold text-[9px]">NKE</span>
+<span class="font-mono text-[8px] text-red-100">-1.45%</span>
+</div>
+</div>
+</div>
+<!-- SECTOR 4: FINANCIAL SERVICES (4 cols) -->
+<div class="lg:col-span-4 bg-surface-container-lowest/80 p-2.5 rounded-lg border border-outline-variant/60 flex flex-col space-y-2">
+<div class="flex items-center justify-between border-b border-outline-variant/40 pb-1.5">
+<span class="text-[11px] font-mono font-bold tracking-wider uppercase text-on-surface flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span>Financial Services
+          </span>
+<span class="text-[10px] font-mono text-tertiary font-semibold">+0.65% Avg</span>
+</div>
+<div class="grid grid-cols-4 grid-rows-4 gap-1.5 flex-1 min-h-[180px]">
+<!-- JPM -->
+<div class="col-span-2 row-span-4 bg-[#064e3b] hover:bg-[#047857] transition-all p-2 rounded-md flex flex-col justify-between cursor-pointer shadow-sm">
+<div class="flex justify-between items-start">
+<span class="font-mono font-bold text-xs sm:text-sm text-white">JPM</span>
+<span class="text-[9px] font-mono bg-black/40 px-1 py-0.5 rounded text-emerald-200">+1.20%</span>
+</div>
+<div>
+<div class="text-[10px] font-mono text-white/90 truncate">JPMorgan Chase</div>
+<div class="text-[9px] font-mono text-emerald-100/70">$640B · Vol 12M</div>
+</div>
+</div>
+<!-- V & MA -->
+<div class="col-span-2 row-span-2 bg-[#064e3b] hover:bg-[#047857] transition-all p-1.5 rounded-md flex flex-col justify-between cursor-pointer shadow-sm">
+<div class="flex justify-between items-center">
+<span class="font-mono font-bold text-xs text-white">V</span>
+<span class="text-[9px] font-mono text-emerald-200 font-semibold">+0.85%</span>
+</div>
+<div class="text-[9px] font-mono text-white/80 truncate">Visa Inc · $580B</div>
+</div>
+<div class="col-span-1 row-span-2 bg-[#27272a] hover:bg-surface-bright transition-all p-1 rounded-md flex flex-col justify-center items-center cursor-pointer text-white shadow-sm">
+<span class="font-mono font-bold text-[9px]">BAC</span>
+<span class="font-mono text-[8px] text-tertiary">+0.40%</span>
+</div>
+<div class="col-span-1 row-span-2 bg-[#27272a] hover:bg-surface-bright transition-all p-1 rounded-md flex flex-col justify-center items-center cursor-pointer text-white shadow-sm">
+<span class="font-mono font-bold text-[9px]">WFC</span>
+<span class="font-mono text-[8px] text-tertiary">+0.60%</span>
+</div>
+</div>
+</div>
+<!-- SECTOR 5: HEALTHCARE (4 cols) -->
+<div class="lg:col-span-4 bg-surface-container-lowest/80 p-2.5 rounded-lg border border-outline-variant/60 flex flex-col space-y-2">
+<div class="flex items-center justify-between border-b border-outline-variant/40 pb-1.5">
+<span class="text-[11px] font-mono font-bold tracking-wider uppercase text-on-surface flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-error"></span>Healthcare
+          </span>
+<span class="text-[10px] font-mono text-error font-semibold">-0.42% Avg</span>
+</div>
+<div class="grid grid-cols-4 grid-rows-4 gap-1.5 flex-1 min-h-[180px]">
+<!-- LLY -->
+<div class="col-span-2 row-span-4 bg-[#450a0a] hover:bg-[#7f1d1d] transition-all p-2 rounded-md flex flex-col justify-between cursor-pointer shadow-sm">
+<div class="flex justify-between items-start">
+<span class="font-mono font-bold text-xs sm:text-sm text-white">LLY</span>
+<span class="text-[9px] font-mono bg-black/40 px-1 py-0.5 rounded text-red-200 font-bold">-0.45%</span>
+</div>
+<div>
+<div class="text-[10px] font-mono text-white/90 truncate">Eli Lilly</div>
+<div class="text-[9px] font-mono text-red-200/70">$820B · Vol 3.8M</div>
+</div>
+</div>
+<!-- UNH -->
+<div class="col-span-2 row-span-2 bg-[#064e3b] hover:bg-[#047857] transition-all p-1.5 rounded-md flex flex-col justify-between cursor-pointer shadow-sm">
+<div class="flex justify-between items-center">
+<span class="font-mono font-bold text-xs text-white">UNH</span>
+<span class="text-[9px] font-mono text-emerald-200 font-semibold">+0.80%</span>
+</div>
+<div class="text-[9px] font-mono text-white/80 truncate">UnitedHealth · $540B</div>
+</div>
+<!-- JNJ -->
+<div class="col-span-1 row-span-2 bg-[#27272a] hover:bg-surface-bright transition-all p-1 rounded-md flex flex-col justify-center items-center cursor-pointer text-white shadow-sm">
+<span class="font-mono font-bold text-[9px]">JNJ</span>
+<span class="font-mono text-[8px] text-tertiary">+0.25%</span>
+</div>
+<!-- ABBV -->
+<div class="col-span-1 row-span-2 bg-[#991b1b] hover:bg-[#b91c1c] transition-all p-1 rounded-md flex flex-col justify-center items-center cursor-pointer text-white shadow-sm">
+<span class="font-mono font-bold text-[9px]">ABBV</span>
+<span class="font-mono text-[8px] text-red-100">-1.10%</span>
+</div>
+</div>
+</div>
+<!-- SECTOR 6: INDUSTRIALS & ENERGY (4 cols) -->
+<div class="lg:col-span-4 bg-surface-container-lowest/80 p-2.5 rounded-lg border border-outline-variant/60 flex flex-col space-y-2">
+<div class="flex items-center justify-between border-b border-outline-variant/40 pb-1.5">
+<span class="text-[11px] font-mono font-bold tracking-wider uppercase text-on-surface flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span>Industrials &amp; Energy
+          </span>
+<span class="text-[10px] font-mono text-tertiary font-semibold">+1.12% Avg</span>
+</div>
+<div class="grid grid-cols-4 grid-rows-4 gap-1.5 flex-1 min-h-[180px]">
+<!-- GE -->
+<div class="col-span-2 row-span-2 bg-[#059669] hover:bg-[#10b981] transition-all p-1.5 rounded-md flex flex-col justify-between cursor-pointer shadow-sm">
+<div class="flex justify-between items-center">
+<span class="font-mono font-bold text-xs text-white">GE</span>
+<span class="text-[9px] font-mono text-white font-bold">+2.10%</span>
+</div>
+<div class="text-[9px] font-mono text-white/80 truncate">GE Aerospace · $208B</div>
+</div>
+<!-- CAT -->
+<div class="col-span-2 row-span-2 bg-[#047857] hover:bg-[#059669] transition-all p-1.5 rounded-md flex flex-col justify-between cursor-pointer shadow-sm">
+<div class="flex justify-between items-center">
+<span class="font-mono font-bold text-xs text-white">CAT</span>
+<span class="text-[9px] font-mono text-white">+1.40%</span>
+</div>
+<div class="text-[9px] font-mono text-white/80 truncate">Caterpillar · $192B</div>
+</div>
+<!-- XOM -->
+<div class="col-span-2 row-span-2 bg-[#064e3b] hover:bg-[#047857] transition-all p-1.5 rounded-md flex flex-col justify-between cursor-pointer shadow-sm">
+<div class="flex justify-between items-center">
+<span class="font-mono font-bold text-xs text-white">XOM</span>
+<span class="text-[9px] font-mono text-emerald-200">+0.90%</span>
+</div>
+<div class="text-[9px] font-mono text-white/80 truncate">Exxon Mobil · $460B</div>
+</div>
+<!-- CVX -->
+<div class="col-span-2 row-span-2 bg-[#27272a] hover:bg-surface-bright transition-all p-1.5 rounded-md flex flex-col justify-between cursor-pointer text-white shadow-sm">
+<div class="flex justify-between items-center">
+<span class="font-mono font-bold text-xs">CVX</span>
+<span class="text-[9px] font-mono text-tertiary">+0.45%</span>
+</div>
+<div class="text-[9px] font-mono text-on-surface-variant truncate">Chevron · $284B</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div><div class="bg-surface-container rounded-xl p-4 shadow-sm relative overflow-hidden flex flex-col justify-between hidden" id="screener-table-view">
+<div class="flex items-start justify-between">
+<div>
+<span class="text-[10px] font-mono uppercase tracking-wider text-on-surface-variant">Market Breadth Ratio</span>
+<div class="text-lg font-headline font-bold text-on-surface mt-0.5">3.14 : 1 A/D</div>
+<span class="text-[11px] font-mono text-tertiary mt-0.5">
+            78.6% Tickers &gt; 50-Day EMA
+          </span>
+</div>
+<div class="w-10 h-10 rounded-lg bg-surface-container-high flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-[20px]">waterfall_chart</span>
+</div>
+</div>
+<div class="mt-4 pt-3 flex items-center justify-between text-[11px] font-mono text-on-surface-variant bg-surface-container-lowest/50 px-2.5 py-1.5 rounded">
+<span>NYSE + NASDAQ</span>
+<span class="text-primary font-medium">New 52W Highs: 342</span>
+</div>
+</div>
+<!-- Metric 4: Quantitative Sentiment Index -->
+<!-- View Mode Switcher Header -->
+<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-surface-container-low p-3 rounded-xl border border-outline-variant/40">
+<div class="flex items-center gap-2">
+<span class="text-xs font-mono uppercase text-on-surface-variant font-semibold tracking-wider flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[16px] text-primary">dashboard</span>
+      Display Mode:
+    </span>
+<div class="inline-flex p-1 rounded-lg bg-surface-container-highest border border-outline-variant/60 font-mono text-xs">
+<button class="px-3 py-1.5 rounded-md font-semibold text-on-surface-variant hover:text-on-surface transition-all flex items-center gap-1.5" id="btn-view-table" onclick="document.getElementById('screener-table-view').classList.remove('hidden'); document.getElementById('screener-treemap-view').classList.add('hidden'); this.classList.replace('text-on-surface-variant','bg-primary'); this.classList.replace('hover:text-on-surface','text-on-primary'); document.getElementById('btn-view-treemap').classList.replace('bg-primary','text-on-surface-variant'); document.getElementById('btn-view-treemap').classList.replace('text-on-primary','hover:text-on-surface');">
+<span class="material-symbols-outlined text-[15px]">table_chart</span>
+        Screener Table
+      </button>
+<button class="px-3 py-1.5 rounded-md font-semibold bg-primary text-on-primary shadow-sm transition-all flex items-center gap-1.5" id="btn-view-treemap" onclick="document.getElementById('screener-treemap-view').classList.remove('hidden'); document.getElementById('screener-table-view').classList.add('hidden'); this.classList.replace('text-on-surface-variant','bg-primary'); this.classList.replace('hover:text-on-surface','text-on-primary'); document.getElementById('btn-view-table').classList.replace('bg-primary','text-on-surface-variant'); document.getElementById('btn-view-table').classList.replace('text-on-primary','hover:text-on-surface');">
+<span class="material-symbols-outlined text-[15px]">grid_view</span>
+        Sektor Treemap Heatmap (Finviz Style)
+        <span class="px-1.5 py-0.2 rounded text-[9px] bg-tertiary-container text-on-tertiary font-bold">PRO</span>
+</button>
+</div>
+</div>
+<div class="flex items-center gap-3 font-mono text-xs text-on-surface-variant">
+<span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-tertiary animate-pulse"></span>Real-Time Tick Depth: 500+ Equities</span>
+</div>
+</div>
+<!-- Interactive Treemap Heatmap (Finviz Style Quant Mode) -->
+<div class="space-y-4" id="screener-treemap-view">
+<!-- Heatmap Control Bar & Color Scale Legend -->
+<div class="bg-surface-container rounded-xl p-4 shadow-sm flex flex-col xl:flex-row xl:items-center justify-between gap-4 border border-outline-variant/40">
+<div class="flex flex-wrap items-center gap-3">
+<div class="flex items-center gap-2 bg-surface-container-high px-3 py-1.5 rounded-lg text-xs font-mono">
+<span class="text-on-surface-variant">Grouping:</span>
+<select class="bg-transparent text-on-surface focus:outline-none cursor-pointer font-medium">
+<option selected="">S&amp;P 500 by Sector</option>
+<option>NASDAQ 100 by Industry</option>
+<option>Market Cap Tier (Mega/Large/Mid)</option>
+<option>High Dark Pool Liquidity Pool</option>
+</select>
+</div>
+<div class="flex items-center gap-2 bg-surface-container-high px-3 py-1.5 rounded-lg text-xs font-mono">
+<span class="text-on-surface-variant">Performance Metric:</span>
+<select class="bg-transparent text-on-surface focus:outline-none cursor-pointer font-medium text-tertiary">
+<option selected="">1D Performance (Session %)</option>
+<option>1W Rolling Alpha</option>
+<option>1M Stochastic Momentum</option>
+<option>YTD Performance</option>
+<option>Dark Pool Net Institutional Flow</option>
+</select>
+</div>
+<div class="flex items-center gap-2 bg-surface-container-high px-3 py-1.5 rounded-lg text-xs font-mono">
+<span class="text-on-surface-variant">Box Size:</span>
+<select class="bg-transparent text-on-surface focus:outline-none cursor-pointer font-medium">
+<option selected="">Market Capitalization</option>
+<option>Daily Dollar Volume</option>
+<option>Dark Pool Dollar Volume</option>
+</select>
+</div>
+</div>
+<!-- Quantitative Legend Color Scale -->
+<div class="flex items-center gap-2 font-mono text-[10px] text-on-surface-variant">
+<span class="text-error font-semibold">-3.0%</span>
+<div class="flex items-center rounded overflow-hidden border border-outline-variant/60 h-4">
+<span class="w-6 h-full bg-[#7f1d1d]" title="-3% or lower"></span>
+<span class="w-6 h-full bg-[#991b1b]/80" title="-2%"></span>
+<span class="w-6 h-full bg-[#450a0a]" title="-1%"></span>
+<span class="w-6 h-full bg-[#27272a]" title="0% Flat"></span>
+<span class="w-6 h-full bg-[#064e3b]" title="+1%"></span>
+<span class="w-6 h-full bg-[#047857]" title="+2%"></span>
+<span class="w-6 h-full bg-[#059669]" title="+3%"></span>
+<span class="w-6 h-full bg-[#10b981]" title="+5% Super Alpha"></span>
+</div>
+<span class="text-tertiary font-semibold">+5.0%</span>
+</div>
+</div>
+<!-- Finviz-Style Proportional Treemap Grid Canvas -->
+<div class="bg-surface-container rounded-xl p-3 border border-outline-variant/50 shadow-md">
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-2 min-h-[620px]">
+<!-- SECTOR 1: TECHNOLOGY (Dominant Tile 5 cols) -->
+<div class="lg:col-span-5 bg-surface-container-lowest/80 p-2.5 rounded-lg border border-outline-variant/60 flex flex-col space-y-2">
+<div class="flex items-center justify-between border-b border-outline-variant/40 pb-1.5">
+<span class="text-[11px] font-mono font-bold tracking-wider uppercase text-on-surface flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span>Technology
+          </span>
+<span class="text-[10px] font-mono text-tertiary font-semibold">+2.45% Avg</span>
+</div>
+<div class="grid grid-cols-6 grid-rows-6 gap-1.5 flex-1 min-h-[280px]">
+<!-- NVDA (Dominant) -->
+<div class="col-span-3 row-span-4 bg-[#059669] hover:bg-[#10b981] transition-all p-2 rounded-md flex flex-col justify-between cursor-pointer group shadow-sm relative overflow-hidden">
+<div class="flex justify-between items-start">
+<span class="font-mono font-bold text-sm sm:text-base text-white tracking-tight">NVDA</span>
+<span class="text-[9px] font-mono bg-black/40 px-1 py-0.5 rounded text-tertiary-fixed font-bold">+3.42%</span>
+</div>
+<div>
+<div class="text-[11px] font-mono text-white/90 truncate font-medium">NVIDIA</div>
+<div class="text-[9px] font-mono text-emerald-100/70">$3.15T · Vol 54M</div>
+</div>
+</div>
+<!-- AAPL -->
+<div class="col-span-3 row-span-3 bg-[#047857] hover:bg-[#059669] transition-all p-2 rounded-md flex flex-col justify-between cursor-pointer shadow-sm">
+<div class="flex justify-between items-start">
+<span class="font-mono font-bold text-xs sm:text-sm text-white">AAPL</span>
+<span class="text-[9px] font-mono bg-black/40 px-1 py-0.5 rounded text-emerald-200">+0.92%</span>
+</div>
+<div>
+<div class="text-[10px] font-mono text-white/90 truncate">Apple Inc</div>
+<div class="text-[9px] font-mono text-emerald-100/70">$3.54T · Vol 38M</div>
+</div>
+</div>
+<!-- MSFT -->
+<div class="col-span-3 row-span-3 bg-[#047857] hover:bg-[#059669] transition-all p-2 rounded-md flex flex-col justify-between cursor-pointer shadow-sm">
+<div class="flex justify-between items-start">
+<span class="font-mono font-bold text-xs sm:text-sm text-white">MSFT</span>
+<span class="text-[9px] font-mono bg-black/40 px-1 py-0.5 rounded text-emerald-200">+1.40%</span>
+</div>
+<div>
+<div class="text-[10px] font-mono text-white/90 truncate">Microsoft</div>
+<div class="text-[9px] font-mono text-emerald-100/70">$3.18T · Vol 22M</div>
+</div>
+</div>
+<!-- AVGO -->
+<div class="col-span-3 row-span-2 bg-[#059669] hover:bg-[#10b981] transition-all p-1.5 rounded-md flex flex-col justify-between cursor-pointer shadow-sm">
+<div class="flex justify-between items-center">
+<span class="font-mono font-bold text-xs text-white">AVGO</span>
+<span class="text-[9px] font-mono text-white font-semibold">+2.15%</span>
+</div>
+<div class="text-[9px] font-mono text-white/80 truncate">Broadcom · $815B</div>
+</div>
+<!-- AMD -->
+<div class="col-span-2 row-span-1 bg-[#10b981] hover:bg-tertiary transition-all p-1 rounded-md flex items-center justify-between cursor-pointer text-white shadow-sm">
+<span class="font-mono font-bold text-[10px]">AMD</span>
+<span class="font-mono text-[9px] font-bold">+4.10%</span>
+</div>
+<!-- ORCL -->
+<div class="col-span-2 row-span-1 bg-[#047857] hover:bg-[#059669] transition-all p-1 rounded-md flex items-center justify-between cursor-pointer text-white shadow-sm">
+<span class="font-mono font-bold text-[10px]">ORCL</span>
+<span class="font-mono text-[9px]">+1.85%</span>
+</div>
+<!-- CRM -->
+<div class="col-span-1 row-span-1 bg-[#450a0a] hover:bg-[#7f1d1d] transition-all p-1 rounded-md flex flex-col justify-center items-center cursor-pointer text-white shadow-sm">
+<span class="font-mono font-bold text-[9px]">CRM</span>
+<span class="font-mono text-[8px] text-red-200">-0.65%</span>
+</div>
+<!-- INTC -->
+<div class="col-span-1 row-span-1 bg-[#991b1b] hover:bg-[#b91c1c] transition-all p-1 rounded-md flex flex-col justify-center items-center cursor-pointer text-white shadow-sm">
+<span class="font-mono font-bold text-[9px]">INTC</span>
+<span class="font-mono text-[8px] text-red-100">-1.20%</span>
+</div>
+</div>
+</div>
+<!-- SECTOR 2: COMMUNICATION SERVICES (3 cols) -->
+<div class="lg:col-span-4 bg-surface-container-lowest/80 p-2.5 rounded-lg border border-outline-variant/60 flex flex-col space-y-2">
+<div class="flex items-center justify-between border-b border-outline-variant/40 pb-1.5">
+<span class="text-[11px] font-mono font-bold tracking-wider uppercase text-on-surface flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span>Communication Services
+          </span>
+<span class="text-[10px] font-mono text-tertiary font-semibold">+1.78% Avg</span>
+</div>
+<div class="grid grid-cols-4 grid-rows-6 gap-1.5 flex-1 min-h-[280px]">
+<!-- META -->
+<div class="col-span-2 row-span-4 bg-[#059669] hover:bg-[#10b981] transition-all p-2 rounded-md flex flex-col justify-between cursor-pointer shadow-sm">
+<div class="flex justify-between items-start">
+<span class="font-mono font-bold text-sm text-white">META</span>
+<span class="text-[9px] font-mono bg-black/40 px-1 py-0.5 rounded text-tertiary-fixed font-bold">+2.80%</span>
+</div>
+<div>
+<div class="text-[10px] font-mono text-white/90 truncate">Meta Platforms</div>
+<div class="text-[9px] font-mono text-emerald-100/70">$1.46T · Vol 19M</div>
+</div>
+</div>
+<!-- GOOGL -->
+<div class="col-span-2 row-span-4 bg-[#047857] hover:bg-[#059669] transition-all p-2 rounded-md flex flex-col justify-between cursor-pointer shadow-sm">
+<div class="flex justify-between items-start">
+<span class="font-mono font-bold text-sm text-white">GOOGL</span>
+<span class="text-[9px] font-mono bg-black/40 px-1 py-0.5 rounded text-emerald-200">+1.65%</span>
+</div>
+<div>
+<div class="text-[10px] font-mono text-white/90 truncate">Alphabet Inc</div>
+<div class="text-[9px] font-mono text-emerald-100/70">$2.12T · Vol 24M</div>
+</div>
+</div>
+<!-- NFLX -->
+<div class="col-span-2 row-span-2 bg-[#064e3b] hover:bg-[#047857] transition-all p-1.5 rounded-md flex flex-col justify-between cursor-pointer shadow-sm">
+<div class="flex justify-between items-center">
+<span class="font-mono font-bold text-xs text-white">NFLX</span>
+<span class="text-[9px] font-mono text-white font-semibold">+1.10%</span>
+</div>
+<div class="text-[9px] font-mono text-white/80 truncate">Netflix · $312B</div>
+</div>
+<!-- TMUS -->
+<div class="col-span-1 row-span-2 bg-[#27272a] hover:bg-surface-bright transition-all p-1 rounded-md flex flex-col justify-center items-center cursor-pointer text-white shadow-sm">
+<span class="font-mono font-bold text-[9px]">TMUS</span>
+<span class="font-mono text-[8px] text-tertiary">+0.40%</span>
+</div>
+<!-- DIS -->
+<div class="col-span-1 row-span-2 bg-[#7f1d1d] hover:bg-[#991b1b] transition-all p-1 rounded-md flex flex-col justify-center items-center cursor-pointer text-white shadow-sm">
+<span class="font-mono font-bold text-[9px]">DIS</span>
+<span class="font-mono text-[8px] text-red-200">-0.80%</span>
+</div>
+</div>
+</div>
+<!-- SECTOR 3: CONSUMER CYCLICAL (3 cols) -->
+<div class="lg:col-span-3 bg-surface-container-lowest/80 p-2.5 rounded-lg border border-outline-variant/60 flex flex-col space-y-2">
+<div class="flex items-center justify-between border-b border-outline-variant/40 pb-1.5">
+<span class="text-[11px] font-mono font-bold tracking-wider uppercase text-on-surface flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span>Consumer Cyclical
+          </span>
+<span class="text-[10px] font-mono text-tertiary font-semibold">+1.92% Avg</span>
+</div>
+<div class="grid grid-cols-4 grid-rows-6 gap-1.5 flex-1 min-h-[280px]">
+<!-- AMZN -->
+<div class="col-span-4 row-span-3 bg-[#047857] hover:bg-[#059669] transition-all p-2 rounded-md flex flex-col justify-between cursor-pointer shadow-sm">
+<div class="flex justify-between items-start">
+<span class="font-mono font-bold text-sm text-white">AMZN</span>
+<span class="text-[9px] font-mono bg-black/40 px-1 py-0.5 rounded text-emerald-200 font-bold">+1.95%</span>
+</div>
+<div>
+<div class="text-[10px] font-mono text-white/90 truncate">Amazon.com Inc</div>
+<div class="text-[9px] font-mono text-emerald-100/70">$2.05T · Vol 44M</div>
+</div>
+</div>
+<!-- TSLA -->
+<div class="col-span-4 row-span-2 bg-[#10b981] hover:bg-tertiary transition-all p-1.5 rounded-md flex flex-col justify-between cursor-pointer shadow-sm">
+<div class="flex justify-between items-center">
+<span class="font-mono font-bold text-xs text-white">TSLA</span>
+<span class="text-[9px] font-mono text-white font-bold bg-black/30 px-1 rounded">+4.12%</span>
+</div>
+<div class="text-[9px] font-mono text-white/90 truncate">Tesla, Inc · $840B · Vol 88M</div>
+</div>
+<!-- HD -->
+<div class="col-span-2 row-span-1 bg-[#27272a] hover:bg-surface-bright transition-all p-1 rounded-md flex items-center justify-between cursor-pointer text-white shadow-sm">
+<span class="font-mono font-bold text-[9px]">HD</span>
+<span class="font-mono text-[8px] text-tertiary">+0.50%</span>
+</div>
+<!-- NKE -->
+<div class="col-span-2 row-span-1 bg-[#991b1b] hover:bg-[#b91c1c] transition-all p-1 rounded-md flex items-center justify-between cursor-pointer text-white shadow-sm">
+<span class="font-mono font-bold text-[9px]">NKE</span>
+<span class="font-mono text-[8px] text-red-100">-1.45%</span>
+</div>
+</div>
+</div>
+<!-- SECTOR 4: FINANCIAL SERVICES (4 cols) -->
+<div class="lg:col-span-4 bg-surface-container-lowest/80 p-2.5 rounded-lg border border-outline-variant/60 flex flex-col space-y-2">
+<div class="flex items-center justify-between border-b border-outline-variant/40 pb-1.5">
+<span class="text-[11px] font-mono font-bold tracking-wider uppercase text-on-surface flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span>Financial Services
+          </span>
+<span class="text-[10px] font-mono text-tertiary font-semibold">+0.65% Avg</span>
+</div>
+<div class="grid grid-cols-4 grid-rows-4 gap-1.5 flex-1 min-h-[180px]">
+<!-- JPM -->
+<div class="col-span-2 row-span-4 bg-[#064e3b] hover:bg-[#047857] transition-all p-2 rounded-md flex flex-col justify-between cursor-pointer shadow-sm">
+<div class="flex justify-between items-start">
+<span class="font-mono font-bold text-xs sm:text-sm text-white">JPM</span>
+<span class="text-[9px] font-mono bg-black/40 px-1 py-0.5 rounded text-emerald-200">+1.20%</span>
+</div>
+<div>
+<div class="text-[10px] font-mono text-white/90 truncate">JPMorgan Chase</div>
+<div class="text-[9px] font-mono text-emerald-100/70">$640B · Vol 12M</div>
+</div>
+</div>
+<!-- V & MA -->
+<div class="col-span-2 row-span-2 bg-[#064e3b] hover:bg-[#047857] transition-all p-1.5 rounded-md flex flex-col justify-between cursor-pointer shadow-sm">
+<div class="flex justify-between items-center">
+<span class="font-mono font-bold text-xs text-white">V</span>
+<span class="text-[9px] font-mono text-emerald-200 font-semibold">+0.85%</span>
+</div>
+<div class="text-[9px] font-mono text-white/80 truncate">Visa Inc · $580B</div>
+</div>
+<div class="col-span-1 row-span-2 bg-[#27272a] hover:bg-surface-bright transition-all p-1 rounded-md flex flex-col justify-center items-center cursor-pointer text-white shadow-sm">
+<span class="font-mono font-bold text-[9px]">BAC</span>
+<span class="font-mono text-[8px] text-tertiary">+0.40%</span>
+</div>
+<div class="col-span-1 row-span-2 bg-[#27272a] hover:bg-surface-bright transition-all p-1 rounded-md flex flex-col justify-center items-center cursor-pointer text-white shadow-sm">
+<span class="font-mono font-bold text-[9px]">WFC</span>
+<span class="font-mono text-[8px] text-tertiary">+0.60%</span>
+</div>
+</div>
+</div>
+<!-- SECTOR 5: HEALTHCARE (4 cols) -->
+<div class="lg:col-span-4 bg-surface-container-lowest/80 p-2.5 rounded-lg border border-outline-variant/60 flex flex-col space-y-2">
+<div class="flex items-center justify-between border-b border-outline-variant/40 pb-1.5">
+<span class="text-[11px] font-mono font-bold tracking-wider uppercase text-on-surface flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-error"></span>Healthcare
+          </span>
+<span class="text-[10px] font-mono text-error font-semibold">-0.42% Avg</span>
+</div>
+<div class="grid grid-cols-4 grid-rows-4 gap-1.5 flex-1 min-h-[180px]">
+<!-- LLY -->
+<div class="col-span-2 row-span-4 bg-[#450a0a] hover:bg-[#7f1d1d] transition-all p-2 rounded-md flex flex-col justify-between cursor-pointer shadow-sm">
+<div class="flex justify-between items-start">
+<span class="font-mono font-bold text-xs sm:text-sm text-white">LLY</span>
+<span class="text-[9px] font-mono bg-black/40 px-1 py-0.5 rounded text-red-200 font-bold">-0.45%</span>
+</div>
+<div>
+<div class="text-[10px] font-mono text-white/90 truncate">Eli Lilly</div>
+<div class="text-[9px] font-mono text-red-200/70">$820B · Vol 3.8M</div>
+</div>
+</div>
+<!-- UNH -->
+<div class="col-span-2 row-span-2 bg-[#064e3b] hover:bg-[#047857] transition-all p-1.5 rounded-md flex flex-col justify-between cursor-pointer shadow-sm">
+<div class="flex justify-between items-center">
+<span class="font-mono font-bold text-xs text-white">UNH</span>
+<span class="text-[9px] font-mono text-emerald-200 font-semibold">+0.80%</span>
+</div>
+<div class="text-[9px] font-mono text-white/80 truncate">UnitedHealth · $540B</div>
+</div>
+<!-- JNJ -->
+<div class="col-span-1 row-span-2 bg-[#27272a] hover:bg-surface-bright transition-all p-1 rounded-md flex flex-col justify-center items-center cursor-pointer text-white shadow-sm">
+<span class="font-mono font-bold text-[9px]">JNJ</span>
+<span class="font-mono text-[8px] text-tertiary">+0.25%</span>
+</div>
+<!-- ABBV -->
+<div class="col-span-1 row-span-2 bg-[#991b1b] hover:bg-[#b91c1c] transition-all p-1 rounded-md flex flex-col justify-center items-center cursor-pointer text-white shadow-sm">
+<span class="font-mono font-bold text-[9px]">ABBV</span>
+<span class="font-mono text-[8px] text-red-100">-1.10%</span>
+</div>
+</div>
+</div>
+<!-- SECTOR 6: INDUSTRIALS & ENERGY (4 cols) -->
+<div class="lg:col-span-4 bg-surface-container-lowest/80 p-2.5 rounded-lg border border-outline-variant/60 flex flex-col space-y-2">
+<div class="flex items-center justify-between border-b border-outline-variant/40 pb-1.5">
+<span class="text-[11px] font-mono font-bold tracking-wider uppercase text-on-surface flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span>Industrials &amp; Energy
+          </span>
+<span class="text-[10px] font-mono text-tertiary font-semibold">+1.12% Avg</span>
+</div>
+<div class="grid grid-cols-4 grid-rows-4 gap-1.5 flex-1 min-h-[180px]">
+<!-- GE -->
+<div class="col-span-2 row-span-2 bg-[#059669] hover:bg-[#10b981] transition-all p-1.5 rounded-md flex flex-col justify-between cursor-pointer shadow-sm">
+<div class="flex justify-between items-center">
+<span class="font-mono font-bold text-xs text-white">GE</span>
+<span class="text-[9px] font-mono text-white font-bold">+2.10%</span>
+</div>
+<div class="text-[9px] font-mono text-white/80 truncate">GE Aerospace · $208B</div>
+</div>
+<!-- CAT -->
+<div class="col-span-2 row-span-2 bg-[#047857] hover:bg-[#059669] transition-all p-1.5 rounded-md flex flex-col justify-between cursor-pointer shadow-sm">
+<div class="flex justify-between items-center">
+<span class="font-mono font-bold text-xs text-white">CAT</span>
+<span class="text-[9px] font-mono text-white">+1.40%</span>
+</div>
+<div class="text-[9px] font-mono text-white/80 truncate">Caterpillar · $192B</div>
+</div>
+<!-- XOM -->
+<div class="col-span-2 row-span-2 bg-[#064e3b] hover:bg-[#047857] transition-all p-1.5 rounded-md flex flex-col justify-between cursor-pointer shadow-sm">
+<div class="flex justify-between items-center">
+<span class="font-mono font-bold text-xs text-white">XOM</span>
+<span class="text-[9px] font-mono text-emerald-200">+0.90%</span>
+</div>
+<div class="text-[9px] font-mono text-white/80 truncate">Exxon Mobil · $460B</div>
+</div>
+<!-- CVX -->
+<div class="col-span-2 row-span-2 bg-[#27272a] hover:bg-surface-bright transition-all p-1.5 rounded-md flex flex-col justify-between cursor-pointer text-white shadow-sm">
+<div class="flex justify-between items-center">
+<span class="font-mono font-bold text-xs">CVX</span>
+<span class="text-[9px] font-mono text-tertiary">+0.45%</span>
+</div>
+<div class="text-[9px] font-mono text-on-surface-variant truncate">Chevron · $284B</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div><div class="bg-surface-container rounded-xl p-4 shadow-sm relative overflow-hidden flex flex-col justify-between hidden" id="screener-table-view">
+<div class="flex items-start justify-between">
+<div>
+<span class="text-[10px] font-mono uppercase tracking-wider text-on-surface-variant">Quant Sentiment Index</span>
+<div class="text-lg font-headline font-bold text-tertiary mt-0.5">84 / 100</div>
+<span class="text-[11px] font-mono text-on-surface-variant mt-0.5">
+            Strong Risk-On (VIX 14.20 -4.5%)
+          </span>
+</div>
+<div class="w-10 h-10 rounded-lg bg-surface-container-high flex items-center justify-center text-tertiary">
+<span class="material-symbols-outlined text-[20px]">psychology</span>
+</div>
+</div>
+<div class="mt-4 pt-3 flex items-center justify-between text-[11px] font-mono text-on-surface-variant bg-surface-container-lowest/50 px-2.5 py-1.5 rounded">
+<span>Gamma Exposure: +$3.9B</span>
+<span class="text-tertiary font-medium">Dealer Long Gamma</span>
+</div>
+</div>
+</div>
+<!-- Sector Rotation Relative Strength Matrix -->
+<div class="bg-surface-container-low rounded-xl p-4 shadow-sm space-y-3">
+<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+<div class="flex items-center gap-2">
+<span class="text-xs font-mono font-semibold uppercase tracking-wider text-on-surface">Sector Relative Strength vs SPY (5-Day Rolling Alpha)</span>
+<span class="px-2 py-0.5 text-[10px] font-mono rounded bg-surface-container-highest text-on-surface-variant">Benchmark: SPY</span>
+</div>
+<span class="text-[11px] font-mono text-on-surface-variant">Updated: Realtime L2 Ingress</span>
+</div>
+<div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2">
+<div class="bg-surface-container p-2.5 rounded-lg flex flex-col justify-between">
+<div class="flex items-center justify-between">
+<span class="text-xs font-mono font-bold text-on-surface">XLK</span>
+<span class="text-[10px] font-mono text-tertiary font-semibold">+2.4%</span>
+</div>
+<span class="text-[10px] text-on-surface-variant truncate">Technology</span>
+<div class="w-full bg-surface-container-highest h-1 rounded-full mt-2 overflow-hidden">
+<div class="bg-tertiary h-full w-[88%] rounded-full"></div>
+</div>
+</div>
+<div class="bg-surface-container p-2.5 rounded-lg flex flex-col justify-between">
+<div class="flex items-center justify-between">
+<span class="text-xs font-mono font-bold text-on-surface">XLC</span>
+<span class="text-[10px] font-mono text-tertiary font-semibold">+1.8%</span>
+</div>
+<span class="text-[10px] text-on-surface-variant truncate">Comm Services</span>
+<div class="w-full bg-surface-container-highest h-1 rounded-full mt-2 overflow-hidden">
+<div class="bg-tertiary h-full w-[74%] rounded-full"></div>
+</div>
+</div>
+<div class="bg-surface-container p-2.5 rounded-lg flex flex-col justify-between">
+<div class="flex items-center justify-between">
+<span class="text-xs font-mono font-bold text-on-surface">XLY</span>
+<span class="text-[10px] font-mono text-tertiary font-semibold">+1.2%</span>
+</div>
+<span class="text-[10px] text-on-surface-variant truncate">Consumer Disc</span>
+<div class="w-full bg-surface-container-highest h-1 rounded-full mt-2 overflow-hidden">
+<div class="bg-tertiary h-full w-[62%] rounded-full"></div>
+</div>
+</div>
+<div class="bg-surface-container p-2.5 rounded-lg flex flex-col justify-between">
+<div class="flex items-center justify-between">
+<span class="text-xs font-mono font-bold text-on-surface">SMH</span>
+<span class="text-[10px] font-mono text-tertiary font-semibold">+3.1%</span>
+</div>
+<span class="text-[10px] text-on-surface-variant truncate">Semiconductors</span>
+<div class="w-full bg-surface-container-highest h-1 rounded-full mt-2 overflow-hidden">
+<div class="bg-tertiary h-full w-[94%] rounded-full"></div>
+</div>
+</div>
+<div class="bg-surface-container p-2.5 rounded-lg flex flex-col justify-between">
+<div class="flex items-center justify-between">
+<span class="text-xs font-mono font-bold text-on-surface">XLF</span>
+<span class="text-[10px] font-mono text-tertiary font-semibold">+0.6%</span>
+</div>
+<span class="text-[10px] text-on-surface-variant truncate">Financials</span>
+<div class="w-full bg-surface-container-highest h-1 rounded-full mt-2 overflow-hidden">
+<div class="bg-tertiary h-full w-[52%] rounded-full"></div>
+</div>
+</div>
+<div class="bg-surface-container p-2.5 rounded-lg flex flex-col justify-between">
+<div class="flex items-center justify-between">
+<span class="text-xs font-mono font-bold text-on-surface">XLI</span>
+<span class="text-[10px] font-mono text-on-surface-variant">+0.2%</span>
+</div>
+<span class="text-[10px] text-on-surface-variant truncate">Industrials</span>
+<div class="w-full bg-surface-container-highest h-1 rounded-full mt-2 overflow-hidden">
+<div class="bg-primary h-full w-[45%] rounded-full"></div>
+</div>
+</div>
+<div class="bg-surface-container p-2.5 rounded-lg flex flex-col justify-between">
+<div class="flex items-center justify-between">
+<span class="text-xs font-mono font-bold text-on-surface">XLV</span>
+<span class="text-[10px] font-mono text-error font-semibold">-0.4%</span>
+</div>
+<span class="text-[10px] text-on-surface-variant truncate">Healthcare</span>
+<div class="w-full bg-surface-container-highest h-1 rounded-full mt-2 overflow-hidden">
+<div class="bg-error h-full w-[28%] rounded-full"></div>
+</div>
+</div>
+<div class="bg-surface-container p-2.5 rounded-lg flex flex-col justify-between">
+<div class="flex items-center justify-between">
+<span class="text-xs font-mono font-bold text-on-surface">XLU</span>
+<span class="text-[10px] font-mono text-error font-semibold">-1.1%</span>
+</div>
+<span class="text-[10px] text-on-surface-variant truncate">Utilities</span>
+<div class="w-full bg-surface-container-highest h-1 rounded-full mt-2 overflow-hidden">
+<div class="bg-error h-full w-[16%] rounded-full"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Alpha Momentum Pick of the Day (Spotlight Card) -->
+<div class="bg-surface-container-high rounded-xl p-6 shadow-md relative overflow-hidden">
+<div class="absolute -right-16 -top-16 w-64 h-64 bg-primary/10 rounded-full blur-3xl pointer-events-none"></div>
+<div class="relative z-10 flex flex-col xl:flex-row xl:items-center justify-between gap-6">
+<div class="space-y-3 max-w-3xl">
+<div class="flex flex-wrap items-center gap-2.5">
+<span class="px-2.5 py-1 rounded text-xs font-mono font-bold uppercase bg-primary text-on-primary tracking-wider">
+            QUANT ALPHA PICK OF THE DAY
+          </span>
+<span class="px-2.5 py-1 rounded text-xs font-mono bg-surface-container text-tertiary font-semibold flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">verified</span>
+            Stochastic Confidence: 96.4%
+          </span>
+<span class="text-xs font-mono text-on-surface-variant">Model: DeepConv Momentum-Net v3</span>
+</div>
+<div class="flex items-baseline gap-4">
+<h2 class="text-2xl lg:text-3xl font-headline font-bold text-on-surface tracking-tight">
+            NVDA — NVIDIA Corporation
+          </h2>
+<span class="text-2xl font-mono font-bold text-tertiary">$128.50</span>
+<span class="px-2 py-0.5 rounded text-xs font-mono bg-tertiary-container text-on-tertiary font-semibold">+3.42% Today</span>
+</div>
+<p class="text-xs sm:text-sm text-on-surface-variant leading-relaxed">
+          Algorithmic trigger: High-conviction dark pool accumulation (+$842.6M net buy prints) concurrent with an RSI 66.8 volatility compression breakout above the 20-day upper Bollinger band. Relative volume is running at 3.42x 30-day baseline with accelerating call-implied skew.
+        </p>
+<div class="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1 text-xs font-mono">
+<div class="bg-surface-container p-2.5 rounded-lg">
+<span class="text-[10px] text-on-surface-variant uppercase">Target Price</span>
+<div class="text-sm font-bold text-tertiary mt-0.5">$142.00 (+10.5%)</div>
+</div>
+<div class="bg-surface-container p-2.5 rounded-lg">
+<span class="text-[10px] text-on-surface-variant uppercase">Dynamic Stop ATR</span>
+<div class="text-sm font-bold text-error mt-0.5">$124.30 (-3.2%)</div>
+</div>
+<div class="bg-surface-container p-2.5 rounded-lg">
+<span class="text-[10px] text-on-surface-variant uppercase">Risk / Reward</span>
+<div class="text-sm font-bold text-primary mt-0.5">3.28 : 1</div>
+</div>
+<div class="bg-surface-container p-2.5 rounded-lg">
+<span class="text-[10px] text-on-surface-variant uppercase">Setup Archetype</span>
+<div class="text-sm font-bold text-on-surface mt-0.5">Stage 2 Pocket Pivot</div>
+</div>
+</div>
+</div>
+<div class="flex flex-col sm:flex-row xl:flex-col gap-3 min-w-[220px]">
+<a class="px-4 py-3 rounded-lg bg-primary text-on-primary font-mono text-xs font-bold hover:opacity-90 transition-opacity flex items-center justify-center gap-2 shadow-sm" data-path="deep-analysis" href="#">
+          Run Deep Analysis
+          <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+</a>
+<button class="px-4 py-3 rounded-lg bg-surface-container text-on-surface font-mono text-xs font-medium hover:bg-surface-container-highest transition-colors flex items-center justify-center gap-2 shadow-sm">
+<span class="material-symbols-outlined text-[16px] text-tertiary">add_chart</span>
+          Add to High-Alpha Watchlist
+        </button>
+</div>
+</div>
+</div>
+<!-- Section 3: Screener Filter Toolbar -->
+<div class="bg-surface-container rounded-xl p-4 space-y-3.5 shadow-sm">
+<!-- Presets -->
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
+<div class="flex items-center gap-2 overflow-x-auto pb-1 md:pb-0">
+<span class="text-[11px] font-mono uppercase text-on-surface-variant font-semibold shrink-0">Strategy Presets:</span>
+<button class="px-3 py-1 rounded text-xs font-mono font-semibold bg-primary text-on-primary shrink-0">All Stocks</button>
+<button class="px-3 py-1 rounded text-xs font-mono bg-surface-container-high text-on-surface-variant hover:text-on-surface hover:bg-surface-container-highest transition-colors shrink-0">High Momentum Alpha</button>
+<button class="px-3 py-1 rounded text-xs font-mono bg-surface-container-high text-on-surface-variant hover:text-on-surface hover:bg-surface-container-highest transition-colors shrink-0">RSI Breakout + Volume Spike</button>
+<button class="px-3 py-1 rounded text-xs font-mono bg-surface-container-high text-on-surface-variant hover:text-on-surface hover:bg-surface-container-highest transition-colors shrink-0">Dark Pool Accumulation</button>
+<button class="px-3 py-1 rounded text-xs font-mono bg-surface-container-high text-on-surface-variant hover:text-on-surface hover:bg-surface-container-highest transition-colors shrink-0">Minervini Stage 2</button>
+<button class="px-3 py-1 rounded text-xs font-mono bg-surface-container-high text-on-surface-variant hover:text-on-surface hover:bg-surface-container-highest transition-colors shrink-0">Mean Reversion Pullback</button>
+</div>
+<div class="text-[11px] font-mono text-primary font-medium shrink-0 flex items-center gap-1.5 self-end md:self-auto">
+<span class="w-2 h-2 rounded-full bg-tertiary"></span>
+<span>24 Tickers Qualified Filter</span>
+</div>
+</div>
+<!-- Parameter Selectors -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5 pt-1">
+<div class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface-container-high text-xs font-mono text-on-surface">
+<span class="text-on-surface-variant text-[11px]">Sector:</span>
+<select class="bg-transparent text-on-surface focus:outline-none w-full cursor-pointer">
+<option value="all">All Sectors</option>
+<option selected="" value="tech">Tech &amp; Semis</option>
+<option value="health">Healthcare</option>
+<option value="energy">Energy</option>
+<option value="fin">Financials</option>
+</select>
+</div>
+<div class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface-container-high text-xs font-mono text-on-surface">
+<span class="text-on-surface-variant text-[11px]">Cap:</span>
+<select class="bg-transparent text-on-surface focus:outline-none w-full cursor-pointer">
+<option value="all">Any Market Cap</option>
+<option selected="" value="mega">Mega Cap (&gt;$200B)</option>
+<option value="large">Large Cap ($10B-$200B)</option>
+<option value="mid">Mid Cap ($2B-$10B)</option>
+</select>
+</div>
+<div class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface-container-high text-xs font-mono text-on-surface">
+<span class="text-on-surface-variant text-[11px]">Momentum:</span>
+<select class="bg-transparent text-on-surface focus:outline-none w-full cursor-pointer">
+<option selected="" value="rsi">RSI(14) &gt; 60 + MACD Bull</option>
+<option value="rvol">RVol &gt; 2.0x 30D</option>
+<option value="ath">Near 52W High (&lt;3%)</option>
+</select>
+</div>
+<div class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface-container-high text-xs font-mono text-on-surface">
+<span class="text-on-surface-variant text-[11px]">Quant Score:</span>
+<select class="bg-transparent text-on-surface focus:outline-none w-full cursor-pointer">
+<option selected="" value="90">Score &gt;= 85 (Alpha Tier)</option>
+<option value="75">Score &gt;= 75 (Moderate)</option>
+<option value="all">Any Score</option>
+</select>
+</div>
+<div class="relative flex items-center">
+<span class="material-symbols-outlined absolute left-2.5 text-[16px] text-on-surface-variant pointer-events-none">search</span>
+<input class="w-full pl-8 pr-3 py-1.5 text-xs font-mono rounded-lg bg-surface-container-high text-on-surface placeholder:text-secondary focus:outline-none focus:ring-1 focus:ring-primary transition-all" placeholder="Filter symbol (e.g. NVDA)..." type="text"/>
+</div>
+</div>
+</div>
+<!-- Section 5: Institutional Quantitative Stock Grid Table -->
+<!-- View Mode Switcher Header -->
+<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-surface-container-low p-3 rounded-xl border border-outline-variant/40">
+<div class="flex items-center gap-2">
+<span class="text-xs font-mono uppercase text-on-surface-variant font-semibold tracking-wider flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[16px] text-primary">dashboard</span>
+      Display Mode:
+    </span>
+<div class="inline-flex p-1 rounded-lg bg-surface-container-highest border border-outline-variant/60 font-mono text-xs">
+<button class="px-3 py-1.5 rounded-md font-semibold text-on-surface-variant hover:text-on-surface transition-all flex items-center gap-1.5" id="btn-view-table" onclick="document.getElementById('screener-table-view').classList.remove('hidden'); document.getElementById('screener-treemap-view').classList.add('hidden'); this.classList.replace('text-on-surface-variant','bg-primary'); this.classList.replace('hover:text-on-surface','text-on-primary'); document.getElementById('btn-view-treemap').classList.replace('bg-primary','text-on-surface-variant'); document.getElementById('btn-view-treemap').classList.replace('text-on-primary','hover:text-on-surface');">
+<span class="material-symbols-outlined text-[15px]">table_chart</span>
+        Screener Table
+      </button>
+<button class="px-3 py-1.5 rounded-md font-semibold bg-primary text-on-primary shadow-sm transition-all flex items-center gap-1.5" id="btn-view-treemap" onclick="document.getElementById('screener-treemap-view').classList.remove('hidden'); document.getElementById('screener-table-view').classList.add('hidden'); this.classList.replace('text-on-surface-variant','bg-primary'); this.classList.replace('hover:text-on-surface','text-on-primary'); document.getElementById('btn-view-table').classList.replace('bg-primary','text-on-surface-variant'); document.getElementById('btn-view-table').classList.replace('text-on-primary','hover:text-on-surface');">
+<span class="material-symbols-outlined text-[15px]">grid_view</span>
+        Sektor Treemap Heatmap (Finviz Style)
+        <span class="px-1.5 py-0.2 rounded text-[9px] bg-tertiary-container text-on-tertiary font-bold">PRO</span>
+</button>
+</div>
+</div>
+<div class="flex items-center gap-3 font-mono text-xs text-on-surface-variant">
+<span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-tertiary animate-pulse"></span>Real-Time Tick Depth: 500+ Equities</span>
+</div>
+</div>
+<!-- Interactive Treemap Heatmap (Finviz Style Quant Mode) -->
+<div class="space-y-4" id="screener-treemap-view">
+<!-- Heatmap Control Bar & Color Scale Legend -->
+<div class="bg-surface-container rounded-xl p-4 shadow-sm flex flex-col xl:flex-row xl:items-center justify-between gap-4 border border-outline-variant/40">
+<div class="flex flex-wrap items-center gap-3">
+<div class="flex items-center gap-2 bg-surface-container-high px-3 py-1.5 rounded-lg text-xs font-mono">
+<span class="text-on-surface-variant">Grouping:</span>
+<select class="bg-transparent text-on-surface focus:outline-none cursor-pointer font-medium">
+<option selected="">S&amp;P 500 by Sector</option>
+<option>NASDAQ 100 by Industry</option>
+<option>Market Cap Tier (Mega/Large/Mid)</option>
+<option>High Dark Pool Liquidity Pool</option>
+</select>
+</div>
+<div class="flex items-center gap-2 bg-surface-container-high px-3 py-1.5 rounded-lg text-xs font-mono">
+<span class="text-on-surface-variant">Performance Metric:</span>
+<select class="bg-transparent text-on-surface focus:outline-none cursor-pointer font-medium text-tertiary">
+<option selected="">1D Performance (Session %)</option>
+<option>1W Rolling Alpha</option>
+<option>1M Stochastic Momentum</option>
+<option>YTD Performance</option>
+<option>Dark Pool Net Institutional Flow</option>
+</select>
+</div>
+<div class="flex items-center gap-2 bg-surface-container-high px-3 py-1.5 rounded-lg text-xs font-mono">
+<span class="text-on-surface-variant">Box Size:</span>
+<select class="bg-transparent text-on-surface focus:outline-none cursor-pointer font-medium">
+<option selected="">Market Capitalization</option>
+<option>Daily Dollar Volume</option>
+<option>Dark Pool Dollar Volume</option>
+</select>
+</div>
+</div>
+<!-- Quantitative Legend Color Scale -->
+<div class="flex items-center gap-2 font-mono text-[10px] text-on-surface-variant">
+<span class="text-error font-semibold">-3.0%</span>
+<div class="flex items-center rounded overflow-hidden border border-outline-variant/60 h-4">
+<span class="w-6 h-full bg-[#7f1d1d]" title="-3% or lower"></span>
+<span class="w-6 h-full bg-[#991b1b]/80" title="-2%"></span>
+<span class="w-6 h-full bg-[#450a0a]" title="-1%"></span>
+<span class="w-6 h-full bg-[#27272a]" title="0% Flat"></span>
+<span class="w-6 h-full bg-[#064e3b]" title="+1%"></span>
+<span class="w-6 h-full bg-[#047857]" title="+2%"></span>
+<span class="w-6 h-full bg-[#059669]" title="+3%"></span>
+<span class="w-6 h-full bg-[#10b981]" title="+5% Super Alpha"></span>
+</div>
+<span class="text-tertiary font-semibold">+5.0%</span>
+</div>
+</div>
+<!-- Finviz-Style Proportional Treemap Grid Canvas -->
+<div class="bg-surface-container rounded-xl p-3 border border-outline-variant/50 shadow-md">
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-2 min-h-[620px]">
+<!-- SECTOR 1: TECHNOLOGY (Dominant Tile 5 cols) -->
+<div class="lg:col-span-5 bg-surface-container-lowest/80 p-2.5 rounded-lg border border-outline-variant/60 flex flex-col space-y-2">
+<div class="flex items-center justify-between border-b border-outline-variant/40 pb-1.5">
+<span class="text-[11px] font-mono font-bold tracking-wider uppercase text-on-surface flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span>Technology
+          </span>
+<span class="text-[10px] font-mono text-tertiary font-semibold">+2.45% Avg</span>
+</div>
+<div class="grid grid-cols-6 grid-rows-6 gap-1.5 flex-1 min-h-[280px]">
+<!-- NVDA (Dominant) -->
+<div class="col-span-3 row-span-4 bg-[#059669] hover:bg-[#10b981] transition-all p-2 rounded-md flex flex-col justify-between cursor-pointer group shadow-sm relative overflow-hidden">
+<div class="flex justify-between items-start">
+<span class="font-mono font-bold text-sm sm:text-base text-white tracking-tight">NVDA</span>
+<span class="text-[9px] font-mono bg-black/40 px-1 py-0.5 rounded text-tertiary-fixed font-bold">+3.42%</span>
+</div>
+<div>
+<div class="text-[11px] font-mono text-white/90 truncate font-medium">NVIDIA</div>
+<div class="text-[9px] font-mono text-emerald-100/70">$3.15T · Vol 54M</div>
+</div>
+</div>
+<!-- AAPL -->
+<div class="col-span-3 row-span-3 bg-[#047857] hover:bg-[#059669] transition-all p-2 rounded-md flex flex-col justify-between cursor-pointer shadow-sm">
+<div class="flex justify-between items-start">
+<span class="font-mono font-bold text-xs sm:text-sm text-white">AAPL</span>
+<span class="text-[9px] font-mono bg-black/40 px-1 py-0.5 rounded text-emerald-200">+0.92%</span>
+</div>
+<div>
+<div class="text-[10px] font-mono text-white/90 truncate">Apple Inc</div>
+<div class="text-[9px] font-mono text-emerald-100/70">$3.54T · Vol 38M</div>
+</div>
+</div>
+<!-- MSFT -->
+<div class="col-span-3 row-span-3 bg-[#047857] hover:bg-[#059669] transition-all p-2 rounded-md flex flex-col justify-between cursor-pointer shadow-sm">
+<div class="flex justify-between items-start">
+<span class="font-mono font-bold text-xs sm:text-sm text-white">MSFT</span>
+<span class="text-[9px] font-mono bg-black/40 px-1 py-0.5 rounded text-emerald-200">+1.40%</span>
+</div>
+<div>
+<div class="text-[10px] font-mono text-white/90 truncate">Microsoft</div>
+<div class="text-[9px] font-mono text-emerald-100/70">$3.18T · Vol 22M</div>
+</div>
+</div>
+<!-- AVGO -->
+<div class="col-span-3 row-span-2 bg-[#059669] hover:bg-[#10b981] transition-all p-1.5 rounded-md flex flex-col justify-between cursor-pointer shadow-sm">
+<div class="flex justify-between items-center">
+<span class="font-mono font-bold text-xs text-white">AVGO</span>
+<span class="text-[9px] font-mono text-white font-semibold">+2.15%</span>
+</div>
+<div class="text-[9px] font-mono text-white/80 truncate">Broadcom · $815B</div>
+</div>
+<!-- AMD -->
+<div class="col-span-2 row-span-1 bg-[#10b981] hover:bg-tertiary transition-all p-1 rounded-md flex items-center justify-between cursor-pointer text-white shadow-sm">
+<span class="font-mono font-bold text-[10px]">AMD</span>
+<span class="font-mono text-[9px] font-bold">+4.10%</span>
+</div>
+<!-- ORCL -->
+<div class="col-span-2 row-span-1 bg-[#047857] hover:bg-[#059669] transition-all p-1 rounded-md flex items-center justify-between cursor-pointer text-white shadow-sm">
+<span class="font-mono font-bold text-[10px]">ORCL</span>
+<span class="font-mono text-[9px]">+1.85%</span>
+</div>
+<!-- CRM -->
+<div class="col-span-1 row-span-1 bg-[#450a0a] hover:bg-[#7f1d1d] transition-all p-1 rounded-md flex flex-col justify-center items-center cursor-pointer text-white shadow-sm">
+<span class="font-mono font-bold text-[9px]">CRM</span>
+<span class="font-mono text-[8px] text-red-200">-0.65%</span>
+</div>
+<!-- INTC -->
+<div class="col-span-1 row-span-1 bg-[#991b1b] hover:bg-[#b91c1c] transition-all p-1 rounded-md flex flex-col justify-center items-center cursor-pointer text-white shadow-sm">
+<span class="font-mono font-bold text-[9px]">INTC</span>
+<span class="font-mono text-[8px] text-red-100">-1.20%</span>
+</div>
+</div>
+</div>
+<!-- SECTOR 2: COMMUNICATION SERVICES (3 cols) -->
+<div class="lg:col-span-4 bg-surface-container-lowest/80 p-2.5 rounded-lg border border-outline-variant/60 flex flex-col space-y-2">
+<div class="flex items-center justify-between border-b border-outline-variant/40 pb-1.5">
+<span class="text-[11px] font-mono font-bold tracking-wider uppercase text-on-surface flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span>Communication Services
+          </span>
+<span class="text-[10px] font-mono text-tertiary font-semibold">+1.78% Avg</span>
+</div>
+<div class="grid grid-cols-4 grid-rows-6 gap-1.5 flex-1 min-h-[280px]">
+<!-- META -->
+<div class="col-span-2 row-span-4 bg-[#059669] hover:bg-[#10b981] transition-all p-2 rounded-md flex flex-col justify-between cursor-pointer shadow-sm">
+<div class="flex justify-between items-start">
+<span class="font-mono font-bold text-sm text-white">META</span>
+<span class="text-[9px] font-mono bg-black/40 px-1 py-0.5 rounded text-tertiary-fixed font-bold">+2.80%</span>
+</div>
+<div>
+<div class="text-[10px] font-mono text-white/90 truncate">Meta Platforms</div>
+<div class="text-[9px] font-mono text-emerald-100/70">$1.46T · Vol 19M</div>
+</div>
+</div>
+<!-- GOOGL -->
+<div class="col-span-2 row-span-4 bg-[#047857] hover:bg-[#059669] transition-all p-2 rounded-md flex flex-col justify-between cursor-pointer shadow-sm">
+<div class="flex justify-between items-start">
+<span class="font-mono font-bold text-sm text-white">GOOGL</span>
+<span class="text-[9px] font-mono bg-black/40 px-1 py-0.5 rounded text-emerald-200">+1.65%</span>
+</div>
+<div>
+<div class="text-[10px] font-mono text-white/90 truncate">Alphabet Inc</div>
+<div class="text-[9px] font-mono text-emerald-100/70">$2.12T · Vol 24M</div>
+</div>
+</div>
+<!-- NFLX -->
+<div class="col-span-2 row-span-2 bg-[#064e3b] hover:bg-[#047857] transition-all p-1.5 rounded-md flex flex-col justify-between cursor-pointer shadow-sm">
+<div class="flex justify-between items-center">
+<span class="font-mono font-bold text-xs text-white">NFLX</span>
+<span class="text-[9px] font-mono text-white font-semibold">+1.10%</span>
+</div>
+<div class="text-[9px] font-mono text-white/80 truncate">Netflix · $312B</div>
+</div>
+<!-- TMUS -->
+<div class="col-span-1 row-span-2 bg-[#27272a] hover:bg-surface-bright transition-all p-1 rounded-md flex flex-col justify-center items-center cursor-pointer text-white shadow-sm">
+<span class="font-mono font-bold text-[9px]">TMUS</span>
+<span class="font-mono text-[8px] text-tertiary">+0.40%</span>
+</div>
+<!-- DIS -->
+<div class="col-span-1 row-span-2 bg-[#7f1d1d] hover:bg-[#991b1b] transition-all p-1 rounded-md flex flex-col justify-center items-center cursor-pointer text-white shadow-sm">
+<span class="font-mono font-bold text-[9px]">DIS</span>
+<span class="font-mono text-[8px] text-red-200">-0.80%</span>
+</div>
+</div>
+</div>
+<!-- SECTOR 3: CONSUMER CYCLICAL (3 cols) -->
+<div class="lg:col-span-3 bg-surface-container-lowest/80 p-2.5 rounded-lg border border-outline-variant/60 flex flex-col space-y-2">
+<div class="flex items-center justify-between border-b border-outline-variant/40 pb-1.5">
+<span class="text-[11px] font-mono font-bold tracking-wider uppercase text-on-surface flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span>Consumer Cyclical
+          </span>
+<span class="text-[10px] font-mono text-tertiary font-semibold">+1.92% Avg</span>
+</div>
+<div class="grid grid-cols-4 grid-rows-6 gap-1.5 flex-1 min-h-[280px]">
+<!-- AMZN -->
+<div class="col-span-4 row-span-3 bg-[#047857] hover:bg-[#059669] transition-all p-2 rounded-md flex flex-col justify-between cursor-pointer shadow-sm">
+<div class="flex justify-between items-start">
+<span class="font-mono font-bold text-sm text-white">AMZN</span>
+<span class="text-[9px] font-mono bg-black/40 px-1 py-0.5 rounded text-emerald-200 font-bold">+1.95%</span>
+</div>
+<div>
+<div class="text-[10px] font-mono text-white/90 truncate">Amazon.com Inc</div>
+<div class="text-[9px] font-mono text-emerald-100/70">$2.05T · Vol 44M</div>
+</div>
+</div>
+<!-- TSLA -->
+<div class="col-span-4 row-span-2 bg-[#10b981] hover:bg-tertiary transition-all p-1.5 rounded-md flex flex-col justify-between cursor-pointer shadow-sm">
+<div class="flex justify-between items-center">
+<span class="font-mono font-bold text-xs text-white">TSLA</span>
+<span class="text-[9px] font-mono text-white font-bold bg-black/30 px-1 rounded">+4.12%</span>
+</div>
+<div class="text-[9px] font-mono text-white/90 truncate">Tesla, Inc · $840B · Vol 88M</div>
+</div>
+<!-- HD -->
+<div class="col-span-2 row-span-1 bg-[#27272a] hover:bg-surface-bright transition-all p-1 rounded-md flex items-center justify-between cursor-pointer text-white shadow-sm">
+<span class="font-mono font-bold text-[9px]">HD</span>
+<span class="font-mono text-[8px] text-tertiary">+0.50%</span>
+</div>
+<!-- NKE -->
+<div class="col-span-2 row-span-1 bg-[#991b1b] hover:bg-[#b91c1c] transition-all p-1 rounded-md flex items-center justify-between cursor-pointer text-white shadow-sm">
+<span class="font-mono font-bold text-[9px]">NKE</span>
+<span class="font-mono text-[8px] text-red-100">-1.45%</span>
+</div>
+</div>
+</div>
+<!-- SECTOR 4: FINANCIAL SERVICES (4 cols) -->
+<div class="lg:col-span-4 bg-surface-container-lowest/80 p-2.5 rounded-lg border border-outline-variant/60 flex flex-col space-y-2">
+<div class="flex items-center justify-between border-b border-outline-variant/40 pb-1.5">
+<span class="text-[11px] font-mono font-bold tracking-wider uppercase text-on-surface flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span>Financial Services
+          </span>
+<span class="text-[10px] font-mono text-tertiary font-semibold">+0.65% Avg</span>
+</div>
+<div class="grid grid-cols-4 grid-rows-4 gap-1.5 flex-1 min-h-[180px]">
+<!-- JPM -->
+<div class="col-span-2 row-span-4 bg-[#064e3b] hover:bg-[#047857] transition-all p-2 rounded-md flex flex-col justify-between cursor-pointer shadow-sm">
+<div class="flex justify-between items-start">
+<span class="font-mono font-bold text-xs sm:text-sm text-white">JPM</span>
+<span class="text-[9px] font-mono bg-black/40 px-1 py-0.5 rounded text-emerald-200">+1.20%</span>
+</div>
+<div>
+<div class="text-[10px] font-mono text-white/90 truncate">JPMorgan Chase</div>
+<div class="text-[9px] font-mono text-emerald-100/70">$640B · Vol 12M</div>
+</div>
+</div>
+<!-- V & MA -->
+<div class="col-span-2 row-span-2 bg-[#064e3b] hover:bg-[#047857] transition-all p-1.5 rounded-md flex flex-col justify-between cursor-pointer shadow-sm">
+<div class="flex justify-between items-center">
+<span class="font-mono font-bold text-xs text-white">V</span>
+<span class="text-[9px] font-mono text-emerald-200 font-semibold">+0.85%</span>
+</div>
+<div class="text-[9px] font-mono text-white/80 truncate">Visa Inc · $580B</div>
+</div>
+<div class="col-span-1 row-span-2 bg-[#27272a] hover:bg-surface-bright transition-all p-1 rounded-md flex flex-col justify-center items-center cursor-pointer text-white shadow-sm">
+<span class="font-mono font-bold text-[9px]">BAC</span>
+<span class="font-mono text-[8px] text-tertiary">+0.40%</span>
+</div>
+<div class="col-span-1 row-span-2 bg-[#27272a] hover:bg-surface-bright transition-all p-1 rounded-md flex flex-col justify-center items-center cursor-pointer text-white shadow-sm">
+<span class="font-mono font-bold text-[9px]">WFC</span>
+<span class="font-mono text-[8px] text-tertiary">+0.60%</span>
+</div>
+</div>
+</div>
+<!-- SECTOR 5: HEALTHCARE (4 cols) -->
+<div class="lg:col-span-4 bg-surface-container-lowest/80 p-2.5 rounded-lg border border-outline-variant/60 flex flex-col space-y-2">
+<div class="flex items-center justify-between border-b border-outline-variant/40 pb-1.5">
+<span class="text-[11px] font-mono font-bold tracking-wider uppercase text-on-surface flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-error"></span>Healthcare
+          </span>
+<span class="text-[10px] font-mono text-error font-semibold">-0.42% Avg</span>
+</div>
+<div class="grid grid-cols-4 grid-rows-4 gap-1.5 flex-1 min-h-[180px]">
+<!-- LLY -->
+<div class="col-span-2 row-span-4 bg-[#450a0a] hover:bg-[#7f1d1d] transition-all p-2 rounded-md flex flex-col justify-between cursor-pointer shadow-sm">
+<div class="flex justify-between items-start">
+<span class="font-mono font-bold text-xs sm:text-sm text-white">LLY</span>
+<span class="text-[9px] font-mono bg-black/40 px-1 py-0.5 rounded text-red-200 font-bold">-0.45%</span>
+</div>
+<div>
+<div class="text-[10px] font-mono text-white/90 truncate">Eli Lilly</div>
+<div class="text-[9px] font-mono text-red-200/70">$820B · Vol 3.8M</div>
+</div>
+</div>
+<!-- UNH -->
+<div class="col-span-2 row-span-2 bg-[#064e3b] hover:bg-[#047857] transition-all p-1.5 rounded-md flex flex-col justify-between cursor-pointer shadow-sm">
+<div class="flex justify-between items-center">
+<span class="font-mono font-bold text-xs text-white">UNH</span>
+<span class="text-[9px] font-mono text-emerald-200 font-semibold">+0.80%</span>
+</div>
+<div class="text-[9px] font-mono text-white/80 truncate">UnitedHealth · $540B</div>
+</div>
+<!-- JNJ -->
+<div class="col-span-1 row-span-2 bg-[#27272a] hover:bg-surface-bright transition-all p-1 rounded-md flex flex-col justify-center items-center cursor-pointer text-white shadow-sm">
+<span class="font-mono font-bold text-[9px]">JNJ</span>
+<span class="font-mono text-[8px] text-tertiary">+0.25%</span>
+</div>
+<!-- ABBV -->
+<div class="col-span-1 row-span-2 bg-[#991b1b] hover:bg-[#b91c1c] transition-all p-1 rounded-md flex flex-col justify-center items-center cursor-pointer text-white shadow-sm">
+<span class="font-mono font-bold text-[9px]">ABBV</span>
+<span class="font-mono text-[8px] text-red-100">-1.10%</span>
+</div>
+</div>
+</div>
+<!-- SECTOR 6: INDUSTRIALS & ENERGY (4 cols) -->
+<div class="lg:col-span-4 bg-surface-container-lowest/80 p-2.5 rounded-lg border border-outline-variant/60 flex flex-col space-y-2">
+<div class="flex items-center justify-between border-b border-outline-variant/40 pb-1.5">
+<span class="text-[11px] font-mono font-bold tracking-wider uppercase text-on-surface flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span>Industrials &amp; Energy
+          </span>
+<span class="text-[10px] font-mono text-tertiary font-semibold">+1.12% Avg</span>
+</div>
+<div class="grid grid-cols-4 grid-rows-4 gap-1.5 flex-1 min-h-[180px]">
+<!-- GE -->
+<div class="col-span-2 row-span-2 bg-[#059669] hover:bg-[#10b981] transition-all p-1.5 rounded-md flex flex-col justify-between cursor-pointer shadow-sm">
+<div class="flex justify-between items-center">
+<span class="font-mono font-bold text-xs text-white">GE</span>
+<span class="text-[9px] font-mono text-white font-bold">+2.10%</span>
+</div>
+<div class="text-[9px] font-mono text-white/80 truncate">GE Aerospace · $208B</div>
+</div>
+<!-- CAT -->
+<div class="col-span-2 row-span-2 bg-[#047857] hover:bg-[#059669] transition-all p-1.5 rounded-md flex flex-col justify-between cursor-pointer shadow-sm">
+<div class="flex justify-between items-center">
+<span class="font-mono font-bold text-xs text-white">CAT</span>
+<span class="text-[9px] font-mono text-white">+1.40%</span>
+</div>
+<div class="text-[9px] font-mono text-white/80 truncate">Caterpillar · $192B</div>
+</div>
+<!-- XOM -->
+<div class="col-span-2 row-span-2 bg-[#064e3b] hover:bg-[#047857] transition-all p-1.5 rounded-md flex flex-col justify-between cursor-pointer shadow-sm">
+<div class="flex justify-between items-center">
+<span class="font-mono font-bold text-xs text-white">XOM</span>
+<span class="text-[9px] font-mono text-emerald-200">+0.90%</span>
+</div>
+<div class="text-[9px] font-mono text-white/80 truncate">Exxon Mobil · $460B</div>
+</div>
+<!-- CVX -->
+<div class="col-span-2 row-span-2 bg-[#27272a] hover:bg-surface-bright transition-all p-1.5 rounded-md flex flex-col justify-between cursor-pointer text-white shadow-sm">
+<div class="flex justify-between items-center">
+<span class="font-mono font-bold text-xs">CVX</span>
+<span class="text-[9px] font-mono text-tertiary">+0.45%</span>
+</div>
+<div class="text-[9px] font-mono text-on-surface-variant truncate">Chevron · $284B</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div><div class="bg-surface-container rounded-xl shadow-sm overflow-hidden hidden" id="screener-table-view">
+<div class="overflow-x-auto">
+<table class="w-full text-left text-xs font-mono">
+<thead class="bg-surface-container-high text-on-surface-variant uppercase text-[10px] tracking-wider select-none">
+<tr>
+<th class="py-3 px-4">Ticker &amp; Asset</th>
+<th class="py-3 px-3 text-right">Price / 24h</th>
+<th class="py-3 px-3 text-right">Volume / RVol</th>
+<th class="py-3 px-3 text-right">Dark Pool Net Flow</th>
+<th class="py-3 px-3 text-center">Quant Score</th>
+<th class="py-3 px-4">Pattern / Setup</th>
+<th class="py-3 px-3">RSI / MACD</th>
+<th class="py-3 px-3 text-right">ATR Target / Stop</th>
+<th class="py-3 px-3 text-center">5D Trend</th>
+<th class="py-3 px-4 text-center">Action</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-surface-container-highest text-on-surface">
+<!-- Row 1: NVDA -->
+<tr class="hover:bg-surface-container-high/60 transition-colors">
+<td class="py-3.5 px-4">
+<div class="flex items-center gap-2.5">
+<div class="w-8 h-8 rounded-lg bg-surface-container-highest flex items-center justify-center font-bold text-xs text-tertiary">
+                  NVDA
+                </div>
+<div>
+<div class="font-bold text-on-surface leading-tight">NVIDIA Corporation</div>
+<span class="text-[10px] text-on-surface-variant">Semiconductors · $3.15T</span>
+</div>
+</div>
+</td>
+<td class="py-3.5 px-3 text-right">
+<div class="font-bold text-on-surface">$128.50</div>
+<span class="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold bg-tertiary-container text-on-tertiary">
+                +3.42%
+              </span>
+</td>
+<td class="py-3.5 px-3 text-right">
+<div class="text-on-surface">54.2M</div>
+<span class="text-tertiary text-[10px] font-semibold">3.42x RVol</span>
+</td>
+<td class="py-3.5 px-3 text-right">
+<div class="text-tertiary font-bold">+$842.6M</div>
+<span class="text-[10px] text-on-surface-variant">78% Institutional Buy</span>
+</td>
+<td class="py-3.5 px-3 text-center">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-primary text-on-primary">
+                96
+              </span>
+<div class="text-[9px] text-primary mt-0.5 uppercase tracking-tighter">Alpha Leader</div>
+</td>
+<td class="py-3.5 px-4">
+<span class="px-2 py-0.5 rounded text-[10px] font-medium bg-surface-container-highest text-on-surface">
+                Stage 2 Pocket Pivot
+              </span>
+<div class="text-[10px] text-on-surface-variant mt-0.5">Bollinger Compression Break</div>
+</td>
+<td class="py-3.5 px-3">
+<div class="text-tertiary">RSI: 66.8</div>
+<span class="text-[10px] text-on-surface-variant">MACD Bull Cross</span>
+</td>
+<td class="py-3.5 px-3 text-right">
+<div class="text-tertiary font-medium">TP: $142.00</div>
+<div class="text-error text-[10px]">SL: $124.30</div>
+</td>
+<td class="py-3.5 px-3 text-center">
+<svg class="w-16 h-6 inline-block text-tertiary" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 64 24">
+<polyline points="2,18 16,16 32,10 46,12 62,4"></polyline>
+</svg>
+</td>
+<td class="py-3.5 px-4 text-center">
+<a class="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-surface-container-highest hover:bg-primary hover:text-on-primary text-on-surface text-[11px] font-medium transition-colors" data-path="deep-analysis" href="#">
+<span>Analyze</span>
+<span class="material-symbols-outlined text-[13px]">arrow_forward</span>
+</a>
+</td>
+</tr>
+<!-- Row 2: PLTR -->
+<tr class="hover:bg-surface-container-high/60 transition-colors">
+<td class="py-3.5 px-4">
+<div class="flex items-center gap-2.5">
+<div class="w-8 h-8 rounded-lg bg-surface-container-highest flex items-center justify-center font-bold text-xs text-primary">
+                  PLTR
+                </div>
+<div>
+<div class="font-bold text-on-surface leading-tight">Palantir Tech Inc.</div>
+<span class="text-[10px] text-on-surface-variant">Enterprise AI · $98.4B</span>
+</div>
+</div>
+</td>
+<td class="py-3.5 px-3 text-right">
+<div class="font-bold text-on-surface">$44.82</div>
+<span class="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold bg-tertiary-container text-on-tertiary">
+                +5.18%
+              </span>
+</td>
+<td class="py-3.5 px-3 text-right">
+<div class="text-on-surface">62.8M</div>
+<span class="text-tertiary text-[10px] font-semibold">2.88x RVol</span>
+</td>
+<td class="py-3.5 px-3 text-right">
+<div class="text-tertiary font-bold">+$420.1M</div>
+<span class="text-[10px] text-on-surface-variant">71% Institutional Buy</span>
+</td>
+<td class="py-3.5 px-3 text-center">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-primary text-on-primary">
+                94
+              </span>
+<div class="text-[9px] text-primary mt-0.5 uppercase tracking-tighter">Alpha Leader</div>
+</td>
+<td class="py-3.5 px-4">
+<span class="px-2 py-0.5 rounded text-[10px] font-medium bg-surface-container-highest text-on-surface">
+                Ascending Base Break
+              </span>
+<div class="text-[10px] text-on-surface-variant mt-0.5">ATH Blue Sky Mode</div>
+</td>
+<td class="py-3.5 px-3">
+<div class="text-tertiary">RSI: 72.4</div>
+<span class="text-[10px] text-tertiary font-semibold">MACD Strong Bull</span>
+</td>
+<td class="py-3.5 px-3 text-right">
+<div class="text-tertiary font-medium">TP: $51.00</div>
+<div class="text-error text-[10px]">SL: $42.10</div>
+</td>
+<td class="py-3.5 px-3 text-center">
+<svg class="w-16 h-6 inline-block text-tertiary" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 64 24">
+<polyline points="2,20 18,14 30,15 44,8 62,3"></polyline>
+</svg>
+</td>
+<td class="py-3.5 px-4 text-center">
+<a class="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-surface-container-highest hover:bg-primary hover:text-on-primary text-on-surface text-[11px] font-medium transition-colors" data-path="deep-analysis" href="#">
+<span>Analyze</span>
+<span class="material-symbols-outlined text-[13px]">arrow_forward</span>
+</a>
+</td>
+</tr>
+<!-- Row 3: AAPL -->
+<tr class="hover:bg-surface-container-high/60 transition-colors">
+<td class="py-3.5 px-4">
+<div class="flex items-center gap-2.5">
+<div class="w-8 h-8 rounded-lg bg-surface-container-highest flex items-center justify-center font-bold text-xs text-on-surface">
+                  AAPL
+                </div>
+<div>
+<div class="font-bold text-on-surface leading-tight">Apple Inc.</div>
+<span class="text-[10px] text-on-surface-variant">Consumer Electronics · $3.54T</span>
+</div>
+</div>
+</td>
+<td class="py-3.5 px-3 text-right">
+<div class="font-bold text-on-surface">$234.10</div>
+<span class="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold bg-tertiary-container text-on-tertiary">
+                +0.92%
+              </span>
+</td>
+<td class="py-3.5 px-3 text-right">
+<div class="text-on-surface">38.4M</div>
+<span class="text-on-surface-variant text-[10px]">1.12x RVol</span>
+</td>
+<td class="py-3.5 px-3 text-right">
+<div class="text-tertiary font-bold">+$310.4M</div>
+<span class="text-[10px] text-on-surface-variant">64% Institutional Buy</span>
+</td>
+<td class="py-3.5 px-3 text-center">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-surface-container-highest text-on-surface">
+                88
+              </span>
+<div class="text-[9px] text-on-surface-variant mt-0.5 uppercase tracking-tighter">High Alpha</div>
+</td>
+<td class="py-3.5 px-4">
+<span class="px-2 py-0.5 rounded text-[10px] font-medium bg-surface-container-highest text-on-surface">
+                EMA 20 Support Bounce
+              </span>
+<div class="text-[10px] text-on-surface-variant mt-0.5">High Volume Shelf</div>
+</td>
+<td class="py-3.5 px-3">
+<div class="text-on-surface">RSI: 58.2</div>
+<span class="text-[10px] text-on-surface-variant">MACD Converging</span>
+</td>
+<td class="py-3.5 px-3 text-right">
+<div class="text-tertiary font-medium">TP: $248.50</div>
+<div class="text-error text-[10px]">SL: $228.00</div>
+</td>
+<td class="py-3.5 px-3 text-center">
+<svg class="w-16 h-6 inline-block text-tertiary" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 64 24">
+<polyline points="2,14 18,16 32,12 48,11 62,8"></polyline>
+</svg>
+</td>
+<td class="py-3.5 px-4 text-center">
+<a class="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-surface-container-highest hover:bg-primary hover:text-on-primary text-on-surface text-[11px] font-medium transition-colors" data-path="deep-analysis" href="#">
+<span>Analyze</span>
+<span class="material-symbols-outlined text-[13px]">arrow_forward</span>
+</a>
+</td>
+</tr>
+<!-- Row 4: TSLA -->
+<tr class="hover:bg-surface-container-high/60 transition-colors">
+<td class="py-3.5 px-4">
+<div class="flex items-center gap-2.5">
+<div class="w-8 h-8 rounded-lg bg-surface-container-highest flex items-center justify-center font-bold text-xs text-tertiary">
+                  TSLA
+                </div>
+<div>
+<div class="font-bold text-on-surface leading-tight">Tesla, Inc.</div>
+<span class="text-[10px] text-on-surface-variant">Automotive &amp; Energy · $840B</span>
+</div>
+</div>
+</td>
+<td class="py-3.5 px-3 text-right">
+<div class="font-bold text-on-surface">$264.40</div>
+<span class="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold bg-tertiary-container text-on-tertiary">
+                +4.12%
+              </span>
+</td>
+<td class="py-3.5 px-3 text-right">
+<div class="text-on-surface">88.1M</div>
+<span class="text-tertiary text-[10px] font-semibold">2.45x RVol</span>
+</td>
+<td class="py-3.5 px-3 text-right">
+<div class="text-tertiary font-bold">+$512.8M</div>
+<span class="text-[10px] text-on-surface-variant">69% Institutional Buy</span>
+</td>
+<td class="py-3.5 px-3 text-center">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-primary text-on-primary">
+                92
+              </span>
+<div class="text-[9px] text-primary mt-0.5 uppercase tracking-tighter">Alpha Leader</div>
+</td>
+<td class="py-3.5 px-4">
+<span class="px-2 py-0.5 rounded text-[10px] font-medium bg-surface-container-highest text-on-surface">
+                Bull Flag Continuation
+              </span>
+<div class="text-[10px] text-on-surface-variant mt-0.5">High Gamma Expansion</div>
+</td>
+<td class="py-3.5 px-3">
+<div class="text-tertiary">RSI: 64.9</div>
+<span class="text-[10px] text-tertiary font-semibold">MACD Bull Cross</span>
+</td>
+<td class="py-3.5 px-3 text-right">
+<div class="text-tertiary font-medium">TP: $295.00</div>
+<div class="text-error text-[10px]">SL: $251.00</div>
+</td>
+<td class="py-3.5 px-3 text-center">
+<svg class="w-16 h-6 inline-block text-tertiary" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 64 24">
+<polyline points="2,22 14,18 28,19 42,9 62,5"></polyline>
+</svg>
+</td>
+<td class="py-3.5 px-4 text-center">
+<a class="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-surface-container-highest hover:bg-primary hover:text-on-primary text-on-surface text-[11px] font-medium transition-colors" data-path="deep-analysis" href="#">
+<span>Analyze</span>
+<span class="material-symbols-outlined text-[13px]">arrow_forward</span>
+</a>
+</td>
+</tr>
+<!-- Row 5: AVGO -->
+<tr class="hover:bg-surface-container-high/60 transition-colors">
+<td class="py-3.5 px-4">
+<div class="flex items-center gap-2.5">
+<div class="w-8 h-8 rounded-lg bg-surface-container-highest flex items-center justify-center font-bold text-xs text-on-surface">
+                  AVGO
+                </div>
+<div>
+<div class="font-bold text-on-surface leading-tight">Broadcom Inc.</div>
+<span class="text-[10px] text-on-surface-variant">Semiconductors · $815B</span>
+</div>
+</div>
+</td>
+<td class="py-3.5 px-3 text-right">
+<div class="font-bold text-on-surface">$178.60</div>
+<span class="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold bg-tertiary-container text-on-tertiary">
+                +2.15%
+              </span>
+</td>
+<td class="py-3.5 px-3 text-right">
+<div class="text-on-surface">19.2M</div>
+<span class="text-tertiary text-[10px] font-semibold">1.85x RVol</span>
+</td>
+<td class="py-3.5 px-3 text-right">
+<div class="text-tertiary font-bold">+$285.0M</div>
+<span class="text-[10px] text-on-surface-variant">62% Institutional Buy</span>
+</td>
+<td class="py-3.5 px-3 text-center">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-surface-container-highest text-on-surface">
+                87
+              </span>
+<div class="text-[9px] text-on-surface-variant mt-0.5 uppercase tracking-tighter">High Alpha</div>
+</td>
+<td class="py-3.5 px-4">
+<span class="px-2 py-0.5 rounded text-[10px] font-medium bg-surface-container-highest text-on-surface">
+                Cup &amp; Handle Break
+              </span>
+<div class="text-[10px] text-on-surface-variant mt-0.5">Resistance Flip Support</div>
+</td>
+<td class="py-3.5 px-3">
+<div class="text-tertiary">RSI: 61.2</div>
+<span class="text-[10px] text-on-surface-variant">MACD Trending Up</span>
+</td>
+<td class="py-3.5 px-3 text-right">
+<div class="text-tertiary font-medium">TP: $196.00</div>
+<div class="text-error text-[10px]">SL: $171.50</div>
+</td>
+<td class="py-3.5 px-3 text-center">
+<svg class="w-16 h-6 inline-block text-tertiary" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 64 24">
+<polyline points="2,16 16,14 30,12 46,9 62,6"></polyline>
+</svg>
+</td>
+<td class="py-3.5 px-4 text-center">
+<a class="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-surface-container-highest hover:bg-primary hover:text-on-primary text-on-surface text-[11px] font-medium transition-colors" data-path="deep-analysis" href="#">
+<span>Analyze</span>
+<span class="material-symbols-outlined text-[13px]">arrow_forward</span>
+</a>
+</td>
+</tr>
+<!-- Row 6: MSFT -->
+<tr class="hover:bg-surface-container-high/60 transition-colors">
+<td class="py-3.5 px-4">
+<div class="flex items-center gap-2.5">
+<div class="w-8 h-8 rounded-lg bg-surface-container-highest flex items-center justify-center font-bold text-xs text-on-surface">
+                  MSFT
+                </div>
+<div>
+<div class="font-bold text-on-surface leading-tight">Microsoft Corp.</div>
+<span class="text-[10px] text-on-surface-variant">Cloud &amp; Software · $3.18T</span>
+</div>
+</div>
+</td>
+<td class="py-3.5 px-3 text-right">
+<div class="font-bold text-on-surface">$428.00</div>
+<span class="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold bg-tertiary-container text-on-tertiary">
+                +1.40%
+              </span>
+</td>
+<td class="py-3.5 px-3 text-right">
+<div class="text-on-surface">22.6M</div>
+<span class="text-on-surface-variant text-[10px]">1.05x RVol</span>
+</td>
+<td class="py-3.5 px-3 text-right">
+<div class="text-tertiary font-bold">+$194.5M</div>
+<span class="text-[10px] text-on-surface-variant">58% Institutional Buy</span>
+</td>
+<td class="py-3.5 px-3 text-center">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-surface-container-highest text-on-surface">
+                85
+              </span>
+<div class="text-[9px] text-on-surface-variant mt-0.5 uppercase tracking-tighter">High Alpha</div>
+</td>
+<td class="py-3.5 px-4">
+<span class="px-2 py-0.5 rounded text-[10px] font-medium bg-surface-container-highest text-on-surface">
+                Range High Test
+              </span>
+<div class="text-[10px] text-on-surface-variant mt-0.5">Symmetric Consolidation</div>
+</td>
+<td class="py-3.5 px-3">
+<div class="text-on-surface">RSI: 57.8</div>
+<span class="text-[10px] text-on-surface-variant">MACD Neutral</span>
+</td>
+<td class="py-3.5 px-3 text-right">
+<div class="text-tertiary font-medium">TP: $450.00</div>
+<div class="text-error text-[10px]">SL: $418.50</div>
+</td>
+<td class="py-3.5 px-3 text-center">
+<svg class="w-16 h-6 inline-block text-tertiary" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 64 24">
+<polyline points="2,12 18,14 34,10 46,11 62,7"></polyline>
+</svg>
+</td>
+<td class="py-3.5 px-4 text-center">
+<a class="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-surface-container-highest hover:bg-primary hover:text-on-primary text-on-surface text-[11px] font-medium transition-colors" data-path="deep-analysis" href="#">
+<span>Analyze</span>
+<span class="material-symbols-outlined text-[13px]">arrow_forward</span>
+</a>
+</td>
+</tr>
+<!-- Row 7: LLY -->
+<tr class="hover:bg-surface-container-high/60 transition-colors">
+<td class="py-3.5 px-4">
+<div class="flex items-center gap-2.5">
+<div class="w-8 h-8 rounded-lg bg-surface-container-highest flex items-center justify-center font-bold text-xs text-error">
+                  LLY
+                </div>
+<div>
+<div class="font-bold text-on-surface leading-tight">Eli Lilly and Co.</div>
+<span class="text-[10px] text-on-surface-variant">Healthcare / Bio · $820B</span>
+</div>
+</div>
+</td>
+<td class="py-3.5 px-3 text-right">
+<div class="font-bold text-on-surface">$892.30</div>
+<span class="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold bg-error-container text-on-error-container">
+                -0.45%
+              </span>
+</td>
+<td class="py-3.5 px-3 text-right">
+<div class="text-on-surface">3.8M</div>
+<span class="text-on-surface-variant text-[10px]">0.92x RVol</span>
+</td>
+<td class="py-3.5 px-3 text-right">
+<div class="text-error font-bold">-$45.2M</div>
+<span class="text-[10px] text-on-surface-variant">54% Sell Prints</span>
+</td>
+<td class="py-3.5 px-3 text-center">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-surface-container-highest text-on-surface-variant">
+                74
+              </span>
+<div class="text-[9px] text-on-surface-variant mt-0.5 uppercase tracking-tighter">Neutral Pullback</div>
+</td>
+<td class="py-3.5 px-4">
+<span class="px-2 py-0.5 rounded text-[10px] font-medium bg-surface-container-highest text-on-surface-variant">
+                Mean Reversion 50-EMA
+              </span>
+<div class="text-[10px] text-on-surface-variant mt-0.5">Decelerating Outflow</div>
+</td>
+<td class="py-3.5 px-3">
+<div class="text-on-surface-variant">RSI: 48.9</div>
+<span class="text-[10px] text-error">MACD Bearish</span>
+</td>
+<td class="py-3.5 px-3 text-right">
+<div class="text-tertiary font-medium">TP: $940.00</div>
+<div class="text-error text-[10px]">SL: $870.00</div>
+</td>
+<td class="py-3.5 px-3 text-center">
+<svg class="w-16 h-6 inline-block text-error" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 64 24">
+<polyline points="2,6 18,9 32,8 48,14 62,18"></polyline>
+</svg>
+</td>
+<td class="py-3.5 px-4 text-center">
+<a class="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-surface-container-highest hover:bg-primary hover:text-on-primary text-on-surface text-[11px] font-medium transition-colors" data-path="deep-analysis" href="#">
+<span>Analyze</span>
+<span class="material-symbols-outlined text-[13px]">arrow_forward</span>
+</a>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Table Pagination & Terminal Status Bar -->
+<div class="p-3 bg-surface-container-high flex flex-col sm:flex-row items-center justify-between gap-3 text-xs font-mono text-on-surface-variant">
+<div class="flex items-center gap-2">
+<span>Showing 1-7 of 24 qualified momentum stocks</span>
+<span class="text-secondary">•</span>
+<span>Order Book Depth: Level 2 ITCH Enabled</span>
+</div>
+<div class="flex items-center gap-1.5">
+<button class="px-2.5 py-1 rounded bg-surface-container text-on-surface-variant hover:text-on-surface transition-colors">Prev</button>
+<button class="px-2.5 py-1 rounded bg-primary text-on-primary font-bold">1</button>
+<button class="px-2.5 py-1 rounded bg-surface-container text-on-surface-variant hover:text-on-surface transition-colors">2</button>
+<button class="px-2.5 py-1 rounded bg-surface-container text-on-surface-variant hover:text-on-surface transition-colors">3</button>
+<button class="px-2.5 py-1 rounded bg-surface-container text-on-surface-variant hover:text-on-surface transition-colors">Next</button>
+</div>
+</div>
+</div>
+</div>
+<script>
+  // Micro-interaction: Active tab sync & table hover feedback
+  document.addEventListener("DOMContentLoaded", () => {
+    const activeNav = document.querySelector('nav a[data-path="stocks"]');
+    if (activeNav) {
+      activeNav.classList.add("bg-surface-container-high", "text-primary", "font-semibold", "border-b-2", "border-primary");
+    }
+  });
+</script></div></main><footer class="w-full bg-surface-container-lowest border-t border-outline-variant/60 mt-auto"><div class="max-w-[1720px] mx-auto px-6 xl:px-10 py-8"><div class="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8"><div class="space-y-3"><div class="flex items-center gap-2"><span class="text-sm font-headline font-bold tracking-tight text-on-surface uppercase">ATRED Quantitative Terminal</span><span class="px-1.5 py-0.5 text-[9px] font-mono rounded bg-primary-container text-on-primary-container font-medium">PRO</span></div><p class="text-xs text-on-surface-variant leading-relaxed">Ultra low-latency institutional market micro-structure scanner and stochastic algorithmic modeling engine.</p></div><div><div class="text-xs font-mono font-semibold uppercase tracking-wider text-on-surface mb-3">Engine &amp; Runtimes</div><div class="space-y-1.5 text-xs font-mono text-on-surface-variant"><div class="flex items-center justify-between"><span>Kernel Status:</span><span class="text-tertiary">ONLINE (C++20 / Cython)</span></div><div class="flex items-center justify-between"><span>Model Stack:</span><span class="text-on-surface">NumPy / SciPy / PyTorch</span></div><div class="flex items-center justify-between"><span>Order Routing:</span><span class="text-on-surface">FIX 4.4 / OUCH Direct</span></div></div></div><div><div class="text-xs font-mono font-semibold uppercase tracking-wider text-on-surface mb-3">Telemetry &amp; Feeds</div><div class="space-y-1.5 text-xs font-mono text-on-surface-variant"><div class="flex items-center justify-between"><span>Ingress Latency:</span><span class="text-tertiary">4.2ms (Equinix NY4)</span></div><div class="flex items-center justify-between"><span>Active WebSockets:</span><span class="text-on-surface">18 Feeds Connected</span></div><div class="flex items-center justify-between"><span>Tick Buffer:</span><span class="text-on-surface">2.4M msgs/sec</span></div></div></div><div><div class="text-xs font-mono font-semibold uppercase tracking-wider text-on-surface mb-3">Regulatory &amp; Compliance</div><p class="text-[11px] text-on-surface-variant leading-normal">Hypothetical or simulated quantitative analytics are subject to inherent market risk. ATRED does not execute custodial brokerage.</p></div></div><div class="pt-6 border-t border-outline-variant/40 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-mono text-secondary"><div class="flex items-center gap-4"><span>© 2025 ATRED Quantitative Labs Inc. All rights reserved.</span><span>SEC / FINRA Algorithmic Disclosure Form BD-8</span></div><div class="flex items-center gap-6"><a class="hover:text-on-surface transition-colors" href="#">API Spec</a><a class="hover:text-on-surface transition-colors" href="#">Risk Framework</a><a class="hover:text-on-surface transition-colors" href="#">Status Page</a></div></div></div></footer></body></html>

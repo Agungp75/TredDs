@@ -1,0 +1,889 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><title>ATRED Quantitative Trading Analysis</title><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}@keyframes marquee{0%{transform:translateX(0%);}100%{transform:translateX(-50%);}}.animate-marquee{display:flex;width:max-content;animation:marquee 32s linear infinite;}.animate-marquee:hover{animation-play-state:paused;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={"darkMode":"class","theme":{"extend":{"colors":{"on-surface-variant":"#a1a1aa","secondary-fixed-dim":"#71717a","secondary":"#71717a","surface-bright":"#18181b","on-primary-fixed-variant":"#5b21b6","outline":"#52525b","surface-dim":"#0c0c0f","on-tertiary":"#001a12","on-secondary-fixed":"#18181b","on-error":"#1a0000","surface-container-lowest":"#09090b","on-tertiary-fixed-variant":"#047857","tertiary-fixed":"#bbf7d0","surface-container-high":"#18181b","inverse-on-surface":"#09090b","primary-container":"#7c3aed","surface":"#0c0c0f","tertiary-fixed-dim":"#6ee7b7","surface-variant":"#18181b","primary-fixed-dim":"#c4b5fd","surface-container-low":"#0f0f12","tertiary":"#34d399","error-container":"#3b1111","on-primary-container":"#ede9fe","secondary-container":"#27272a","primary":"#a78bfa","on-primary":"#0a0012","inverse-primary":"#5b21b6","secondary-fixed":"#a1a1aa","on-tertiary-container":"#bbf7d0","error":"#ef4444","surface-container":"#121215","on-background":"#fafafa","on-secondary":"#09090b","on-tertiary-fixed":"#003318","tertiary-container":"#065f46","surface-container-highest":"#1e1e22","background":"#09090b","on-secondary-fixed-variant":"#3f3f46","on-secondary-container":"#a1a1aa","surface-tint":"#a78bfa","inverse-surface":"#fafafa","outline-variant":"#27272a","on-surface":"#fafafa","primary-fixed":"#ede9fe","on-error-container":"#fca5a5","on-primary-fixed":"#2e1065"},"borderRadius":{"DEFAULT":"0.25rem","lg":"0.5rem","xl":"0.75rem","full":"9999px"},"spacing":{},"fontFamily":{"headline":["Geist"],"display":["Geist"],"body":["Geist"],"label":["Geist"],"mono":["JetBrains Mono","monospace"]},"fontSize":{}}}}</script></head><body class="bg-background font-body text-on-surface antialiased selection:bg-primary-container selection:text-on-primary-container min-h-screen flex flex-col"><header class="fixed top-0 w-full z-50 bg-surface/90 backdrop-blur-xl border-b border-outline-variant/60"><div class="w-full h-8 bg-surface-container-lowest border-b border-outline-variant/40 overflow-hidden flex items-center select-none"><div class="animate-marquee flex items-center gap-8 text-[11px] font-mono tracking-tight text-on-surface-variant"><div class="flex items-center gap-8"><span class="flex items-center gap-1.5"><span class="text-on-surface font-semibold">BTC/USD</span><span>$76,927.40</span><span class="text-tertiary font-medium">+4.2%</span></span><span class="text-outline">|</span><span class="flex items-center gap-1.5"><span class="text-on-surface font-semibold">ETH/USD</span><span>$3,420.15</span><span class="text-tertiary font-medium">+2.8%</span></span><span class="text-outline">|</span><span class="flex items-center gap-1.5"><span class="text-on-surface font-semibold">SOL/USD</span><span>$182.40</span><span class="text-tertiary font-medium">+6.1%</span></span><span class="text-outline">|</span><span class="flex items-center gap-1.5"><span class="text-on-surface font-semibold">AAPL</span><span>$234.10</span><span class="text-tertiary font-medium">+0.9%</span></span><span class="text-outline">|</span><span class="flex items-center gap-1.5"><span class="text-on-surface font-semibold">NVDA</span><span>$128.50</span><span class="text-tertiary font-medium">+3.4%</span></span><span class="text-outline">|</span><span class="flex items-center gap-1.5"><span class="text-on-surface font-semibold">EUR/USD</span><span>1.0842</span><span class="text-error font-medium">-0.15%</span></span><span class="text-outline">|</span><span class="flex items-center gap-1.5"><span class="text-on-surface font-semibold">XAU/USD</span><span>$2,684.20</span><span class="text-tertiary font-medium">+0.8%</span></span><span class="text-outline">|</span></div><div class="flex items-center gap-8"><span class="flex items-center gap-1.5"><span class="text-on-surface font-semibold">BTC/USD</span><span>$76,927.40</span><span class="text-tertiary font-medium">+4.2%</span></span><span class="text-outline">|</span><span class="flex items-center gap-1.5"><span class="text-on-surface font-semibold">ETH/USD</span><span>$3,420.15</span><span class="text-tertiary font-medium">+2.8%</span></span><span class="text-outline">|</span><span class="flex items-center gap-1.5"><span class="text-on-surface font-semibold">SOL/USD</span><span>$182.40</span><span class="text-tertiary font-medium">+6.1%</span></span><span class="text-outline">|</span><span class="flex items-center gap-1.5"><span class="text-on-surface font-semibold">AAPL</span><span>$234.10</span><span class="text-tertiary font-medium">+0.9%</span></span><span class="text-outline">|</span><span class="flex items-center gap-1.5"><span class="text-on-surface font-semibold">NVDA</span><span>$128.50</span><span class="text-tertiary font-medium">+3.4%</span></span><span class="text-outline">|</span><span class="flex items-center gap-1.5"><span class="text-on-surface font-semibold">EUR/USD</span><span>1.0842</span><span class="text-error font-medium">-0.15%</span></span><span class="text-outline">|</span><span class="flex items-center gap-1.5"><span class="text-on-surface font-semibold">XAU/USD</span><span>$2,684.20</span><span class="text-tertiary font-medium">+0.8%</span></span><span class="text-outline">|</span></div></div></div><div class="h-16 max-w-[1720px] mx-auto px-6 xl:px-10 flex items-center justify-between gap-6"><div class="flex items-center gap-8"><div class="flex items-center gap-3"><img alt="ATRED Logo" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1WndG8kXu2-5XvjeByi-m6IdHU88qNT39owo8AgJaL2WpiZmt9Di7IijTpo7uX-Mjxq60g6pbCScREGoAYiK1WDhOhp64UNGtl0bKBgi8HdVcVtuqKL4ZBjdu8xOpjIiiYRxvDyZU0ZVFhTEVa8N00wmV7N1GIvOB6E7T-gGtWA_1R1N0-iMjLctccTiYWx1Knu6EOlA5ZRjp5Zntv9xE6HdLoFAf5mtu170BqlrTYj-pKqMXBuh9ZyYbOY"/><div class="flex items-center gap-2"><span class="text-lg font-headline font-bold tracking-tight text-on-surface">ATRED</span><span class="px-2 py-0.5 text-[10px] font-mono font-semibold tracking-wider uppercase rounded bg-surface-container-highest text-primary border border-outline-variant">QUANT v2.4</span></div></div><nav class="hidden xl:flex items-center gap-1 h-16" data-active-classes="bg-surface-container-high text-primary font-semibold border-b-2 border-primary"><a class="px-3.5 py-2 rounded text-sm font-medium text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-all flex items-center" data-path="opportunity-screener" href="#">Opportunity Screener</a><a class="px-3.5 py-2 rounded text-sm font-medium text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-all flex items-center" data-path="stocks" href="#">Stocks</a><a aria-current="page" class="px-3.5 py-2 rounded transition-all flex items-center bg-surface-container-high text-primary font-semibold border-b-2 border-primary" data-path="crypto" href="#">Crypto</a><a class="px-3.5 py-2 rounded text-sm font-medium text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-all flex items-center" data-path="forex" href="#">Forex</a><a class="px-3.5 py-2 rounded text-sm font-medium text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-all flex items-center" data-path="deep-analysis" href="#">Deep Analysis</a></nav></div><div class="flex items-center gap-3.5"><div class="hidden md:flex items-center gap-2 px-2.5 py-1 rounded bg-surface-container border border-outline-variant/60 text-[11px] font-mono"><span class="h-2 w-2 rounded-full bg-tertiary animate-pulse"></span><span class="text-tertiary font-semibold uppercase tracking-wider">MARKET LIVE</span></div><div class="hidden lg:flex items-center gap-1 px-2.5 py-1 rounded bg-surface-container border border-outline-variant/60 text-[11px] font-mono text-on-surface-variant"><span class="text-primary">⚡</span><span class="text-on-surface">142</span><span>ops/sec</span></div><div class="relative hidden sm:flex items-center"><span class="material-symbols-outlined absolute left-2.5 text-[18px] text-on-surface-variant pointer-events-none">search</span><input class="w-56 lg:w-64 pl-8 pr-3 py-1.5 text-xs font-mono rounded-lg bg-surface-container text-on-surface border border-outline-variant focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary placeholder:text-secondary transition-all" placeholder="⌘K Search symbol..." readonly="" type="text"/></div><button aria-label="Notifications" class="relative p-2 rounded-lg bg-surface-container border border-outline-variant/60 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors"><span class="material-symbols-outlined text-[20px]">notifications</span><span class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-primary"></span></button><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div></header><main class="w-full pt-24 bg-background flex-1"><div class="max-w-[1720px] mx-auto px-6 xl:px-10 py-6"><div class="flex flex-col w-full space-y-10">
+<!-- TOP SECTION: HEADER & QUICK METRICS -->
+<section class="flex flex-col gap-6">
+<div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+<div class="space-y-1">
+<div class="flex items-center gap-3">
+<span class="text-xs font-mono font-semibold uppercase tracking-widest text-primary">Live Microstructure</span>
+<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-mono font-semibold bg-tertiary-container text-tertiary-fixed">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary animate-ping"></span>
+            Live Market 24H
+          </span>
+</div>
+<h1 class="text-2xl lg:text-3xl font-headline font-bold tracking-tight text-on-surface">
+          Crypto Quantitative Engine
+        </h1>
+<p class="text-xs lg:text-sm text-on-surface-variant font-normal">
+          Pemindaian komprehensif metrik on-chain, pergerakan bandar (<span class="text-on-surface">Whale Inflows</span>), dan topologi fraktal harga real-time.
+        </p>
+</div>
+<!-- Quick Metrics Ribbon -->
+<div class="flex flex-wrap items-center gap-2 sm:gap-3">
+<div class="px-3.5 py-2 rounded-lg bg-surface-container shadow-sm flex flex-col">
+<span class="text-[10px] font-mono text-on-surface-variant uppercase tracking-wider">24h Vol Agregat</span>
+<span class="text-sm font-mono font-bold text-on-surface">$84.2B <span class="text-tertiary text-xs font-normal">+11.4%</span></span>
+</div>
+<div class="px-3.5 py-2 rounded-lg bg-surface-container shadow-sm flex flex-col">
+<span class="text-[10px] font-mono text-on-surface-variant uppercase tracking-wider">Dominasi BTC</span>
+<span class="text-sm font-mono font-bold text-on-surface">58.4% <span class="text-primary text-xs font-normal">Rank 1</span></span>
+</div>
+<div class="px-3.5 py-2 rounded-lg bg-surface-container shadow-sm flex flex-col">
+<span class="text-[10px] font-mono text-on-surface-variant uppercase tracking-wider">Rata-rata ATR 24h</span>
+<span class="text-sm font-mono font-bold text-tertiary">4.2% <span class="text-on-surface-variant text-xs font-normal">Tinggi</span></span>
+</div>
+</div>
+</div>
+<!-- Filter Pills / Categories -->
+<div class="flex items-center justify-between gap-4 overflow-x-auto pb-1 select-none">
+<div class="flex items-center gap-2">
+<button class="px-3.5 py-1.5 rounded-lg text-xs font-medium bg-primary text-on-primary shadow-sm transition-all">
+          Semua Koin
+        </button>
+<button class="px-3.5 py-1.5 rounded-lg text-xs font-medium bg-surface-container text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-all">
+          Layer 1 / L2
+        </button>
+<button class="px-3.5 py-1.5 rounded-lg text-xs font-medium bg-surface-container text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-all">
+          DeFi
+        </button>
+<button class="px-3.5 py-1.5 rounded-lg text-xs font-medium bg-surface-container text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-all">
+          AI &amp; DePIN
+        </button>
+<button class="px-3.5 py-1.5 rounded-lg text-xs font-medium bg-surface-container text-tertiary hover:bg-surface-container-high flex items-center gap-1.5 transition-all">
+<span class="material-symbols-outlined text-sm">water_drop</span>
+          Whale Inflow &gt; $10M
+        </button>
+</div>
+<div class="hidden sm:flex items-center gap-2 text-xs font-mono text-on-surface-variant">
+<span>Auto-sync:</span>
+<span class="text-tertiary font-medium">1000ms</span>
+</div>
+</div>
+<!-- Top 5 Whale & On-Chain Token Cards -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
+<!-- Card 1: BTC -->
+<div class="p-4 rounded-xl bg-surface-container shadow-md flex flex-col justify-between hover:bg-surface-container-high transition-all group">
+<div class="flex items-start justify-between">
+<div>
+<div class="flex items-center gap-1.5">
+<span class="text-sm font-headline font-bold text-on-surface">BTC</span>
+<span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-surface-container-highest text-on-surface-variant">#1</span>
+</div>
+<span class="text-xs text-on-surface-variant">Bitcoin</span>
+</div>
+<span class="text-xs font-mono font-semibold text-tertiary bg-tertiary-container/30 px-2 py-0.5 rounded">+4.25%</span>
+</div>
+<div class="my-3">
+<div class="text-lg font-mono font-bold text-on-surface tracking-tight">$76,927.40</div>
+<div class="text-[11px] font-mono text-tertiary flex items-center gap-1 mt-0.5">
+<span class="material-symbols-outlined text-[13px]">trending_up</span>
+            +$142.8M Whale Inflow
+          </div>
+</div>
+<div class="flex items-center justify-between text-[11px] font-mono text-on-surface-variant pt-2">
+<span>Dev Commits:</span>
+<span class="text-on-surface font-medium">98.4 / 100</span>
+</div>
+<!-- Sparkline -->
+<div class="h-6 w-full mt-2">
+<svg class="w-full h-full text-tertiary overflow-visible" preserveaspectratio="none" viewbox="0 0 100 24">
+<path d="M0,20 Q15,22 30,14 T60,10 T80,12 T100,2" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="2"></path>
+</svg>
+</div>
+</div>
+<!-- Card 2: ETH -->
+<div class="p-4 rounded-xl bg-surface-container shadow-md flex flex-col justify-between hover:bg-surface-container-high transition-all group">
+<div class="flex items-start justify-between">
+<div>
+<div class="flex items-center gap-1.5">
+<span class="text-sm font-headline font-bold text-on-surface">ETH</span>
+<span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-surface-container-highest text-on-surface-variant">#2</span>
+</div>
+<span class="text-xs text-on-surface-variant">Ethereum</span>
+</div>
+<span class="text-xs font-mono font-semibold text-tertiary bg-tertiary-container/30 px-2 py-0.5 rounded">+2.80%</span>
+</div>
+<div class="my-3">
+<div class="text-lg font-mono font-bold text-on-surface tracking-tight">$3,420.15</div>
+<div class="text-[11px] font-mono text-tertiary flex items-center gap-1 mt-0.5">
+<span class="material-symbols-outlined text-[13px]">trending_up</span>
+            +$64.1M Whale Inflow
+          </div>
+</div>
+<div class="flex items-center justify-between text-[11px] font-mono text-on-surface-variant pt-2">
+<span>Dev Commits:</span>
+<span class="text-on-surface font-medium">94.1 / 100</span>
+</div>
+<div class="h-6 w-full mt-2">
+<svg class="w-full h-full text-tertiary overflow-visible" preserveaspectratio="none" viewbox="0 0 100 24">
+<path d="M0,18 Q20,16 40,19 T70,9 T85,11 T100,4" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="2"></path>
+</svg>
+</div>
+</div>
+<!-- Card 3: SOL -->
+<div class="p-4 rounded-xl bg-surface-container shadow-md flex flex-col justify-between hover:bg-surface-container-high transition-all group">
+<div class="flex items-start justify-between">
+<div>
+<div class="flex items-center gap-1.5">
+<span class="text-sm font-headline font-bold text-on-surface">SOL</span>
+<span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-surface-container-highest text-on-surface-variant">#3</span>
+</div>
+<span class="text-xs text-on-surface-variant">Solana</span>
+</div>
+<span class="text-xs font-mono font-semibold text-tertiary bg-tertiary-container/30 px-2 py-0.5 rounded">+6.12%</span>
+</div>
+<div class="my-3">
+<div class="text-lg font-mono font-bold text-on-surface tracking-tight">$182.40</div>
+<div class="text-[11px] font-mono text-tertiary flex items-center gap-1 mt-0.5">
+<span class="material-symbols-outlined text-[13px]">trending_up</span>
+            +$88.9M Whale Inflow
+          </div>
+</div>
+<div class="flex items-center justify-between text-[11px] font-mono text-on-surface-variant pt-2">
+<span>Dev Commits:</span>
+<span class="text-on-surface font-medium">89.7 / 100</span>
+</div>
+<div class="h-6 w-full mt-2">
+<svg class="w-full h-full text-tertiary overflow-visible" preserveaspectratio="none" viewbox="0 0 100 24">
+<path d="M0,22 Q25,20 45,12 T75,8 T90,5 T100,1" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="2"></path>
+</svg>
+</div>
+</div>
+<!-- Card 4: NEAR -->
+<div class="p-4 rounded-xl bg-surface-container shadow-md flex flex-col justify-between hover:bg-surface-container-high transition-all group">
+<div class="flex items-start justify-between">
+<div>
+<div class="flex items-center gap-1.5">
+<span class="text-sm font-headline font-bold text-on-surface">NEAR</span>
+<span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-surface-container-highest text-on-surface-variant">#4</span>
+</div>
+<span class="text-xs text-on-surface-variant">NEAR Protocol</span>
+</div>
+<span class="text-xs font-mono font-semibold text-tertiary bg-tertiary-container/30 px-2 py-0.5 rounded">+3.45%</span>
+</div>
+<div class="my-3">
+<div class="text-lg font-mono font-bold text-on-surface tracking-tight">$5.84</div>
+<div class="text-[11px] font-mono text-tertiary flex items-center gap-1 mt-0.5">
+<span class="material-symbols-outlined text-[13px]">trending_up</span>
+            +$18.3M Whale Inflow
+          </div>
+</div>
+<div class="flex items-center justify-between text-[11px] font-mono text-on-surface-variant pt-2">
+<span>Dev Commits:</span>
+<span class="text-on-surface font-medium">86.2 / 100</span>
+</div>
+<div class="h-6 w-full mt-2">
+<svg class="w-full h-full text-tertiary overflow-visible" preserveaspectratio="none" viewbox="0 0 100 24">
+<path d="M0,19 Q30,17 50,15 T75,11 T90,7 T100,3" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="2"></path>
+</svg>
+</div>
+</div>
+<!-- Card 5: SUI -->
+<div class="p-4 rounded-xl bg-surface-container shadow-md flex flex-col justify-between hover:bg-surface-container-high transition-all group">
+<div class="flex items-start justify-between">
+<div>
+<div class="flex items-center gap-1.5">
+<span class="text-sm font-headline font-bold text-on-surface">SUI</span>
+<span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-surface-container-highest text-on-surface-variant">#5</span>
+</div>
+<span class="text-xs text-on-surface-variant">Sui Network</span>
+</div>
+<span class="text-xs font-mono font-semibold text-tertiary bg-tertiary-container/30 px-2 py-0.5 rounded">+8.92%</span>
+</div>
+<div class="my-3">
+<div class="text-lg font-mono font-bold text-on-surface tracking-tight">$2.18</div>
+<div class="text-[11px] font-mono text-tertiary flex items-center gap-1 mt-0.5">
+<span class="material-symbols-outlined text-[13px]">trending_up</span>
+            +$27.4M Whale Inflow
+          </div>
+</div>
+<div class="flex items-center justify-between text-[11px] font-mono text-on-surface-variant pt-2">
+<span>Dev Commits:</span>
+<span class="text-on-surface font-medium">91.0 / 100</span>
+</div>
+<div class="h-6 w-full mt-2">
+<svg class="w-full h-full text-tertiary overflow-visible" preserveaspectratio="none" viewbox="0 0 100 24">
+<path d="M0,23 Q20,18 40,16 T65,8 T85,4 T100,0" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="2"></path>
+</svg>
+</div>
+</div>
+</div>
+</section>
+<!-- CORE FEATURE SECTION: DRAW PATTERN SEARCH -->
+<section class="flex flex-col gap-6 pt-2">
+<!-- Feature Header Banner -->
+<div class="p-6 lg:p-8 rounded-2xl bg-surface-container relative overflow-hidden shadow-xl">
+<!-- Decorative radial accent background -->
+<div class="absolute -right-20 -top-20 w-96 h-96 bg-primary-container/10 rounded-full blur-3xl pointer-events-none"></div>
+<div class="absolute -left-20 -bottom-20 w-80 h-80 bg-tertiary-container/10 rounded-full blur-3xl pointer-events-none"></div>
+<div class="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+<div class="space-y-3 max-w-3xl">
+<div class="flex flex-wrap items-center gap-2.5">
+<span class="px-3 py-1 rounded-full text-xs font-mono font-semibold bg-primary-container text-on-primary-container inline-flex items-center gap-1.5 shadow-sm">
+<span class="material-symbols-outlined text-xs">draw</span>
+              Fitur Eksklusif Halaman Kripto
+            </span>
+<span class="px-3 py-1 rounded-full text-xs font-mono font-medium bg-surface-container-highest text-tertiary inline-flex items-center gap-1.5">
+<span class="w-2 h-2 rounded-full bg-tertiary animate-pulse"></span>
+              Auto Timeframe (15m / 1h / 4h dalam 24 Jam Aktif)
+            </span>
+</div>
+<h2 class="text-xl sm:text-2xl lg:text-3xl font-headline font-bold text-on-surface tracking-tight">
+            Draw Pattern Search ⚡ Masa Sekarang (Live 24 Jam)
+          </h2>
+<p class="text-xs sm:text-sm text-on-surface-variant leading-relaxed">
+            Gambar bentuk atau pola pergerakan harga apa saja di kanvas di bawah. Algoritma kuantitatif ATRED akan memindai seluruh koin kripto di masa sekarang yang sedang membentuk formasi serupa dalam rentang 15m, 1h, dan 4h.
+          </p>
+</div>
+<div class="flex flex-col sm:flex-row lg:flex-col items-start lg:items-end gap-3 self-start lg:self-center">
+<div class="px-4 py-2.5 rounded-xl bg-surface-container-high shadow-sm flex items-center gap-2">
+<span class="text-primary text-base">✨</span>
+<div class="flex flex-col">
+<span class="text-[10px] font-mono text-on-surface-variant uppercase">Pola Terdeteksi Saat Ini</span>
+<span class="text-xs font-mono font-bold text-on-surface">Segitiga Simetris (Symmetrical Triangle)</span>
+</div>
+</div>
+<span class="text-[11px] font-mono text-secondary">Akurasi korelasi vektor: <strong class="text-tertiary">91.8% Pearson</strong></span>
+</div>
+</div>
+</div>
+<!-- Interactive Canvas & Quant Parameters (2 Columns) -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+<!-- Left: Interactive Canvas Component (DrawPatternCanvas.jsx) -->
+<div class="lg:col-span-8 flex flex-col p-6 rounded-2xl bg-surface-container shadow-xl">
+<div class="flex items-center justify-between mb-4">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-lg">gesture</span>
+<span class="text-sm font-headline font-bold text-on-surface">Kanvas Gambar Pola Fraktal</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="text-xs font-mono text-on-surface-variant">Tarik kursor / touch untuk menggambar</span>
+</div>
+</div>
+<!-- Canvas Container -->
+<div class="relative w-full h-72 sm:h-80 rounded-xl bg-surface-container-lowest overflow-hidden shadow-inner cursor-crosshair group select-none" id="draw-canvas-container">
+<!-- Crosshair Grid Lines (SVG) -->
+<svg class="absolute inset-0 w-full h-full opacity-20 pointer-events-none" xmlns="http://www.w3.org/2000/svg">
+<defs>
+<pattern height="32" id="grid-canvas" patternunits="userSpaceOnUse" width="32">
+<path d="M 32 0 L 0 0 0 32" fill="none" stroke="#71717a" stroke-width="0.5"></path>
+<circle cx="0" cy="0" fill="#a78bfa" r="1"></circle>
+</pattern>
+</defs>
+<rect fill="url(#grid-canvas)" height="100%" width="100%"></rect>
+</svg>
+<!-- Dynamic User Stroke Simulation (Interactive SVG Path) -->
+<svg class="absolute inset-0 w-full h-full pointer-events-none" id="pattern-svg" preserveaspectratio="none" viewbox="0 0 800 320">
+<!-- Reference trend guidelines -->
+<line opacity="0.6" stroke="#52525b" stroke-dasharray="4,4" stroke-width="1.5" x1="80" x2="680" y1="50" y2="160"></line>
+<line opacity="0.6" stroke="#52525b" stroke-dasharray="4,4" stroke-width="1.5" x1="80" x2="680" y1="270" y2="160"></line>
+<!-- Glow Filter -->
+<defs>
+<filter height="140%" id="neon-glow" width="140%" x="-20%" y="-20%">
+<fegaussianblur result="blur" stddeviation="5"></fegaussianblur>
+<femerge>
+<femergenode in="blur"></femergenode>
+<femergenode in="SourceGraphic"></femergenode>
+</femerge>
+</filter>
+</defs>
+<!-- Bright Indigo Symmetrical Triangle Convergence Wave -->
+<path d="M 80,70 Q 150,260 220,90 T 360,230 T 480,110 T 580,190 T 660,150 L 720,135" fill="none" filter="url(#neon-glow)" id="stroke-path" stroke="#a78bfa" stroke-linecap="round" stroke-linejoin="round" stroke-width="3.5"></path>
+<!-- Pulsing Endpoint Probe -->
+<circle cx="720" cy="135" fill="#ede9fe" r="5"></circle>
+<circle class="animate-ping" cx="720" cy="135" fill="#a78bfa" opacity="0.4" r="9"></circle>
+</svg>
+<!-- Canvas Floating Indicators -->
+<div class="absolute top-3 left-3 px-2.5 py-1 rounded bg-surface-container-highest/80 backdrop-blur-md text-[10px] font-mono text-on-surface flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
+            Mode: Vector Capture Aktif (48 Titik Sampling)
+          </div>
+<div class="absolute bottom-3 left-3 text-[10px] font-mono text-secondary-fixed-dim">
+            Axis: Normalized Return vs Micro-Time (T-24H to Now)
+          </div>
+</div>
+<!-- Canvas Controls Toolbar -->
+<div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 mt-5">
+<!-- Drawing Preset Pills -->
+<div class="flex items-center flex-wrap gap-1.5">
+<span class="text-xs font-mono text-on-surface-variant mr-1">Preset:</span>
+<button class="px-2.5 py-1 rounded text-xs font-mono bg-surface-container-high text-primary hover:bg-primary-container hover:text-on-primary-container transition-colors" onclick="setPreset('triangle')">
+              Segitiga Simetris
+            </button>
+<button class="px-2.5 py-1 rounded text-xs font-mono bg-surface-container-high text-on-surface-variant hover:text-on-surface hover:bg-surface-container-highest transition-colors" onclick="setPreset('w')">
+              Double Bottom (W)
+            </button>
+<button class="px-2.5 py-1 rounded text-xs font-mono bg-surface-container-high text-on-surface-variant hover:text-on-surface hover:bg-surface-container-highest transition-colors" onclick="setPreset('ascending')">
+              Ascending Triangle
+            </button>
+<button class="px-2.5 py-1 rounded text-xs font-mono bg-surface-container-high text-on-surface-variant hover:text-on-surface hover:bg-surface-container-highest transition-colors" onclick="setPreset('breakout')">
+              Bullish Breakout
+            </button>
+</div>
+<!-- Actions -->
+<div class="flex items-center gap-2.5 self-end sm:self-auto">
+<button class="px-3.5 py-2 rounded-xl bg-surface-container-high text-on-surface-variant hover:text-error hover:bg-error-container/30 text-xs font-mono transition-colors flex items-center gap-1.5" id="clear-btn">
+<span class="material-symbols-outlined text-sm">refresh</span>
+              Clear Kanvas
+            </button>
+<button class="px-5 py-2.5 rounded-xl bg-primary text-on-primary font-headline font-semibold text-xs tracking-tight shadow-md hover:bg-primary-fixed-dim transition-all flex items-center gap-2" id="scan-btn">
+<span class="material-symbols-outlined text-base">saved_search</span>
+              Cari Pola Serupa (10 Koin Cocok) ⚡
+            </button>
+</div>
+</div>
+</div>
+<!-- Right: Live Detection Summary & Filter Parameters -->
+<div class="lg:col-span-4 flex flex-col justify-between p-6 rounded-2xl bg-surface-container shadow-xl space-y-6">
+<div class="space-y-4">
+<div class="flex items-center justify-between pb-3">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-tertiary text-lg">tune</span>
+<h3 class="text-sm font-headline font-bold text-on-surface">Parameter Kuantitatif Scan</h3>
+</div>
+<span class="text-[10px] font-mono text-tertiary bg-tertiary-container/30 px-2 py-0.5 rounded font-semibold">Aktif</span>
+</div>
+<div class="space-y-3 font-mono text-xs">
+<div class="p-3 rounded-lg bg-surface-container-low flex flex-col gap-1">
+<span class="text-[10px] text-on-surface-variant uppercase">Timeframe Scan Multi-Resolusi</span>
+<span class="text-on-surface font-semibold flex items-center justify-between">
+<span>Auto-Optimized (15m, 1h, 4h)</span>
+<span class="text-primary text-[10px]">Tereduksi Dinamis</span>
+</span>
+</div>
+<div class="p-3 rounded-lg bg-surface-container-low flex flex-col gap-1">
+<span class="text-[10px] text-on-surface-variant uppercase">Threshold Kemiripan Minimal</span>
+<span class="text-on-surface font-semibold flex items-center justify-between">
+<span>Kemiripan Korelasi &gt;= 50%</span>
+<span class="text-tertiary">Cos Sim: 0.50</span>
+</span>
+</div>
+<div class="p-3 rounded-lg bg-surface-container-low flex flex-col gap-1">
+<span class="text-[10px] text-on-surface-variant uppercase">Resolusi Sampel Lilin</span>
+<span class="text-on-surface font-semibold flex items-center justify-between">
+<span>24 - 48 Bar (24 Jam Terakhir)</span>
+<span class="text-on-surface-variant">Live Ingress</span>
+</span>
+</div>
+<div class="p-3 rounded-lg bg-surface-container-low flex flex-col gap-1">
+<span class="text-[10px] text-on-surface-variant uppercase">Status Pemindaian Fraktal</span>
+<span class="text-on-surface font-semibold flex items-center justify-between">
+<span class="text-tertiary">10 Pasangan Aset Ditemukan</span>
+<span class="text-[10px] text-on-surface-variant">100% Real-Time</span>
+</span>
+<span class="text-[10px] text-secondary-fixed-dim mt-0.5">Murni data masa sekarang tanpa interpolasi lampau.</span>
+</div>
+</div>
+</div>
+<div class="p-4 rounded-xl bg-primary-container/20 text-xs flex flex-col gap-2">
+<div class="flex items-center gap-1.5 text-primary font-headline font-semibold">
+<span class="material-symbols-outlined text-sm">psychology</span>
+            Proyeksi Kuantitatif Monte Carlo
+          </div>
+<p class="text-[11px] text-on-surface-variant leading-relaxed">
+            Algoritma mensimulasikan <span class="text-on-surface font-mono font-medium">12 bar ke depan</span> menggunakan estimasi drift volatilitas GARCH(1,1) &amp; Fractal Dimension Index untuk setiap koin yang cocok.
+          </p>
+</div>
+</div>
+</div>
+</section>
+<!-- PATTERN SEARCH RESULTS GRID (PatternSearchResults.jsx) -->
+<section class="flex flex-col gap-6 pt-2">
+<!-- Section Header with Meta -->
+<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+<div class="space-y-1">
+<div class="flex items-center gap-2">
+<h3 class="text-lg lg:text-xl font-headline font-bold text-on-surface">
+            Hasil Pemindaian Real-Time Masa Sekarang
+          </h3>
+<span class="px-2 py-0.5 rounded text-[11px] font-mono font-semibold bg-surface-container-highest text-primary">
+            10 Aset Teratas
+          </span>
+</div>
+<div class="flex items-center gap-3 text-xs font-mono text-on-surface-variant">
+<span class="flex items-center gap-1">
+<span class="w-2 h-2 rounded-full bg-tertiary animate-pulse"></span>
+            Update 5 detik lalu
+          </span>
+<span>•</span>
+<span>Algoritma: Dynamic Time Warping (DTW) + Cosine Distance</span>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<label class="text-xs font-mono text-on-surface-variant">Urutkan:</label>
+<div class="px-3 py-1.5 rounded-lg bg-surface-container text-xs font-mono text-on-surface flex items-center gap-2">
+<span>Kemiripan Tertinggi</span>
+<span class="material-symbols-outlined text-sm text-on-surface-variant">expand_more</span>
+</div>
+</div>
+</div>
+<!-- Results Cards Grid (Responsive 3-col on 15.6" laptop, 4-col on wide) -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4 gap-5">
+<!-- RESULT CARD 1: BTC/USDT -->
+<div class="flex flex-col justify-between p-5 rounded-2xl bg-surface-container shadow-lg hover:shadow-xl transition-all group">
+<div>
+<!-- Top Badges -->
+<div class="flex items-center justify-between gap-2 mb-3">
+<span class="px-2 py-0.5 rounded text-[11px] font-mono font-semibold bg-surface-container-highest text-primary flex items-center gap-1">
+              ⚡ 15 Menit (24 Jam)
+            </span>
+<span class="px-2 py-0.5 rounded text-[10px] font-mono font-medium bg-tertiary-container/40 text-tertiary flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary animate-ping"></span>
+              Masa Sekarang (Live)
+            </span>
+</div>
+<!-- Token Info -->
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="text-base font-headline font-bold text-on-surface">#1 BTC/USDT</span>
+<span class="text-xs text-on-surface-variant">Bitcoin</span>
+</div>
+<div class="text-right">
+<div class="text-sm font-mono font-bold text-on-surface">$76,927.40</div>
+<div class="text-[11px] font-mono text-tertiary font-semibold">+4.25%</div>
+</div>
+</div>
+<!-- Pattern Pill -->
+<div class="mt-2 text-[11px] font-mono text-primary flex items-center gap-1">
+<span>✨ Pola: Segitiga Simetris (Symmetrical Triangle)</span>
+</div>
+<div class="text-[10px] font-mono text-secondary-fixed-dim mt-1">
+            Rentang: Kemarin 14:00 → Hari Ini 14:00 WIB
+          </div>
+<!-- High-res Multi-overlay Sparkline Chart -->
+<div class="relative w-full h-36 mt-4 rounded-lg bg-surface-container-lowest p-2 overflow-hidden">
+<!-- Grid Lines -->
+<div class="absolute inset-0 flex flex-col justify-between p-2 opacity-10 pointer-events-none">
+<div class="w-full h-px bg-on-surface"></div>
+<div class="w-full h-px bg-on-surface"></div>
+<div class="w-full h-px bg-on-surface"></div>
+</div>
+<svg class="w-full h-full overflow-visible" preserveaspectratio="none" viewbox="0 0 300 120">
+<!-- Live Market Price Curve (Orange/Amber) -->
+<path d="M 10,80 C 40,20 70,110 110,35 C 150,95 180,50 210,75 L 225,68" fill="none" stroke="#f59e0b" stroke-linecap="round" stroke-width="2.2"></path>
+<!-- User Drawn Pattern Probe (Indigo/Purple) -->
+<path d="M 10,85 C 45,25 75,105 110,40 C 145,90 180,55 210,70 L 225,65" fill="none" opacity="0.8" stroke="#a78bfa" stroke-dasharray="3,3" stroke-width="1.8"></path>
+<!-- 12-Bar Future Projection (Emerald Dashed, pointing up) -->
+<path d="M 225,68 C 240,65 260,35 290,15" fill="none" stroke="#34d399" stroke-dasharray="4,4" stroke-linecap="round" stroke-width="2.5"></path>
+<!-- Probe point -->
+<circle cx="225" cy="68" fill="#f59e0b" r="3"></circle>
+<circle cx="290" cy="15" fill="#34d399" r="4"></circle>
+</svg>
+<!-- Chart Legend Overlay -->
+<div class="absolute bottom-1.5 left-2 flex items-center gap-2.5 text-[9px] font-mono">
+<span class="flex items-center gap-1 text-on-surface"><span class="w-2 h-0.5 bg-[#f59e0b]"></span>Harga Live</span>
+<span class="flex items-center gap-1 text-primary"><span class="w-2 h-0.5 bg-primary"></span>Pola Kanvas</span>
+<span class="flex items-center gap-1 text-tertiary"><span class="w-2 h-0.5 bg-tertiary"></span>Proyeksi +12 Bar</span>
+</div>
+</div>
+<!-- Similarity & Verdict -->
+<div class="mt-4 space-y-2">
+<div class="flex items-center justify-between text-xs font-mono">
+<span class="text-on-surface-variant">Skor Kemiripan Vektor:</span>
+<span class="font-bold text-tertiary">88% Kemiripan</span>
+</div>
+<div class="w-full h-1.5 rounded-full bg-surface-container-highest overflow-hidden">
+<div class="h-full rounded-full bg-tertiary transition-all" style="width: 88%"></div>
+</div>
+<div class="flex items-center justify-between text-xs pt-1">
+<div class="flex items-center gap-1.5">
+<span class="text-on-surface-variant font-mono">Verdict:</span>
+<span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-tertiary-container text-tertiary-fixed">BULLISH</span>
+</div>
+<span class="text-xs font-mono text-on-surface">P(Naik): <strong class="text-tertiary font-bold">78.4%</strong></span>
+</div>
+</div>
+</div>
+<!-- Action Button -->
+<a class="mt-5 w-full py-2.5 px-4 rounded-xl bg-surface-container-high hover:bg-primary hover:text-on-primary text-primary text-xs font-headline font-semibold transition-all flex items-center justify-center gap-1.5 group-hover:bg-primary group-hover:text-on-primary" href="#">
+<span>Buka Analisis Timeframe 15m (24 Jam)</span>
+<span class="material-symbols-outlined text-sm transition-transform group-hover:translate-x-0.5">arrow_forward</span>
+</a>
+</div>
+<!-- RESULT CARD 2: SOL/USDT -->
+<div class="flex flex-col justify-between p-5 rounded-2xl bg-surface-container shadow-lg hover:shadow-xl transition-all group">
+<div>
+<div class="flex items-center justify-between gap-2 mb-3">
+<span class="px-2 py-0.5 rounded text-[11px] font-mono font-semibold bg-surface-container-highest text-primary flex items-center gap-1">
+              ⚡ 1 Jam (24 Jam)
+            </span>
+<span class="px-2 py-0.5 rounded text-[10px] font-mono font-medium bg-tertiary-container/40 text-tertiary flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary animate-ping"></span>
+              Masa Sekarang (Live)
+            </span>
+</div>
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="text-base font-headline font-bold text-on-surface">#2 SOL/USDT</span>
+<span class="text-xs text-on-surface-variant">Solana</span>
+</div>
+<div class="text-right">
+<div class="text-sm font-mono font-bold text-on-surface">$182.40</div>
+<div class="text-[11px] font-mono text-tertiary font-semibold">+6.12%</div>
+</div>
+</div>
+<div class="mt-2 text-[11px] font-mono text-primary flex items-center gap-1">
+<span>✨ Pola: Ascending Triangle</span>
+</div>
+<div class="text-[10px] font-mono text-secondary-fixed-dim mt-1">
+            Rentang: Kemarin 14:00 → Hari Ini 14:00 WIB
+          </div>
+<div class="relative w-full h-36 mt-4 rounded-lg bg-surface-container-lowest p-2 overflow-hidden">
+<div class="absolute inset-0 flex flex-col justify-between p-2 opacity-10 pointer-events-none">
+<div class="w-full h-px bg-on-surface"></div>
+<div class="w-full h-px bg-on-surface"></div>
+<div class="w-full h-px bg-on-surface"></div>
+</div>
+<svg class="w-full h-full overflow-visible" preserveaspectratio="none" viewbox="0 0 300 120">
+<path d="M 10,95 C 40,55 70,80 110,45 C 150,50 180,35 215,35 L 225,36" fill="none" stroke="#f59e0b" stroke-linecap="round" stroke-width="2.2"></path>
+<path d="M 10,100 C 45,60 75,75 110,40 C 145,45 180,32 215,35 L 225,34" fill="none" opacity="0.8" stroke="#a78bfa" stroke-dasharray="3,3" stroke-width="1.8"></path>
+<path d="M 225,36 C 245,35 265,18 290,8" fill="none" stroke="#34d399" stroke-dasharray="4,4" stroke-linecap="round" stroke-width="2.5"></path>
+<circle cx="225" cy="36" fill="#f59e0b" r="3"></circle>
+<circle cx="290" cy="8" fill="#34d399" r="4"></circle>
+</svg>
+<div class="absolute bottom-1.5 left-2 flex items-center gap-2.5 text-[9px] font-mono">
+<span class="flex items-center gap-1 text-on-surface"><span class="w-2 h-0.5 bg-[#f59e0b]"></span>Harga Live</span>
+<span class="flex items-center gap-1 text-primary"><span class="w-2 h-0.5 bg-primary"></span>Pola Kanvas</span>
+<span class="flex items-center gap-1 text-tertiary"><span class="w-2 h-0.5 bg-tertiary"></span>Proyeksi</span>
+</div>
+</div>
+<div class="mt-4 space-y-2">
+<div class="flex items-center justify-between text-xs font-mono">
+<span class="text-on-surface-variant">Skor Kemiripan Vektor:</span>
+<span class="font-bold text-tertiary">82% Kemiripan</span>
+</div>
+<div class="w-full h-1.5 rounded-full bg-surface-container-highest overflow-hidden">
+<div class="h-full rounded-full bg-tertiary transition-all" style="width: 82%"></div>
+</div>
+<div class="flex items-center justify-between text-xs pt-1">
+<div class="flex items-center gap-1.5">
+<span class="text-on-surface-variant font-mono">Verdict:</span>
+<span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-tertiary-container text-tertiary-fixed">BULLISH</span>
+</div>
+<span class="text-xs font-mono text-on-surface">P(Naik): <strong class="text-tertiary font-bold">74.1%</strong></span>
+</div>
+</div>
+</div>
+<a class="mt-5 w-full py-2.5 px-4 rounded-xl bg-surface-container-high hover:bg-primary hover:text-on-primary text-primary text-xs font-headline font-semibold transition-all flex items-center justify-center gap-1.5 group-hover:bg-primary group-hover:text-on-primary" href="#">
+<span>Buka Analisis Timeframe 1h (24 Jam)</span>
+<span class="material-symbols-outlined text-sm transition-transform group-hover:translate-x-0.5">arrow_forward</span>
+</a>
+</div>
+<!-- RESULT CARD 3: ETH/USDT -->
+<div class="flex flex-col justify-between p-5 rounded-2xl bg-surface-container shadow-lg hover:shadow-xl transition-all group">
+<div>
+<div class="flex items-center justify-between gap-2 mb-3">
+<span class="px-2 py-0.5 rounded text-[11px] font-mono font-semibold bg-surface-container-highest text-primary flex items-center gap-1">
+              ⚡ 15 Menit (24 Jam)
+            </span>
+<span class="px-2 py-0.5 rounded text-[10px] font-mono font-medium bg-tertiary-container/40 text-tertiary flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary animate-ping"></span>
+              Masa Sekarang (Live)
+            </span>
+</div>
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="text-base font-headline font-bold text-on-surface">#3 ETH/USDT</span>
+<span class="text-xs text-on-surface-variant">Ethereum</span>
+</div>
+<div class="text-right">
+<div class="text-sm font-mono font-bold text-on-surface">$3,420.15</div>
+<div class="text-[11px] font-mono text-tertiary font-semibold">+2.80%</div>
+</div>
+</div>
+<div class="mt-2 text-[11px] font-mono text-primary flex items-center gap-1">
+<span>✨ Pola: Double Bottom (W)</span>
+</div>
+<div class="text-[10px] font-mono text-secondary-fixed-dim mt-1">
+            Rentang: Kemarin 14:00 → Hari Ini 14:00 WIB
+          </div>
+<div class="relative w-full h-36 mt-4 rounded-lg bg-surface-container-lowest p-2 overflow-hidden">
+<div class="absolute inset-0 flex flex-col justify-between p-2 opacity-10 pointer-events-none">
+<div class="w-full h-px bg-on-surface"></div>
+<div class="w-full h-px bg-on-surface"></div>
+<div class="w-full h-px bg-on-surface"></div>
+</div>
+<svg class="w-full h-full overflow-visible" preserveaspectratio="none" viewbox="0 0 300 120">
+<path d="M 10,35 C 35,100 60,105 85,50 C 115,105 145,100 180,40 L 225,38" fill="none" stroke="#f59e0b" stroke-linecap="round" stroke-width="2.2"></path>
+<path d="M 10,40 C 35,105 60,100 85,45 C 115,100 145,95 180,38 L 225,36" fill="none" opacity="0.8" stroke="#a78bfa" stroke-dasharray="3,3" stroke-width="1.8"></path>
+<path d="M 225,38 C 245,30 265,18 290,10" fill="none" stroke="#34d399" stroke-dasharray="4,4" stroke-linecap="round" stroke-width="2.5"></path>
+<circle cx="225" cy="38" fill="#f59e0b" r="3"></circle>
+<circle cx="290" cy="10" fill="#34d399" r="4"></circle>
+</svg>
+<div class="absolute bottom-1.5 left-2 flex items-center gap-2.5 text-[9px] font-mono">
+<span class="flex items-center gap-1 text-on-surface"><span class="w-2 h-0.5 bg-[#f59e0b]"></span>Harga Live</span>
+<span class="flex items-center gap-1 text-primary"><span class="w-2 h-0.5 bg-primary"></span>Pola Kanvas</span>
+<span class="flex items-center gap-1 text-tertiary"><span class="w-2 h-0.5 bg-tertiary"></span>Proyeksi</span>
+</div>
+</div>
+<div class="mt-4 space-y-2">
+<div class="flex items-center justify-between text-xs font-mono">
+<span class="text-on-surface-variant">Skor Kemiripan Vektor:</span>
+<span class="font-bold text-tertiary">76% Kemiripan</span>
+</div>
+<div class="w-full h-1.5 rounded-full bg-surface-container-highest overflow-hidden">
+<div class="h-full rounded-full bg-tertiary transition-all" style="width: 76%"></div>
+</div>
+<div class="flex items-center justify-between text-xs pt-1">
+<div class="flex items-center gap-1.5">
+<span class="text-on-surface-variant font-mono">Verdict:</span>
+<span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-tertiary-container text-tertiary-fixed">BULLISH</span>
+</div>
+<span class="text-xs font-mono text-on-surface">P(Naik): <strong class="text-tertiary font-bold">69.5%</strong></span>
+</div>
+</div>
+</div>
+<a class="mt-5 w-full py-2.5 px-4 rounded-xl bg-surface-container-high hover:bg-primary hover:text-on-primary text-primary text-xs font-headline font-semibold transition-all flex items-center justify-center gap-1.5 group-hover:bg-primary group-hover:text-on-primary" href="#">
+<span>Buka Analisis Timeframe 15m (24 Jam)</span>
+<span class="material-symbols-outlined text-sm transition-transform group-hover:translate-x-0.5">arrow_forward</span>
+</a>
+</div>
+<!-- RESULT CARD 4: NEAR/USDT -->
+<div class="flex flex-col justify-between p-5 rounded-2xl bg-surface-container shadow-lg hover:shadow-xl transition-all group">
+<div>
+<div class="flex items-center justify-between gap-2 mb-3">
+<span class="px-2 py-0.5 rounded text-[11px] font-mono font-semibold bg-surface-container-highest text-primary flex items-center gap-1">
+              ⚡ 4 Jam (24 Jam)
+            </span>
+<span class="px-2 py-0.5 rounded text-[10px] font-mono font-medium bg-tertiary-container/40 text-tertiary flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary animate-ping"></span>
+              Masa Sekarang (Live)
+            </span>
+</div>
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="text-base font-headline font-bold text-on-surface">#4 NEAR/USDT</span>
+<span class="text-xs text-on-surface-variant">NEAR Protocol</span>
+</div>
+<div class="text-right">
+<div class="text-sm font-mono font-bold text-on-surface">$5.84</div>
+<div class="text-[11px] font-mono text-tertiary font-semibold">+3.45%</div>
+</div>
+</div>
+<div class="mt-2 text-[11px] font-mono text-primary flex items-center gap-1">
+<span>✨ Pola: Segitiga Simetris</span>
+</div>
+<div class="text-[10px] font-mono text-secondary-fixed-dim mt-1">
+            Rentang: Kemarin 14:00 → Hari Ini 14:00 WIB
+          </div>
+<div class="relative w-full h-36 mt-4 rounded-lg bg-surface-container-lowest p-2 overflow-hidden">
+<div class="absolute inset-0 flex flex-col justify-between p-2 opacity-10 pointer-events-none">
+<div class="w-full h-px bg-on-surface"></div>
+<div class="w-full h-px bg-on-surface"></div>
+<div class="w-full h-px bg-on-surface"></div>
+</div>
+<svg class="w-full h-full overflow-visible" preserveaspectratio="none" viewbox="0 0 300 120">
+<path d="M 10,75 C 45,25 80,95 120,45 C 160,80 190,55 220,65 L 225,64" fill="none" stroke="#f59e0b" stroke-linecap="round" stroke-width="2.2"></path>
+<path d="M 10,80 C 45,30 80,90 120,48 C 160,75 190,58 220,64 L 225,62" fill="none" opacity="0.8" stroke="#a78bfa" stroke-dasharray="3,3" stroke-width="1.8"></path>
+<path d="M 225,64 C 245,60 265,35 290,20" fill="none" stroke="#34d399" stroke-dasharray="4,4" stroke-linecap="round" stroke-width="2.5"></path>
+<circle cx="225" cy="64" fill="#f59e0b" r="3"></circle>
+<circle cx="290" cy="20" fill="#34d399" r="4"></circle>
+</svg>
+<div class="absolute bottom-1.5 left-2 flex items-center gap-2.5 text-[9px] font-mono">
+<span class="flex items-center gap-1 text-on-surface"><span class="w-2 h-0.5 bg-[#f59e0b]"></span>Harga Live</span>
+<span class="flex items-center gap-1 text-primary"><span class="w-2 h-0.5 bg-primary"></span>Pola Kanvas</span>
+<span class="flex items-center gap-1 text-tertiary"><span class="w-2 h-0.5 bg-tertiary"></span>Proyeksi</span>
+</div>
+</div>
+<div class="mt-4 space-y-2">
+<div class="flex items-center justify-between text-xs font-mono">
+<span class="text-on-surface-variant">Skor Kemiripan Vektor:</span>
+<span class="font-bold text-tertiary">71% Kemiripan</span>
+</div>
+<div class="w-full h-1.5 rounded-full bg-surface-container-highest overflow-hidden">
+<div class="h-full rounded-full bg-tertiary transition-all" style="width: 71%"></div>
+</div>
+<div class="flex items-center justify-between text-xs pt-1">
+<div class="flex items-center gap-1.5">
+<span class="text-on-surface-variant font-mono">Verdict:</span>
+<span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-tertiary-container text-tertiary-fixed">BULLISH</span>
+</div>
+<span class="text-xs font-mono text-on-surface">P(Naik): <strong class="text-tertiary font-bold">67.0%</strong></span>
+</div>
+</div>
+</div>
+<a class="mt-5 w-full py-2.5 px-4 rounded-xl bg-surface-container-high hover:bg-primary hover:text-on-primary text-primary text-xs font-headline font-semibold transition-all flex items-center justify-center gap-1.5 group-hover:bg-primary group-hover:text-on-primary" href="#">
+<span>Buka Analisis Timeframe 4h (24 Jam)</span>
+<span class="material-symbols-outlined text-sm transition-transform group-hover:translate-x-0.5">arrow_forward</span>
+</a>
+</div>
+<!-- RESULT CARD 5: SUI/USDT -->
+<div class="flex flex-col justify-between p-5 rounded-2xl bg-surface-container shadow-lg hover:shadow-xl transition-all group">
+<div>
+<div class="flex items-center justify-between gap-2 mb-3">
+<span class="px-2 py-0.5 rounded text-[11px] font-mono font-semibold bg-surface-container-highest text-primary flex items-center gap-1">
+              ⚡ 15 Menit (24 Jam)
+            </span>
+<span class="px-2 py-0.5 rounded text-[10px] font-mono font-medium bg-tertiary-container/40 text-tertiary flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary animate-ping"></span>
+              Masa Sekarang (Live)
+            </span>
+</div>
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="text-base font-headline font-bold text-on-surface">#5 SUI/USDT</span>
+<span class="text-xs text-on-surface-variant">Sui</span>
+</div>
+<div class="text-right">
+<div class="text-sm font-mono font-bold text-on-surface">$2.18</div>
+<div class="text-[11px] font-mono text-tertiary font-semibold">+8.92%</div>
+</div>
+</div>
+<div class="mt-2 text-[11px] font-mono text-primary flex items-center gap-1">
+<span>✨ Pola: Bullish Breakout</span>
+</div>
+<div class="text-[10px] font-mono text-secondary-fixed-dim mt-1">
+            Rentang: Kemarin 14:00 → Hari Ini 14:00 WIB
+          </div>
+<div class="relative w-full h-36 mt-4 rounded-lg bg-surface-container-lowest p-2 overflow-hidden">
+<div class="absolute inset-0 flex flex-col justify-between p-2 opacity-10 pointer-events-none">
+<div class="w-full h-px bg-on-surface"></div>
+<div class="w-full h-px bg-on-surface"></div>
+<div class="w-full h-px bg-on-surface"></div>
+</div>
+<svg class="w-full h-full overflow-visible" preserveaspectratio="none" viewbox="0 0 300 120">
+<path d="M 10,90 C 60,85 100,70 140,65 C 180,62 205,50 225,35" fill="none" stroke="#f59e0b" stroke-linecap="round" stroke-width="2.2"></path>
+<path d="M 10,95 C 60,80 100,75 140,60 C 180,58 205,45 225,32" fill="none" opacity="0.8" stroke="#a78bfa" stroke-dasharray="3,3" stroke-width="1.8"></path>
+<path d="M 225,35 C 245,20 265,12 290,5" fill="none" stroke="#34d399" stroke-dasharray="4,4" stroke-linecap="round" stroke-width="2.5"></path>
+<circle cx="225" cy="35" fill="#f59e0b" r="3"></circle>
+<circle cx="290" cy="5" fill="#34d399" r="4"></circle>
+</svg>
+<div class="absolute bottom-1.5 left-2 flex items-center gap-2.5 text-[9px] font-mono">
+<span class="flex items-center gap-1 text-on-surface"><span class="w-2 h-0.5 bg-[#f59e0b]"></span>Harga Live</span>
+<span class="flex items-center gap-1 text-primary"><span class="w-2 h-0.5 bg-primary"></span>Pola Kanvas</span>
+<span class="flex items-center gap-1 text-tertiary"><span class="w-2 h-0.5 bg-tertiary"></span>Proyeksi</span>
+</div>
+</div>
+<div class="mt-4 space-y-2">
+<div class="flex items-center justify-between text-xs font-mono">
+<span class="text-on-surface-variant">Skor Kemiripan Vektor:</span>
+<span class="font-bold text-[#f59e0b]">68% Kemiripan</span>
+</div>
+<div class="w-full h-1.5 rounded-full bg-surface-container-highest overflow-hidden">
+<div class="h-full rounded-full bg-[#f59e0b] transition-all" style="width: 68%"></div>
+</div>
+<div class="flex items-center justify-between text-xs pt-1">
+<div class="flex items-center gap-1.5">
+<span class="text-on-surface-variant font-mono">Verdict:</span>
+<span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-tertiary-container text-tertiary-fixed">BULLISH</span>
+</div>
+<span class="text-xs font-mono text-on-surface">P(Naik): <strong class="text-tertiary font-bold">64.2%</strong></span>
+</div>
+</div>
+</div>
+<a class="mt-5 w-full py-2.5 px-4 rounded-xl bg-surface-container-high hover:bg-primary hover:text-on-primary text-primary text-xs font-headline font-semibold transition-all flex items-center justify-center gap-1.5 group-hover:bg-primary group-hover:text-on-primary" href="#">
+<span>Buka Analisis Timeframe 15m (24 Jam)</span>
+<span class="material-symbols-outlined text-sm transition-transform group-hover:translate-x-0.5">arrow_forward</span>
+</a>
+</div>
+<!-- RESULT CARD 6: AVAX/USDT -->
+<div class="flex flex-col justify-between p-5 rounded-2xl bg-surface-container shadow-lg hover:shadow-xl transition-all group">
+<div>
+<div class="flex items-center justify-between gap-2 mb-3">
+<span class="px-2 py-0.5 rounded text-[11px] font-mono font-semibold bg-surface-container-highest text-primary flex items-center gap-1">
+              ⚡ 1 Jam (24 Jam)
+            </span>
+<span class="px-2 py-0.5 rounded text-[10px] font-mono font-medium bg-tertiary-container/40 text-tertiary flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary animate-ping"></span>
+              Masa Sekarang (Live)
+            </span>
+</div>
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="text-base font-headline font-bold text-on-surface">#6 AVAX/USDT</span>
+<span class="text-xs text-on-surface-variant">Avalanche</span>
+</div>
+<div class="text-right">
+<div class="text-sm font-mono font-bold text-on-surface">$29.40</div>
+<div class="text-[11px] font-mono text-tertiary font-semibold">+1.15%</div>
+</div>
+</div>
+<div class="mt-2 text-[11px] font-mono text-primary flex items-center gap-1">
+<span>✨ Pola: Symmetrical Triangle</span>
+</div>
+<div class="text-[10px] font-mono text-secondary-fixed-dim mt-1">
+            Rentang: Kemarin 14:00 → Hari Ini 14:00 WIB
+          </div>
+<div class="relative w-full h-36 mt-4 rounded-lg bg-surface-container-lowest p-2 overflow-hidden">
+<div class="absolute inset-0 flex flex-col justify-between p-2 opacity-10 pointer-events-none">
+<div class="w-full h-px bg-on-surface"></div>
+<div class="w-full h-px bg-on-surface"></div>
+<div class="w-full h-px bg-on-surface"></div>
+</div>
+<svg class="w-full h-full overflow-visible" preserveaspectratio="none" viewbox="0 0 300 120">
+<path d="M 10,70 C 45,30 85,85 125,48 C 165,72 195,58 225,62" fill="none" stroke="#f59e0b" stroke-linecap="round" stroke-width="2.2"></path>
+<path d="M 10,75 C 45,35 85,80 125,52 C 165,68 195,62 225,60" fill="none" opacity="0.8" stroke="#a78bfa" stroke-dasharray="3,3" stroke-width="1.8"></path>
+<path d="M 225,62 C 245,62 265,58 290,56" fill="none" stroke="#71717a" stroke-dasharray="4,4" stroke-linecap="round" stroke-width="2"></path>
+<circle cx="225" cy="62" fill="#f59e0b" r="3"></circle>
+<circle cx="290" cy="56" fill="#71717a" r="4"></circle>
+</svg>
+<div class="absolute bottom-1.5 left-2 flex items-center gap-2.5 text-[9px] font-mono">
+<span class="flex items-center gap-1 text-on-surface"><span class="w-2 h-0.5 bg-[#f59e0b]"></span>Harga Live</span>
+<span class="flex items-center gap-1 text-primary"><span class="w-2 h-0.5 bg-primary"></span>Pola Kanvas</span>
+<span class="flex items-center gap-1 text-on-surface-variant"><span class="w-2 h-0.5 bg-secondary"></span>Proyeksi</span>
+</div>
+</div>
+<div class="mt-4 space-y-2">
+<div class="flex items-center justify-between text-xs font-mono">
+<span class="text-on-surface-variant">Skor Kemiripan Vektor:</span>
+<span class="font-bold text-[#f59e0b]">64% Kemiripan</span>
+</div>
+<div class="w-full h-1.5 rounded-full bg-surface-container-highest overflow-hidden">
+<div class="h-full rounded-full bg-[#f59e0b] transition-all" style="width: 64%"></div>
+</div>
+<div class="flex items-center justify-between text-xs pt-1">
+<div class="flex items-center gap-1.5">
+<span class="text-on-surface-variant font-mono">Verdict:</span>
+<span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-secondary-container text-on-surface">NEUTRAL</span>
+</div>
+<span class="text-xs font-mono text-on-surface">P(Naik): <strong class="text-on-surface-variant font-bold">53.8%</strong></span>
+</div>
+</div>
+</div>
+<a class="mt-5 w-full py-2.5 px-4 rounded-xl bg-surface-container-high hover:bg-primary hover:text-on-primary text-primary text-xs font-headline font-semibold transition-all flex items-center justify-center gap-1.5 group-hover:bg-primary group-hover:text-on-primary" href="#">
+<span>Buka Analisis Timeframe 1h (24 Jam)</span>
+<span class="material-symbols-outlined text-sm transition-transform group-hover:translate-x-0.5">arrow_forward</span>
+</a>
+</div>
+</div>
+</section>
+</div>
+<script>
+  // Interactive Canvas Preset Switching Logic
+  const presets = {
+    triangle: "M 80,70 Q 150,260 220,90 T 360,230 T 480,110 T 580,190 T 660,150 L 720,135",
+    w: "M 80,90 Q 180,270 280,270 T 420,130 T 560,270 T 660,270 L 720,100",
+    ascending: "M 80,240 Q 180,100 260,100 T 380,210 T 500,100 T 620,170 L 720,100",
+    breakout: "M 80,210 Q 200,200 320,190 T 460,180 T 580,165 L 720,60"
+  };
+
+  function setPreset(type) {
+    const pathEl = document.getElementById('stroke-path');
+    if (pathEl && presets[type]) {
+      pathEl.setAttribute('d', presets[type]);
+    }
+  }
+
+  // Clear Canvas Interaction
+  document.getElementById('clear-btn')?.addEventListener('click', function() {
+    const pathEl = document.getElementById('stroke-path');
+    if (pathEl) {
+      pathEl.setAttribute('d', 'M 80,160 L 720,160');
+    }
+  });
+
+  // Re-Scan Button Pulse
+  document.getElementById('scan-btn')?.addEventListener('click', function() {
+    const btn = this;
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<span class="material-symbols-outlined text-base animate-spin">refresh</span> Memindai 142 Aset...';
+    btn.classList.add('opacity-80');
+    
+    setTimeout(() => {
+      btn.innerHTML = originalText;
+      btn.classList.remove('opacity-80');
+    }, 600);
+  });
+</script></div></main><footer class="w-full bg-surface-container-lowest border-t border-outline-variant/60 mt-auto"><div class="max-w-[1720px] mx-auto px-6 xl:px-10 py-8"><div class="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8"><div class="space-y-3"><div class="flex items-center gap-2"><span class="text-sm font-headline font-bold tracking-tight text-on-surface uppercase">ATRED Quantitative Terminal</span><span class="px-1.5 py-0.5 text-[9px] font-mono rounded bg-primary-container text-on-primary-container font-medium">PRO</span></div><p class="text-xs text-on-surface-variant leading-relaxed">Ultra low-latency institutional market micro-structure scanner and stochastic algorithmic modeling engine.</p></div><div><div class="text-xs font-mono font-semibold uppercase tracking-wider text-on-surface mb-3">Engine &amp; Runtimes</div><div class="space-y-1.5 text-xs font-mono text-on-surface-variant"><div class="flex items-center justify-between"><span>Kernel Status:</span><span class="text-tertiary">ONLINE (C++20 / Cython)</span></div><div class="flex items-center justify-between"><span>Model Stack:</span><span class="text-on-surface">NumPy / SciPy / PyTorch</span></div><div class="flex items-center justify-between"><span>Order Routing:</span><span class="text-on-surface">FIX 4.4 / OUCH Direct</span></div></div></div><div><div class="text-xs font-mono font-semibold uppercase tracking-wider text-on-surface mb-3">Telemetry &amp; Feeds</div><div class="space-y-1.5 text-xs font-mono text-on-surface-variant"><div class="flex items-center justify-between"><span>Ingress Latency:</span><span class="text-tertiary">4.2ms (Equinix NY4)</span></div><div class="flex items-center justify-between"><span>Active WebSockets:</span><span class="text-on-surface">18 Feeds Connected</span></div><div class="flex items-center justify-between"><span>Tick Buffer:</span><span class="text-on-surface">2.4M msgs/sec</span></div></div></div><div><div class="text-xs font-mono font-semibold uppercase tracking-wider text-on-surface mb-3">Regulatory &amp; Compliance</div><p class="text-[11px] text-on-surface-variant leading-normal">Hypothetical or simulated quantitative analytics are subject to inherent market risk. ATRED does not execute custodial brokerage.</p></div></div><div class="pt-6 border-t border-outline-variant/40 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-mono text-secondary"><div class="flex items-center gap-4"><span>© 2025 ATRED Quantitative Labs Inc. All rights reserved.</span><span>SEC / FINRA Algorithmic Disclosure Form BD-8</span></div><div class="flex items-center gap-6"><a class="hover:text-on-surface transition-colors" href="#">API Spec</a><a class="hover:text-on-surface transition-colors" href="#">Risk Framework</a><a class="hover:text-on-surface transition-colors" href="#">Status Page</a></div></div></div></footer></body></html>

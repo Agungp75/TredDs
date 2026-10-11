@@ -1,0 +1,35 @@
+import React from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { MarketProvider } from './context/MarketContext';
+import { AIProvider } from './context/AIContext';
+import Navbar from './components/common/Navbar';
+import DisclaimerFooter from './components/common/DisclaimerFooter';
+import HomeDashboard from './pages/HomeDashboard';
+import CryptoDashboard from './pages/CryptoDashboard';
+import ForexDashboard from './pages/ForexDashboard';
+import AssetDetail from './pages/AssetDetail';
+
+export default function App() {
+  return (
+    <MarketProvider>
+      <AIProvider>
+        <BrowserRouter>
+          <div className="min-h-screen flex flex-col bg-background font-body text-on-surface antialiased selection:bg-primary-container selection:text-on-primary-container">
+            <Navbar />
+            <main className="w-full pt-28 pb-16 bg-background flex-1 px-4 sm:px-6 xl:px-10">
+              <Routes>
+                <Route path="/" element={<HomeDashboard />} />
+                <Route path="/stocks" element={<Navigate to="/" replace />} />
+                <Route path="/crypto" element={<CryptoDashboard />} />
+                <Route path="/forex" element={<ForexDashboard />} />
+                <Route path="/analysis/:symbol" element={<AssetDetail />} />
+                <Route path="/analysis" element={<AssetDetail />} />
+              </Routes>
+            </main>
+            <DisclaimerFooter />
+          </div>
+        </BrowserRouter>
+      </AIProvider>
+    </MarketProvider>
+  );
+}

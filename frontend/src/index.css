@@ -1,0 +1,151 @@
+@import "tailwindcss";
+
+@theme {
+  --color-background: #09090b;
+  --color-surface: #0c0c0f;
+  --color-surface-dim: #0c0c0f;
+  --color-surface-bright: #18181b;
+  --color-surface-variant: #18181b;
+  --color-surface-container-lowest: #09090b;
+  --color-surface-container-low: #0f0f12;
+  --color-surface-container: #121215;
+  --color-surface-container-high: #18181b;
+  --color-surface-container-highest: #1e1e22;
+
+  --color-outline: #52525b;
+  --color-outline-variant: #27272a;
+
+  --color-primary: #a78bfa;
+  --color-primary-container: #7c3aed;
+  --color-primary-fixed: #ede9fe;
+  --color-primary-fixed-dim: #c4b5fd;
+  --color-on-primary: #0a0012;
+  --color-on-primary-container: #ede9fe;
+  --color-on-primary-fixed: #2e1065;
+  --color-on-primary-fixed-variant: #5b21b6;
+
+  --color-secondary: #71717a;
+  --color-secondary-container: #27272a;
+  --color-secondary-fixed: #a1a1aa;
+  --color-secondary-fixed-dim: #71717a;
+  --color-on-secondary: #09090b;
+  --color-on-secondary-container: #a1a1aa;
+  --color-on-secondary-fixed: #18181b;
+  --color-on-secondary-fixed-variant: #3f3f46;
+
+  --color-tertiary: #34d399;
+  --color-tertiary-container: #065f46;
+  --color-tertiary-fixed: #bbf7d0;
+  --color-tertiary-fixed-dim: #6ee7b7;
+  --color-on-tertiary: #001a12;
+  --color-on-tertiary-container: #bbf7d0;
+  --color-on-tertiary-fixed: #003318;
+  --color-on-tertiary-fixed-variant: #047857;
+
+  --color-error: #ef4444;
+  --color-error-container: #3b1111;
+  --color-on-error: #1a0000;
+  --color-on-error-container: #fca5a5;
+
+  --color-on-surface: #fafafa;
+  --color-on-surface-variant: #a1a1aa;
+  --color-on-background: #fafafa;
+  --color-inverse-surface: #fafafa;
+  --color-inverse-on-surface: #09090b;
+  --color-inverse-primary: #5b21b6;
+  --color-surface-tint: #a78bfa;
+
+  /* Backward compatibility for legacy brand tokens */
+  --color-brand-dark: #09090b;
+  --color-brand-card: #121215;
+  --color-brand-surface: #18181b;
+  --color-brand-border: #27272a;
+  --color-brand-accent: #a78bfa;
+  --color-brand-green: #34d399;
+  --color-brand-red: #ef4444;
+  --color-brand-yellow: #f59e0b;
+
+  --font-headline: Geist, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-display: Geist, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-body: Geist, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-label: Geist, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", Menlo, Monaco, Consolas, monospace;
+}
+
+@layer base {
+  html, body {
+    margin: 0;
+    padding: 0;
+    background-color: #09090b;
+    color: #fafafa;
+    font-family: var(--font-body);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  body {
+    overscroll-behavior: none;
+  }
+}
+
+/* Continuous Marquee Ticker */
+@keyframes marquee {
+  0% { transform: translateX(0%); }
+  100% { transform: translateX(-50%); }
+}
+
+.animate-marquee {
+  display: flex;
+  width: max-content;
+  animation: marquee 34s linear infinite;
+}
+
+.animate-marquee:hover {
+  animation-play-state: paused;
+}
+
+/* Custom Minimalist Dark Scrollbar */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: #09090b;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #27272a;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #52525b;
+}
+
+/* Hide scrollbar utility */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Obsidian Glass & Panel Utilities */
+.glass-panel {
+  background: rgba(18, 18, 21, 0.85);
+  backdrop-filter: blur(12px);
+  border: 1px solid #27272a;
+}
+
+.glow-bullish {
+  box-shadow: 0 0 20px -5px rgba(52, 211, 153, 0.15);
+}
+
+.glow-bearish {
+  box-shadow: 0 0 20px -5px rgba(239, 68, 68, 0.15);
+}
+
+.glow-primary {
+  box-shadow: 0 0 20px -5px rgba(167, 139, 250, 0.2);
+}
