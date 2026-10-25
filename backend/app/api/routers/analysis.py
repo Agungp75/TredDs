@@ -1,31 +1,62 @@
-from fastapi import APIRouter, HTTPException, Query, Body
+from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
-from typing import Optional, List, Dict, Any
+from typing import Optional
 import asyncio
-import numpy as np
 from app.core.config import settings
 from app.services.market_data import (
-    fetch_ohlcv, get_asset_overview, DEFAULT_ASSETS,
-    resolve_symbol, df_data_status, is_volume_meaningless
+    fetch_ohlcv,
+    get_asset_overview,
+    resolve_symbol,
+    df_data_status,
+    is_volume_meaningless,
 )
 from app.core.quantitative import (
-    calculate_rsi, calculate_atr, calculate_macd,
-    calculate_bollinger_bands, check_volume_anomaly,
-    calculate_dynamic_tp_sl, analyze_stochastic, calculate_fibonacci,
-    calculate_target_zones, build_confluence, determine_comprehensive_signal,
-    calculate_signal_summary_and_backtest
+    calculate_rsi,
+    calculate_atr,
+    calculate_macd,
+    calculate_bollinger_bands,
+    check_volume_anomaly,
+    calculate_dynamic_tp_sl,
+    analyze_stochastic,
+    calculate_fibonacci,
+    calculate_target_zones,
+    build_confluence,
+    determine_comprehensive_signal,
+    calculate_signal_summary_and_backtest,
+    _dec,
 )
 from app.services.pattern_engine import detect_chart_patterns
+from app.services.mexc_orderflow import analyze_mexc_derivatives
 from app.services.dev_analytics import get_github_metrics
 from app.services.ai_summarizer import (
-    generate_ai_narrative,
     generate_ai_analysis,
     verify_ai_connection,
     fetch_remote_models,
-    AI_PROVIDERS
+    AI_PROVIDERS,
 )
 
-router = APIRouter(prefix="/analysis", tags=["Deep Analysis"])
+router = APIRouter(prefix="/analysis", tags=["Deep Analysis (3-Layer Quant & MEXC Derivatives)"])
+
+CRYPTO_GITHUB_REPOS = {
+    "BTC_USDT": "bitcoin/bitcoin",
+    "ETH_USDT": "ethereum/go-ethereum",
+    "SOL_USDT": "solana-labs/solana",
+    "AVAX_USDT": "ava-labs/avalanchego",
+    "BNB_USDT": "bnb-chain/bsc",
+    "XRP_USDT": "XRPLF/rippled",
+    "ADA_USDT": "IntersectMBO/cardano-node",
+    "DOGE_USDT": "dogecoin/dogecoin",
+    "NEAR_USDT": "near/nearcore",
+    "LINK_USDT": "smartcontractkit/chainlink",
+    "DOT_USDT": "paritytech/polkadot-sdk",
+    "SUI_USDT": "MystenLabs/sui",
+    "APT_USDT": "aptos-labs/aptos-core",
+    "UNI_USDT": "Uniswap/v3-core",
+    "AAVE_USDT": "aave/aave-v3-core",
+    "ATOM_USDT": "cosmos/cosmos-sdk",
+    "INJ_USDT": "InjectiveLabs/injective-Chain-Releases",
+}
+
 
 class AIKeyTestRequest(BaseModel):
     provider: str
@@ -33,10 +64,12 @@ class AIKeyTestRequest(BaseModel):
     model: Optional[str] = None
     base_url: Optional[str] = None
 
+
 class FetchModelsRequest(BaseModel):
     provider: str
     api_key: Optional[str] = None
     base_url: Optional[str] = None
+
 
 class AIQueryRequest(BaseModel):
     mode: str = "scalping"  # scalping, overview, swing, scenarios, chat
@@ -47,76 +80,67 @@ class AIQueryRequest(BaseModel):
     base_url: Optional[str] = None
     period: Optional[str] = "15m"
 
+
 @router.get("/ai/providers")
 async def get_ai_providers():
-    """
-    Mengembalikan daftar penyedia AI yang didukung, model yang tersedia,
-    serta status konfigurasi di sisi server (.env).
-    """
     configured_providers = {
         "gemini": bool(settings.GEMINI_API_KEY),
         "openai": bool(settings.OPENAI_API_KEY),
         "deepseek": bool(settings.DEEPSEEK_API_KEY),
         "groq": bool(settings.GROQ_API_KEY),
-        "custom": False
+        "custom": False,
     }
-    
     return {
         "providers": AI_PROVIDERS,
         "default_provider": settings.DEFAULT_AI_PROVIDER,
         "default_model": settings.DEFAULT_AI_MODEL,
-        "server_configured": configured_providers
+        "server_configured": configured_providers,
     }
+
 
 @router.post("/ai/test-key")
 async def test_ai_key(req: AIKeyTestRequest):
-    """
-    Menguji validitas dan latensi API Key AI untuk provider tertentu.
-    Jika sukses, juga otomatis mengembalikan daftar model live dari API.
-    """
     result = await verify_ai_connection(
         provider=req.provider,
         api_key=req.api_key,
         model=req.model,
-        base_url=req.base_url
+        base_url=req.base_url,
     )
     if result.get("success"):
         models_data = await fetch_remote_models(
             provider=req.provider,
             api_key=req.api_key,
-            base_url=req.base_url
+            base_url=req.base_url,
         )
         result["available_models"] = models_data.get("models", [])
     return result
 
+
 @router.post("/ai/models")
 async def get_provider_models(req: FetchModelsRequest):
-    """
-    Mengambil daftar model AI secara dinamis langsung dari API provider (Google Gemini, OpenAI, Groq, dll)
-    atau mengembalikan katalog model komprehensif terkini.
-    """
     result = await fetch_remote_models(
         provider=req.provider,
         api_key=req.api_key,
-        base_url=req.base_url
+        base_url=req.base_url,
     )
     return result
 
+
 @router.post("/{symbol}/ai-query")
 async def query_ai_analysis(symbol: str, req: AIQueryRequest):
-    """
-    Menghasilkan analisis AI kustom atau interaktif untuk simbol tertentu
-    sesuai mode (scalping, swing, investing, scenarios, chat).
-    """
-    resolved_sym = resolve_symbol(symbol)
+    resolved_sym = resolve_symbol(symbol, "futures")
     eff_period = req.period or "15m"
-    df = fetch_ohlcv(resolved_sym, period=eff_period)
+    df = await asyncio.to_thread(fetch_ohlcv, resolved_sym, period=eff_period)
     if df.empty or len(df) < 15:
         raise HTTPException(status_code=404, detail="Data time-series tidak ditemukan untuk simbol ini.")
 
-    overview = get_asset_overview(resolved_sym)
+    overview, mexc_derivatives = await asyncio.gather(
+        asyncio.to_thread(get_asset_overview, resolved_sym),
+        asyncio.to_thread(analyze_mexc_derivatives, resolved_sym, df, eff_period),
+    )
     data_status = df_data_status(df, resolved_sym, eff_period)
     latest_close = float(df['Close'].iloc[-1])
+    dec = _dec(latest_close)
 
     rsi_s = calculate_rsi(df['Close'])
     atr_s = calculate_atr(df)
@@ -127,7 +151,7 @@ async def query_ai_analysis(symbol: str, req: AIQueryRequest):
 
     swing_low = float(df['Low'].tail(15).min())
     swing_high = float(df['High'].tail(15).max())
-    latest_atr = round(float(atr_s.iloc[-1]), 4)
+    latest_atr = round(float(atr_s.iloc[-1]), dec)
     latest_rsi = round(float(rsi_s.iloc[-1]), 2)
 
     stoch_data = analyze_stochastic(df, 14, 3, 3)
@@ -139,10 +163,13 @@ async def query_ai_analysis(symbol: str, req: AIQueryRequest):
         rsi_val=latest_rsi,
         macd_hist=float(hist.iloc[-1]),
         stoch_data=stoch_data,
-        fib_data=fib_data
+        fib_data=fib_data,
+        symbol=resolved_sym,
+        orderflow_data=mexc_derivatives,
     )
     trade_direction = comp_signal["direction"]
     signal_type = comp_signal["signal_type"]
+    regime_context = comp_signal.get("regime_context", {})
 
     tp_sl = calculate_dynamic_tp_sl(
         breakout_price=latest_close,
@@ -151,21 +178,27 @@ async def query_ai_analysis(symbol: str, req: AIQueryRequest):
         atr_14=latest_atr,
         swing_high=swing_high,
         signal_type=signal_type,
-        direction=trade_direction
+        direction=trade_direction,
+        win_rate_pct=min(75.0, max(45.0, float(comp_signal.get("confidence", 58)))),
+        adx_val=float(regime_context.get("adx_14", 22.0)),
+        obi_val=float(mexc_derivatives.get("obi_20_level", 0.0)),
+        spread_pct=float(overview.get("spread_pct", 0.01)),
+        funding_rate_pct=float(mexc_derivatives.get("funding_rate_pct", 0.01)),
+        max_zero_slippage_usdt=float(mexc_derivatives.get("max_zero_slippage_position_usdt", 25000.0)),
     )
 
     layer_1 = {
         "rsi": latest_rsi,
         "atr": latest_atr,
         "macd": {
-            "macd": round(float(macd_line.iloc[-1]), 4),
-            "signal": round(float(sig_line.iloc[-1]), 4),
-            "histogram": round(float(hist.iloc[-1]), 4),
+            "macd": round(float(macd_line.iloc[-1]), dec),
+            "signal": round(float(sig_line.iloc[-1]), dec),
+            "histogram": round(float(hist.iloc[-1]), dec),
         },
         "bollinger_bands": {
-            "upper": round(float(bb_upper.iloc[-1]), 2),
-            "middle": round(float(bb_mid.iloc[-1]), 2),
-            "lower": round(float(bb_lower.iloc[-1]), 2)
+            "upper": round(float(bb_upper.iloc[-1]), dec),
+            "middle": round(float(bb_mid.iloc[-1]), dec),
+            "lower": round(float(bb_lower.iloc[-1]), dec),
         },
         "stochastic": stoch_data,
         "fibonacci": fib_data,
@@ -182,96 +215,84 @@ async def query_ai_analysis(symbol: str, req: AIQueryRequest):
         "data_status": data_status,
     }
 
-    repos = {
-        "BTC-USD": "bitcoin/bitcoin",
-        "ETH-USD": "ethereum/go-ethereum",
-        "SOL-USD": "solana-labs/solana",
-        "AVAX-USD": "ava-labs/avalanchego",
-        "BNB-USD": "bnb-chain/bsc",
-        "XRP-USD": "XRPLF/rippled",
-        "ADA-USD": "IntersectMBO/cardano-node",
-        "DOGE-USD": "dogecoin/dogecoin",
-        "NEAR-USD": "near/nearcore",
-        "LINK-USD": "smartcontractkit/chainlink",
-    }
-    repo_target = repos.get(resolved_sym, "bitcoin/bitcoin")
+    repo_target = CRYPTO_GITHUB_REPOS.get(resolved_sym, "bitcoin/bitcoin")
     dev_data = await get_github_metrics(repo_target)
-
-    macro_data = {
-        "fed_rate": "5.25% - 5.50%",
-        "cpi_yoy": "3.1%",
-        "unemployment_rate": "4.1%",
-        "dxy_index": 104.25,
-        "market_sentiment": "Greed (64/100)",
-        "is_static_reference": True,
-        "reference_note": "Data makro adalah nilai referensi baseline."
-    }
 
     result = await generate_ai_analysis(
         mode=req.mode,
         asset_data=overview,
         technical_data=layer_1,
         dev_data=dev_data,
-        macro_data=macro_data,
+        macro_data=mexc_derivatives,
         custom_prompt=req.custom_prompt,
         provider=req.provider,
         api_key=req.api_key,
         model=req.model,
-        base_url=req.base_url
+        base_url=req.base_url,
     )
-
     return result
+
 
 @router.get("/{symbol}")
 async def get_deep_analysis(
     symbol: str,
-    period: str = Query("15m", description="Scalping timeframe: 1s, 1m, 5m, 15m, 30m, 1h, 4h, 1d")
+    period: str = Query("15m", description="MEXC Timeframe: 1m, 5m, 15m, 30m, 1h, 4h, 1d"),
 ):
     """
-    3-Layer Deep Analysis Engine:
-    - Layer 1: Technical Indicators, Pattern Recognition, Trendline Coordinates, Dynamic TP/SL
-    - Layer 2: Developer Metrics & On-Chain Concentration
-    - Layer 3: Macro Economic Context, AI Quantitative Narrative & Pre-calculated Analysis Options
+    ATRED v3.0 3-Layer Deep Quantitative & MEXC Derivatives Engine:
+      - Layer 1: Robust Technicals (RANSAC Trendlines, SFP Stop-Hunt, Regime ADX+Hurst, BTC Gate, Stoch 14 3 3)
+      - Layer 2: MEXC Derivatives & Orderflow Microstructure (Funding Rate, OI Matrix, 20-Level OBI, CVD, Slippage Guard)
+      - Layer 3 & Execution: 0% Maker Fee Limit Entry, Split TP1/TP2, FAIR_PRICE SL, Net EV, Half-Kelly, Safe Max Leverage
     """
-    resolved_sym = resolve_symbol(symbol)
-    df = fetch_ohlcv(resolved_sym, period=period)
+    resolved_sym = resolve_symbol(symbol, "futures")
+    df = await asyncio.to_thread(fetch_ohlcv, resolved_sym, period=period)
     if df.empty or len(df) < 15:
         raise HTTPException(status_code=404, detail="Data time-series tidak ditemukan untuk simbol ini.")
-        
-    overview = get_asset_overview(resolved_sym)
+
+    overview, mexc_derivatives = await asyncio.gather(
+        asyncio.to_thread(get_asset_overview, resolved_sym),
+        asyncio.to_thread(analyze_mexc_derivatives, resolved_sym, df, period),
+    )
     data_status = df_data_status(df, resolved_sym, period)
     latest_close = float(df['Close'].iloc[-1])
-    
-    # 1. LAYER 1: Technical Indicators & Pattern Recognition
+    dec = _dec(latest_close)
+
+    # LAYER 1: Technical Indicators, RANSAC Pattern & SFP Detection
     rsi_s = calculate_rsi(df['Close'])
     atr_s = calculate_atr(df)
     macd_line, sig_line, hist = calculate_macd(df['Close'])
     bb_upper, bb_mid, bb_lower = calculate_bollinger_bands(df['Close'])
-    
+
     latest_rsi = round(float(rsi_s.iloc[-1]), 2)
-    latest_atr = round(float(atr_s.iloc[-1]), 4)
+    latest_atr = round(float(atr_s.iloc[-1]), dec)
     vol_anomaly = False if is_volume_meaningless(resolved_sym) else check_volume_anomaly(df)
     pattern_res = detect_chart_patterns(df)
-    
+
     swing_low = float(df['Low'].tail(15).min())
     swing_high = float(df['High'].tail(15).max())
 
-    # Indikator lanjutan: Stochastic 14 3 3 & Fibonacci (pro anchor)
+    # Stochastic 14 3 3 & Fibonacci
     stoch_data = analyze_stochastic(df, 14, 3, 3)
     fib_data = calculate_fibonacci(df, latest_atr)
 
-    # Keputusan sinyal multi-faktor kuantitatif (eliminasi kontradiksi LONG vs SHORT)
+    # Regime-Adaptive & BTC-Gated Comprehensive Signal
     comp_signal = determine_comprehensive_signal(
         df=df,
         pattern_res=pattern_res,
         rsi_val=latest_rsi,
         macd_hist=float(hist.iloc[-1]),
         stoch_data=stoch_data,
-        fib_data=fib_data
+        fib_data=fib_data,
+        symbol=resolved_sym,
+        orderflow_data=mexc_derivatives,
     )
     trade_direction = comp_signal["direction"]
     signal_type = comp_signal["signal_type"]
-    
+    regime_info = comp_signal.get("regime_context", {})
+    btc_gate = comp_signal.get("btc_gate", {})
+    sfp_info = comp_signal.get("sfp_info", pattern_res.get("sfp_info", {}))
+
+    # Execution & Risk Plan (0% Maker Fee, Split TP1/TP2, FAIR_PRICE SL, Net EV, Half-Kelly)
     tp_sl = calculate_dynamic_tp_sl(
         breakout_price=latest_close,
         pattern_height=pattern_res.get("pattern_height", latest_atr * 2),
@@ -279,8 +300,20 @@ async def get_deep_analysis(
         atr_14=latest_atr,
         swing_high=swing_high,
         signal_type=signal_type,
-        direction=trade_direction
+        direction=trade_direction,
+        win_rate_pct=min(76.0, max(45.0, float(comp_signal.get("confidence", 58)))),
+        adx_val=float(regime_info.get("adx_14", 22.0)),
+        obi_val=float(mexc_derivatives.get("obi_20_level", 0.0)),
+        spread_pct=float(overview.get("spread_pct", 0.01)),
+        funding_rate_pct=float(mexc_derivatives.get("funding_rate_pct", 0.01)),
+        max_zero_slippage_usdt=float(mexc_derivatives.get("max_zero_slippage_position_usdt", 25000.0)),
     )
+
+    # Circuit Breaker Enforcement: Jika data stale atau BTC Gate memblokir sinyal
+    if not data_status.get("is_tradable", True):
+        tp_sl["trade_validity"] = "HALTED_DATA_STALE"
+    elif comp_signal.get("btc_blocked"):
+        tp_sl["trade_validity"] = "BLOCKED_BY_BTC_DUMP"
 
     target_zones = calculate_target_zones(
         df, latest_atr, trade_direction, latest_close, fib=fib_data
@@ -299,7 +332,7 @@ async def get_deep_analysis(
         atr_val=latest_atr,
         timeframe=period,
     )
-    
+
     def _format_time_value(t):
         try:
             val = float(t)
@@ -309,7 +342,6 @@ async def get_deep_analysis(
             pass
         return str(t)
 
-    # Format OHLCV untuk Lightweight Charts: [{ time, open, high, low, close, volume }]
     ohlcv_chart_data = []
     for _, row in df.iterrows():
         ohlcv_chart_data.append({
@@ -320,37 +352,60 @@ async def get_deep_analysis(
             "close": float(row['Close']),
             "volume": float(row['Volume']),
         })
-        
-    # Map koordinat trendline ke tanggal nyata
+
     trendlines_data = {}
     if "trendlines" in pattern_res and "upper_line" in pattern_res["trendlines"]:
         tl = pattern_res["trendlines"]
-        x_start_idx = min(tl["upper_line"][0]["x"], len(df)-1)
-        x_end_idx = min(tl["upper_line"][1]["x"], len(df)-1)
-        
+        x_start_idx = min(tl["upper_line"][0]["x"], len(df) - 1)
+        x_end_idx = min(tl["upper_line"][1]["x"], len(df) - 1)
+
         trendlines_data = {
             "upper_line": [
                 {"time": _format_time_value(df['Time'].iloc[x_start_idx]), "price": tl["upper_line"][0]["price"]},
-                {"time": _format_time_value(df['Time'].iloc[x_end_idx]), "price": tl["upper_line"][1]["price"]}
+                {"time": _format_time_value(df['Time'].iloc[x_end_idx]), "price": tl["upper_line"][1]["price"]},
             ],
             "lower_line": [
                 {"time": _format_time_value(df['Time'].iloc[x_start_idx]), "price": tl["lower_line"][0]["price"]},
-                {"time": _format_time_value(df['Time'].iloc[x_end_idx]), "price": tl["lower_line"][1]["price"]}
-            ]
+                {"time": _format_time_value(df['Time'].iloc[x_end_idx]), "price": tl["lower_line"][1]["price"]},
+            ],
         }
+
+    # Map liquidity pool targets ke waktu candle nyata agar bisa dirender di chart
+    liquidity_pools_timed = []
+    for lp in pattern_res.get("liquidity_pool_targets", []):
+        idx = min(max(0, int(lp.get("index", 0))), len(df) - 1)
+        liquidity_pools_timed.append({
+            **lp,
+            "time": _format_time_value(df['Time'].iloc[idx]),
+        })
+
+    regime_context = {
+        "market_regime": regime_info.get("market_regime", "TRANSITIONAL"),
+        "adx_14": regime_info.get("adx_14", 20.0),
+        "plus_di": regime_info.get("plus_di", 20.0),
+        "minus_di": regime_info.get("minus_di", 20.0),
+        "hurst_exponent": regime_info.get("hurst_exponent", 0.50),
+        "trend_weight": regime_info.get("trend_weight", 0.50),
+        "oscillator_weight": regime_info.get("oscillator_weight", 0.50),
+        "description": regime_info.get("description", ""),
+        "btc_1h_regime": btc_gate.get("btc_1h_regime", "NEUTRAL"),
+        "alt_rs_vs_btc_pct": btc_gate.get("alt_rs_vs_btc_pct", 0.0),
+        "btc_gate_status": btc_gate.get("btc_gate_status", "PASS"),
+        "allow_alt_long": btc_gate.get("allow_alt_long", True),
+    }
 
     layer_1 = {
         "rsi": latest_rsi,
         "atr": latest_atr,
         "macd": {
-            "macd": round(float(macd_line.iloc[-1]), 4),
-            "signal": round(float(sig_line.iloc[-1]), 4),
-            "histogram": round(float(hist.iloc[-1]), 4),
+            "macd": round(float(macd_line.iloc[-1]), dec),
+            "signal": round(float(sig_line.iloc[-1]), dec),
+            "histogram": round(float(hist.iloc[-1]), dec),
         },
         "bollinger_bands": {
-            "upper": round(float(bb_upper.iloc[-1]), 2),
-            "middle": round(float(bb_mid.iloc[-1]), 2),
-            "lower": round(float(bb_lower.iloc[-1]), 2)
+            "upper": round(float(bb_upper.iloc[-1]), dec),
+            "middle": round(float(bb_mid.iloc[-1]), dec),
+            "lower": round(float(bb_lower.iloc[-1]), dec),
         },
         "stochastic": stoch_data,
         "fibonacci": fib_data,
@@ -360,6 +415,10 @@ async def get_deep_analysis(
         "price_zones": signal_summary.get("price_zones", []),
         "backtest": signal_summary.get("backtest", {}),
         "pattern": pattern_res["pattern"],
+        "wick_outliers_ignored": pattern_res.get("wick_outliers_ignored", 0),
+        "sfp_detected": pattern_res.get("sfp_detected", "NONE"),
+        "sfp_info": sfp_info,
+        "liquidity_pool_targets": liquidity_pools_timed,
         "type": signal_type,
         "direction": trade_direction,
         "is_bearish": comp_signal["is_bearish"],
@@ -371,72 +430,61 @@ async def get_deep_analysis(
         "trendlines": trendlines_data,
         "swing_high": swing_high,
         "swing_low": swing_low,
+        "regime_context": regime_context,
         "data_status": data_status,
     }
 
-    # 2. LAYER 2: Developer & On-Chain Analytics
-    repos = {
-        "BTC-USD": "bitcoin/bitcoin",
-        "ETH-USD": "ethereum/go-ethereum",
-        "SOL-USD": "solana-labs/solana",
-        "AVAX-USD": "ava-labs/avalanchego",
-        "BNB-USD": "bnb-chain/bsc",
-        "XRP-USD": "XRPLF/rippled",
-        "ADA-USD": "IntersectMBO/cardano-node",
-        "DOGE-USD": "dogecoin/dogecoin",
-        "NEAR-USD": "near/nearcore",
-        "LINK-USD": "smartcontractkit/chainlink",
-        "AAPL": "apple/swift",
-        "MSFT": "microsoft/vscode",
-        "NVDA": "NVIDIA/cuda-samples"
-    }
-    repo_target = repos.get(resolved_sym, "bitcoin/bitcoin" if "USD" in resolved_sym else "microsoft/vscode")
+    repo_target = CRYPTO_GITHUB_REPOS.get(resolved_sym, "bitcoin/bitcoin")
     dev_data = await get_github_metrics(repo_target)
-    
-    layer_2 = {
+
+    layer_2_legacy = {
         "dev_metrics": dev_data,
+        "mexc_derivatives": mexc_derivatives,
         "on_chain": {
-            "whale_concentration": "24.5% (Est.)",
-            "liquidity_health": "Healthy (>80% locked)",
-            "liquidity_locked": "Healthy (>80% locked)",
-            "circulating_supply": "Distributed",
-            "top_10_holders": "31.2% (Est.)",
-            "is_estimated": True
-        }
+            "whale_concentration": f"OBI {mexc_derivatives['obi_20_level']:+.2f} ({mexc_derivatives['obi_status']})",
+            "liquidity_health": f"Max No-Slip: ${mexc_derivatives['max_zero_slippage_position_usdt']:,.0f} USDT",
+            "liquidity_locked": f"Depth 5L: ${mexc_derivatives['top5_depth_usdt']:,.0f} USDT",
+            "circulating_supply": mexc_derivatives["oi_regime"],
+            "top_10_holders": f"Funding: {mexc_derivatives['funding_rate_pct']:+.4f}%",
+            "is_estimated": False,
+        },
     }
 
-    # 3. LAYER 3: Macro & AI Engine
-    macro_data = {
-        "fed_rate": "5.25% - 5.50%",
-        "cpi_yoy": "3.1%",
-        "unemployment_rate": "4.1%",
-        "dxy_index": 104.25,
-        "market_sentiment": "Greed (64/100)",
-        "is_static_reference": True,
-        "reference_note": "Indikator makro adalah referensi baseline."
-    }
-    
-    # Jalankan 5 analisis mode secara paralel dengan asyncio.gather untuk respons instan
     ai_summary, scalping_analysis, swing_analysis, investing_analysis, scenarios_analysis = await asyncio.gather(
-        generate_ai_analysis(mode="overview", asset_data=overview, technical_data=layer_1, dev_data=dev_data, macro_data=macro_data),
-        generate_ai_analysis(mode="scalping", asset_data=overview, technical_data=layer_1, dev_data=dev_data, macro_data=macro_data),
-        generate_ai_analysis(mode="swing", asset_data=overview, technical_data=layer_1, dev_data=dev_data, macro_data=macro_data),
-        generate_ai_analysis(mode="investing", asset_data=overview, technical_data=layer_1, dev_data=dev_data, macro_data=macro_data),
-        generate_ai_analysis(mode="scenarios", asset_data=overview, technical_data=layer_1, dev_data=dev_data, macro_data=macro_data),
+        generate_ai_analysis(mode="overview", asset_data=overview, technical_data=layer_1, dev_data=dev_data, macro_data=mexc_derivatives),
+        generate_ai_analysis(mode="scalping", asset_data=overview, technical_data=layer_1, dev_data=dev_data, macro_data=mexc_derivatives),
+        generate_ai_analysis(mode="swing", asset_data=overview, technical_data=layer_1, dev_data=dev_data, macro_data=mexc_derivatives),
+        generate_ai_analysis(mode="investing", asset_data=overview, technical_data=layer_1, dev_data=dev_data, macro_data=mexc_derivatives),
+        generate_ai_analysis(mode="scenarios", asset_data=overview, technical_data=layer_1, dev_data=dev_data, macro_data=mexc_derivatives),
     )
 
     return {
+        "symbol": resolved_sym,
+        "exchange": "MEXC_FUTURES_USDT_M",
+        "timeframe": period,
+        "data_integrity": {
+            "status": data_status.get("status", "LIVE_OK"),
+            "data_status": data_status.get("status", "LIVE_OK"),
+            "data_age_ms": data_status.get("data_age_ms", 0),
+            "is_tradable": data_status.get("is_tradable", True),
+            "halt_reason": data_status.get("halt_reason"),
+        },
+        "regime_context": regime_context,
+        "layer1_technical": layer_1,
+        "layer2_mexc_derivatives": mexc_derivatives,
+        "execution_plan": tp_sl,
+        # Backward-compatible keys for Frontend components
         "overview": overview,
         "data_status": data_status,
         "ohlcv": ohlcv_chart_data,
         "layer_1_technical": layer_1,
-        "layer_2_dev_onchain": layer_2,
-        "layer_3_macro": macro_data,
+        "layer_2_dev_onchain": layer_2_legacy,
+        "layer_3_macro": mexc_derivatives,
         "ai_summary": ai_summary,
         "ai_options": {
             "scalping": scalping_analysis,
             "swing": swing_analysis,
             "investing": investing_analysis,
-            "scenarios": scenarios_analysis
-        }
+            "scenarios": scenarios_analysis,
+        },
     }

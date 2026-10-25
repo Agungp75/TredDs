@@ -7,7 +7,6 @@ import DisclaimerFooter from './components/common/DisclaimerFooter';
 import AISettingsModal from './components/common/AISettingsModal';
 import HomeDashboard from './pages/HomeDashboard';
 import CryptoDashboard from './pages/CryptoDashboard';
-import ForexDashboard from './pages/ForexDashboard';
 import AssetDetail from './pages/AssetDetail';
 
 export default function App() {
@@ -21,11 +20,11 @@ export default function App() {
             <main className="w-full pt-28 pb-16 bg-background flex-1 px-4 sm:px-6 xl:px-10">
               <Routes>
                 <Route path="/" element={<HomeDashboard />} />
-                <Route path="/stocks" element={<Navigate to="/" replace />} />
                 <Route path="/crypto" element={<CryptoDashboard />} />
-                <Route path="/forex" element={<ForexDashboard />} />
                 <Route path="/analysis/:symbol" element={<AssetDetail />} />
-                <Route path="/analysis" element={<AssetDetail />} />
+                <Route path="/analysis" element={<Navigate to="/analysis/BTC_USDT" replace />} />
+                <Route path="/forex" element={<Navigate to="/" replace />} />
+                <Route path="/stocks" element={<Navigate to="/" replace />} />
               </Routes>
             </main>
             <DisclaimerFooter />

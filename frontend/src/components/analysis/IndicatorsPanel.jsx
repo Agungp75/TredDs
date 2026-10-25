@@ -124,21 +124,27 @@ export default function IndicatorsPanel({ technicalData = {} }) {
           <div className="text-[10px] text-secondary">vs 20-Day SMA</div>
         </div>
 
-        {/* Stochastic 14 3 3 */}
+        {/* Stochastic (Inputs: %K Length 14, %K Smoothing 3, %D Smoothing 3) */}
         <div className="p-3.5 rounded-xl bg-surface-container border border-outline-variant/50 space-y-1">
-          <div className="text-xs text-on-surface-variant">Stoch ({stochastic?.settings || '14 3 3'})</div>
+          <div className="flex items-center justify-between text-xs text-on-surface-variant">
+            <span>Stoch ({stochastic?.settings || '14 3 3'})</span>
+            <span className="text-[9px] px-1.5 py-0.2 rounded bg-surface-container-highest text-secondary">
+              {stochastic?.k_length || 14}/{stochastic?.k_smoothing || 3}/{stochastic?.d_smoothing || 3}
+            </span>
+          </div>
           <div className={`text-xl font-bold ${stochColor}`}>
             {stochastic ? (
               <>
-                {stochastic.k}
-                <span className="text-xs text-on-surface-variant font-medium"> / {stochastic.d}</span>
+                <span className="text-[#2962FF]" title="%K (Length 14, Smoothing 3)">{stochastic.k}</span>
+                <span className="text-xs text-on-surface-variant font-medium"> / </span>
+                <span className="text-[#FF6D00] text-base" title="%D (Smoothing 3)">{stochastic.d}</span>
               </>
             ) : (
               '-'
             )}
           </div>
-          <div className="text-[10px] text-secondary truncate">
-            {stochastic ? `${stochastic.zone}${stochastic.cross ? ` · ${stochastic.cross}` : ''}` : '%K / %D'}
+          <div className="text-[10px] text-secondary truncate" title="%K Length: 14 | %K Smoothing: 3 | %D Smoothing: 3">
+            {stochastic ? `${stochastic.zone}${stochastic.cross ? ` · ${stochastic.cross}` : ''}` : '%K (14,3) / %D (3)'}
           </div>
         </div>
       </div>

@@ -11,49 +11,56 @@ export const apiClient = axios.create({
   },
 });
 
+export default apiClient;
+
 export const api = {
-  // Scalping Screener (1s, 1m, 5m, 15m, 30m, 1h, 4h, 1d)
-  getScreener: async (assetType = '', minScore = 0, timeframe = '15m') => {
+  // MEXC Two-Stage Full-Market Screener
+  getScreener: async (assetType = 'crypto', minScore = 0, timeframe = '15m', strategy = 'all') => {
     const params = {};
     if (assetType) params.asset_type = assetType;
     if (minScore) params.min_score = minScore;
     if (timeframe) params.timeframe = timeframe;
+    if (strategy && strategy !== 'all') params.strategy = strategy;
     const res = await apiClient.get('/screener', { params });
     return res.data;
   },
 
-  // Crypto
+  // MEXC Crypto Explorer
   getCryptoTokens: async () => {
     const res = await apiClient.get('/crypto/tokens');
     return res.data;
   },
 
-  // Forex & Gold
-  getForexPairs: async () => {
-    const res = await apiClient.get('/forex/pairs');
-    return res.data;
-  },
-  getForexCorrelation: async () => {
-    const res = await apiClient.get('/forex/correlation');
-    return res.data;
-  },
-  getForexCalendar: async () => {
-    const res = await apiClient.get('/forex/calendar');
-    return res.data;
-  },
-
-  // 3-Layer Deep Scalp Analysis
-  getDeepAnalysis: async (symbol, period = '15m') => {
-    const res = await apiClient.get(`/analysis/${encodeURIComponent(symbol)}`, {
-      params: { period }
+  // Layer 2: MEXC Derivatives & Orderflow Microstructure
+  getDerivatives: async (symbol, timeframe = '15m') => {
+    const res = await apiClient.get(`/derivatives/${encodeURIComponent(symbol)}`, {
+      params: { timeframe },
     });
     return res.data;
   },
 
-  // Historical Similarity Engine
-  getSimilarity: async (symbol, timeframe = '1d', period = 'max') => {
+  // Crypto Correlation Matrix & Catalyst Calendar
+  getCorrelationMatrix: async (timeframe = '1h') => {
+    const res = await apiClient.get('/screener/correlation-matrix', { params: { timeframe } });
+    return res.data;
+  },
+  getCatalystCalendar: async () => {
+    const res = await apiClient.get('/screener/catalyst-calendar');
+    return res.data;
+  },
+
+  // 3-Layer Deep Quant & MEXC Derivatives Analysis
+  getDeepAnalysis: async (symbol, period = '15m') => {
+    const res = await apiClient.get(`/analysis/${encodeURIComponent(symbol)}`, {
+      params: { period },
+    });
+    return res.data;
+  },
+
+  // Layer 3: Historical Similarity Engine (K=30 & Wilcoxon p-value)
+  getSimilarity: async (symbol, timeframe = '1h', period = 'max') => {
     const res = await apiClient.get(`/analysis/${encodeURIComponent(symbol)}/similarity`, {
-      params: { timeframe, period }
+      params: { timeframe, period },
     });
     return res.data;
   },
@@ -88,25 +95,26 @@ export const api = {
       api_key: payload.apiKey,
       model: payload.model,
       base_url: payload.baseUrl,
-      period: payload.period || '3mo',
+      period: payload.period || '15m',
     });
     return res.data;
   },
 
-  // Draw-to-Search Pattern Matching (Crypto Only)
-  searchDrawnPattern: async (points, topK = 5, timeframe = 'auto') => {
-    const res = await apiClient.post('/crypto/pattern-search', {
-      points,
-      top_k: topK,
-      timeframe,
-    }, { timeout: 30000 }); // timeout 30s karena scan 10 koin secara paralel
+  // Draw-to-Search Pattern Matching (Dynamic Top-40 MEXC Coins)
+  searchDrawnPattern: async (points, topK = 12, timeframe = 'auto') => {
+    const res = await apiClient.post(
+      '/crypto/pattern-search',
+      {
+        points,
+        top_k: topK,
+        timeframe,
+      },
+      { timeout: 35000 }
+    );
     return res.data;
   },
-
 };
 
-
-// WebSocket Streaming Connector
 export function connectMarketWebSocket(onMessage, onError) {
   let ws = null;
   try {

@@ -380,16 +380,31 @@ async def generate_ai_analysis(
     macd = technical_data.get("macd", {})
     bb = technical_data.get("bollinger_bands", {})
     vol_anomaly = technical_data.get("volume_anomaly", False)
-    tp = technical_data.get("tp_sl", {}).get("tp", price * (0.95 if is_bearish else 1.05))
-    sl = technical_data.get("tp_sl", {}).get("sl", price * (1.05 if is_bearish else 0.95))
-    rr = technical_data.get("tp_sl", {}).get("risk_reward", 2.0)
+    tp_sl_obj = technical_data.get("tp_sl", {})
+    tp = tp_sl_obj.get("tp", price * (0.95 if is_bearish else 1.05))
+    tp1 = tp_sl_obj.get("tp1", tp)
+    tp2 = tp_sl_obj.get("tp2", tp)
+    sl = tp_sl_obj.get("sl", price * (1.05 if is_bearish else 0.95))
+    maker_entry = tp_sl_obj.get("maker_limit_entry", price)
+    rr = tp_sl_obj.get("net_rr_after_mexc_fees") or tp_sl_obj.get("risk_reward", 2.0)
+    ev_net_pct = tp_sl_obj.get("net_expected_value_pct", 0.35)
+    pos_sizing = tp_sl_obj.get("position_sizing", {})
     swing_high = technical_data.get("swing_high", price * 1.04)
     swing_low = technical_data.get("swing_low", price * 0.96)
 
+    # Layer 2 MEXC Derivatives & Orderflow context (menggantikan makro tradisional Fed/CPI)
+    deriv_data = macro_data or {}
+    funding_pct = deriv_data.get("funding_rate_pct", 0.01)
+    oi_regime = deriv_data.get("oi_regime", "NEW_LONG_BUILDUP")
+    obi_val = deriv_data.get("obi_20_level", 0.0)
+    obi_status = deriv_data.get("obi_status", "BALANCED_BOOK")
+    cvd_trend = deriv_data.get("cvd_trend", "NEUTRAL")
+    max_slippage_usdt = deriv_data.get("max_zero_slippage_position_usdt") or pos_sizing.get("max_zero_slippage_position_usdt", 25000.0)
+
     dev_score = dev_data.get("dev_score", 0) if dev_data else 0
-    fed_rate = macro_data.get("fed_rate", "5.25% - 5.50%")
-    cpi = macro_data.get("cpi_yoy", "3.1%")
-    sentiment = macro_data.get("market_sentiment", "Neutral")
+    fed_rate = f"Funding {funding_pct:+.4f}% | OI: {oi_regime}"
+    cpi = f"OBI 20L: {obi_val:+.2f} ({obi_status})"
+    sentiment = f"CVD: {cvd_trend} | EV Net: {ev_net_pct:+.2f}%"
 
     prov, key, target_model, target_base_url = resolve_api_credentials(provider, api_key, model, base_url)
     has_api_key = bool(key and len(key.strip()) > 8)
@@ -814,24 +829,26 @@ def _generate_heuristic_fallback(
         }
 
     else:
-        # Overview
-        vol_text = "Tercatat lonjakan volume signifikan (>1.5x rata-rata 20 hari)" if vol_anomaly else "Volume transaksi bergerak normal dalam batas rata-rata"
+        # Overview v3.0 (3-Layer Quant + MEXC Derivatives + 0% Maker Execution)
+        dec = 8 if price < 0.0001 else (6 if price < 0.01 else (4 if price < 10 else 2))
+        vol_text = "Tercatat lonjakan volume signifikan (>1.5x rata-rata 20 bar)" if vol_anomaly else "Volume transaksi bergerak stabil dalam batas rata-rata"
         rsi_text = "zona oversold (potensi akumulasi)" if rsi < 35 else ("zona overbought (waspada pullback)" if rsi > 68 else "momentum seimbang")
 
         key_points = [
-            f"Struktur chart terkonfirmasi membentuk pola geometris **{pattern}** dengan sinyal **{pattern_type}** ({'Posisi Direkomendasikan: SHORT' if is_bearish else 'Posisi Direkomendasikan: LONG'}).",
-            f"Indikator momentum RSI berada di level {rsi:.1f} ({rsi_text}). {vol_text}.",
-            f"Kalkulasi ATR mengindikasikan target Take Profit di **${tp:,.2f}** dan proteksi Stop Loss di **${sl:,.2f}** (Rasio R:R 1:{rr})."
+            f"Layer 1 (Teknikal): Terkonfirmasi pola **{pattern}** dengan bias **{pattern_type}** ({'Posisi Direkomendasikan: SHORT' if is_bearish else 'Posisi Direkomendasikan: LONG'}). RSI di {rsi:.1f} ({rsi_text}).",
+            f"Layer 2 (Derivatif MEXC): Status `{fed_rate}` | `{cpi}` | `{sentiment}`.",
+            f"Eksekusi MEXC (0% Maker Fee): Target Take Profit di **${tp:,.{dec}f}** dan proteksi Stop Loss (Trigger: FAIR_PRICE) di **${sl:,.{dec}f}** (Net R:R 1:{rr})."
         ]
         if dev_score > 0:
-            key_points.append(f"Aktivitas tim developer repositori menunjukkan skor keaktifan {dev_score}/100 dengan commit dan merge stabil.")
+            key_points.append(f"Aktivitas developer ekosistem menunjukkan skor {dev_score}/100.")
 
-        headline = f"Setup {verdict} ({'SHORT / SELL' if is_bearish else 'LONG / BUY'}) Terdeteksi pada {symbol} dengan Pola {pattern}"
+        headline = f"Setup {verdict} ({'SHORT / SELL' if is_bearish else 'LONG / BUY'}) Terdeteksi pada {symbol} — {pattern}"
         summary_text = (
-            f"{symbol} saat ini diperdagangkan pada level ${price:,.2f} ({change_pct:+.2f}%). "
-            f"Algoritma kuantitatif mendeteksi konvergensi pola {pattern} yang didukung sinyal teknikal {pattern_type} ({'Posisi Direkomendasikan: SHORT' if is_bearish else 'Posisi Direkomendasikan: LONG'}). "
-            f"{vol_text}. Dalam konteks makro dengan suku bunga {fed_rate}, "
-            f"manajemen risiko dengan disiplin rasio Risk-Reward 1:{rr} sangat direkomendasikan."
+            f"{symbol} diperdagangkan di MEXC pada ${price:,.{dec}f} ({change_pct:+.2f}%). "
+            f"Mesin kuantitatif mendeteksi konvergensi pola {pattern} dengan sinyal {pattern_type} "
+            f"({'SHORT' if is_bearish else 'LONG'}). {vol_text}. "
+            f"Pada mikrostruktur derivatif MEXC ({fed_rate}, {cpi}), disarankan menggunakan Maker Limit Entry (0% Fee) "
+            f"dan pemicu Stop-Loss berbasis Fair Price untuk menghindari likuidasi scam wick (Net R:R 1:{rr})."
         )
 
         return {
@@ -842,12 +859,14 @@ def _generate_heuristic_fallback(
             "key_points": key_points,
             "summary_text": summary_text,
             "parameters": {
-                "entry": price,
-                "tp": tp,
-                "sl": sl,
+                "entry": round(price, dec),
+                "tp": round(tp, dec),
+                "sl": round(sl, dec),
+                "sl_trigger_type": "FAIR_PRICE",
                 "risk_reward": f"1:{rr}",
                 "rsi": rsi,
                 "fed_rate": fed_rate,
+                "mexc_derivatives": f"{fed_rate} | {cpi}",
                 "direction": "SHORT" if is_bearish else "LONG"
             }
         }

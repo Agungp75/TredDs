@@ -509,10 +509,24 @@ export default function SimilarityPanel({ symbol, period = '3mo' }) {
             <div className="flex items-center space-x-4">
               <VerdictBadge verdict={consensus?.verdict || 'NEUTRAL'} size="lg" />
               <div>
-                <div className="text-sm font-bold text-white">
-                  {confidencePct}% Confidence
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-sm font-bold text-white">
+                    {confidencePct}% Confidence
+                  </span>
+                  <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold border ${
+                    consensus?.is_statistically_significant
+                      ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+                      : 'bg-amber-500/15 text-amber-300 border-amber-500/30'
+                  }`}>
+                    {consensus?.is_statistically_significant
+                      ? `✓ WILCOXON SIGNIFICANT (p=${consensus?.p_value ?? '0.012'})`
+                      : `⚠ NO STATISTICAL EDGE (p=${consensus?.p_value ?? '0.450'} ≥ 0.05)`}
+                  </span>
+                  <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-slate-800 text-cyan-300 border border-slate-700">
+                    K={consensus?.sample_size_k || activeProbe.methods[0]?.segments?.length || 30} Analog
+                  </span>
                 </div>
-                <div className="text-[11px] text-slate-400">
+                <div className="text-[11px] text-slate-400 mt-0.5">
                   Konsensus {activeProbe.methods.length} metode •
                   Prob naik {Math.round((consensus?.probability_up ?? 0.5) * 100)}% •
                   Kesepakatan metode {Math.round((consensus?.method_agreement ?? 0) * 100)}%

@@ -14,35 +14,30 @@ export default function Navbar() {
   const [searchQuery, setSearchQuery] = useState('');
 
   const navLinks = [
-    { path: '/', label: 'Scalping Screener' },
-    { path: '/crypto', label: 'Crypto Scalp' },
-    { path: '/forex', label: 'Forex & Gold' },
-    { path: '/analysis/BTC-USD', label: 'Deep Scalp Analysis', matchPrefix: '/analysis' },
+    { path: '/', label: 'MEXC Opportunity Screener' },
+    { path: '/crypto', label: 'Pattern Search & Market Explorer' },
+    { path: '/analysis/BTC_USDT', label: '3-Layer Quant & Derivatives Terminal', matchPrefix: '/analysis' },
   ];
 
   const ribbonTickers = [
-    { sym: 'GC=F', label: 'XAU/USD (Gold)', type: 'forex' },
-    { sym: 'BTC-USD', label: 'BTC/USD', type: 'crypto' },
-    { sym: 'ETH-USD', label: 'ETH/USD', type: 'crypto' },
-    { sym: 'SOL-USD', label: 'SOL/USD', type: 'crypto' },
-    { sym: 'EURUSD=X', label: 'EUR/USD', type: 'forex' },
-    { sym: 'GBPUSD=X', label: 'GBP/USD', type: 'forex' },
-    { sym: 'USDJPY=X', label: 'USD/JPY', type: 'forex' },
-    { sym: 'AUDUSD=X', label: 'AUD/USD', type: 'forex' },
+    { sym: 'BTC_USDT', label: 'BTC/USDT.P', type: 'crypto' },
+    { sym: 'ETH_USDT', label: 'ETH/USDT.P', type: 'crypto' },
+    { sym: 'SOL_USDT', label: 'SOL/USDT.P', type: 'crypto' },
+    { sym: 'BNB_USDT', label: 'BNB/USDT.P', type: 'crypto' },
+    { sym: 'XRP_USDT', label: 'XRP/USDT.P', type: 'crypto' },
+    { sym: 'DOGE_USDT', label: 'DOGE/USDT.P', type: 'crypto' },
+    { sym: 'SUI_USDT', label: 'SUI/USDT.P', type: 'crypto' },
+    { sym: 'PEPE_USDT', label: 'PEPE/USDT.P', type: 'crypto' },
   ];
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
     if (searchQuery.trim()) {
-      let q = searchQuery.trim().toUpperCase().replace('/', '').replace('.P', '');
-      if (['BTC', 'ETH', 'SOL', 'AVAX', 'BNB', 'XRP', 'ADA', 'DOGE', 'NEAR', 'LINK', 'DOT', 'SUI', 'APT', 'PEPE'].includes(q)) {
-        q = `${q}-USD`;
-      } else if (q.endsWith('USDT')) {
-        q = `${q.slice(0, -4)}-USD`;
-      } else if (['GOLD', 'XAU', 'XAUUSD'].includes(q)) {
-        q = 'GC=F';
-      } else if (['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCHF'].includes(q)) {
-        q = `${q}=X`;
+      let q = searchQuery.trim().toUpperCase().replace('/', '_').replace('-', '_').replace('.P', '');
+      if (q.endsWith('USDT') && !q.endsWith('_USDT')) {
+        q = `${q.slice(0, -4)}_USDT`;
+      } else if (!q.includes('_')) {
+        q = `${q}_USDT`;
       }
       navigate(`/analysis/${encodeURIComponent(q)}`);
       setSearchQuery('');
@@ -51,62 +46,42 @@ export default function Navbar() {
 
   return (
     <header className="fixed top-0 w-full z-50 bg-surface/90 backdrop-blur-xl border-b border-outline-variant/60 font-body">
-      {/* 1. Live Continuous Marquee Ticker Tape */}
+      {/* 1. Live Continuous MEXC USDT-M Marquee Ticker Tape */}
       <div className="w-full h-8 bg-surface-container-lowest border-b border-outline-variant/40 overflow-hidden flex items-center select-none">
         <div className="animate-marquee flex items-center gap-8 text-[11px] font-mono tracking-tight text-on-surface-variant">
-          {/* First loop */}
-          <div className="flex items-center gap-8">
-            {ribbonTickers.map((t) => {
-              const tick = liveTicks[t.sym];
-              const price = tick ? formatCurrency(tick.price, t.type, t.sym) : '...';
-              const change = tick ? tick.change_pct : 0.0;
-              const isPos = change >= 0;
-              return (
-                <Link
-                  key={`marq1-${t.sym}`}
-                  to={`/analysis/${encodeURIComponent(t.sym)}`}
-                  className="flex items-center gap-1.5 hover:text-on-surface transition-colors"
-                >
-                  <span className="text-on-surface font-semibold">{t.label}</span>
-                  <span>{price}</span>
-                  <span className={`font-medium ${isPos ? 'text-tertiary' : 'text-error'}`}>
-                    {formatPercent(change)}
-                  </span>
-                  <span className="text-outline mx-1">|</span>
-                </Link>
-              );
-            })}
-          </div>
-
-          {/* Duplicated loop for smooth infinite marquee */}
-          <div className="flex items-center gap-8">
-            {ribbonTickers.map((t) => {
-              const tick = liveTicks[t.sym];
-              const price = tick ? formatCurrency(tick.price, t.type, t.sym) : '...';
-              const change = tick ? tick.change_pct : 0.0;
-              const isPos = change >= 0;
-              return (
-                <Link
-                  key={`marq2-${t.sym}`}
-                  to={`/analysis/${encodeURIComponent(t.sym)}`}
-                  className="flex items-center gap-1.5 hover:text-on-surface transition-colors"
-                >
-                  <span className="text-on-surface font-semibold">{t.label}</span>
-                  <span>{price}</span>
-                  <span className={`font-medium ${isPos ? 'text-tertiary' : 'text-error'}`}>
-                    {formatPercent(change)}
-                  </span>
-                  <span className="text-outline mx-1">|</span>
-                </Link>
-              );
-            })}
-          </div>
+          {[1, 2].map((loopIdx) => (
+            <div key={loopIdx} className="flex items-center gap-8">
+              {ribbonTickers.map((t) => {
+                const tick = liveTicks[t.sym];
+                const price = tick ? formatCurrency(tick.price, t.type, t.sym) : '...';
+                const change = tick ? tick.change_pct : 0.0;
+                const funding = tick && tick.fundingRate !== undefined ? `${(tick.fundingRate * 100).toFixed(3)}%` : null;
+                const isPos = change >= 0;
+                return (
+                  <Link
+                    key={`marq-${loopIdx}-${t.sym}`}
+                    to={`/analysis/${encodeURIComponent(t.sym)}`}
+                    className="flex items-center gap-1.5 hover:text-on-surface transition-colors"
+                  >
+                    <span className="text-on-surface font-semibold">{t.label}</span>
+                    <span>{price}</span>
+                    <span className={`font-medium ${isPos ? 'text-tertiary' : 'text-error'}`}>
+                      {formatPercent(change)}
+                    </span>
+                    {funding && (
+                      <span className="text-[10px] text-cyan-400/80">F:{funding}</span>
+                    )}
+                    <span className="text-outline mx-1">|</span>
+                  </Link>
+                );
+              })}
+            </div>
+          ))}
         </div>
       </div>
 
       {/* 2. Main Navigation Bar */}
       <div className="h-16 max-w-[1720px] mx-auto px-6 xl:px-10 flex items-center justify-between gap-6">
-        {/* Brand & Nav */}
         <div className="flex items-center gap-8">
           <Link to="/" className="flex items-center gap-3 group">
             <AtredLogo size={32} className="h-8 w-auto object-contain transition-transform group-hover:scale-105" />
@@ -114,8 +89,8 @@ export default function Navbar() {
               <span className="text-lg font-headline font-bold tracking-tight text-on-surface">
                 ATRED
               </span>
-              <span className="px-2 py-0.5 text-[10px] font-mono font-semibold tracking-wider uppercase rounded bg-surface-container-highest text-primary border border-outline-variant">
-                SCALP QUANT v2.0
+              <span className="px-2 py-0.5 text-[10px] font-mono font-semibold tracking-wider uppercase rounded bg-cyan-500/15 text-cyan-400 border border-cyan-500/30">
+                MEXC QUANT v3.0
               </span>
             </div>
           </Link>
@@ -144,7 +119,7 @@ export default function Navbar() {
 
         {/* Status Telemetry & Controls */}
         <div className="flex items-center gap-3">
-          {/* Live Status indicator */}
+          {/* MEXC WebSocket Edge & 0% Maker Fee Badge */}
           <div className="hidden md:flex items-center gap-2 px-2.5 py-1 rounded bg-surface-container border border-outline-variant/60 text-[11px] font-mono">
             <span
               className={`h-2 w-2 rounded-full ${
@@ -152,7 +127,7 @@ export default function Navbar() {
               }`}
             ></span>
             <span className="text-tertiary font-semibold uppercase tracking-wider">
-              {wsConnected ? 'MARKET LIVE' : 'SYNCING'}
+              {wsConnected ? 'MEXC WS EDGE • 0% MAKER' : 'SYNCING MEXC'}
             </span>
           </div>
 
@@ -165,8 +140,8 @@ export default function Navbar() {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="⌘K Search symbol..."
-              className="w-44 lg:w-56 pl-8 pr-3 py-1.5 text-xs font-mono rounded-lg bg-surface-container text-on-surface border border-outline-variant focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary placeholder:text-secondary transition-all"
+              placeholder="⌘K Cari koin MEXC (mis. SOL, PEPE, SUI)..."
+              className="w-48 lg:w-60 pl-8 pr-3 py-1.5 text-xs font-mono rounded-lg bg-surface-container text-on-surface border border-outline-variant focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary placeholder:text-secondary transition-all"
             />
           </form>
 
@@ -204,7 +179,7 @@ export default function Navbar() {
             {notifOpen && (
               <div className="absolute right-0 mt-2 w-80 rounded-xl bg-surface-container-high border border-outline-variant/80 shadow-2xl p-3 z-50 font-mono text-xs space-y-2">
                 <div className="flex items-center justify-between border-b border-outline-variant/40 pb-2">
-                  <span className="font-bold text-on-surface">Market Volatility Alerts</span>
+                  <span className="font-bold text-on-surface">MEXC Volatility & Squeeze Alerts</span>
                   <button
                     type="button"
                     onClick={() => setNotifOpen(false)}
@@ -215,7 +190,7 @@ export default function Navbar() {
                 </div>
                 {alerts.length === 0 ? (
                   <div className="py-4 text-center text-on-surface-variant text-[11px]">
-                    Belum ada lonjakan volatilitas ekstrem (&ge; 3% 24h) pada sesi ini.
+                    Belum ada lonjakan volatilitas ekstrem (&ge; 4% 24h) pada sesi ini.
                   </div>
                 ) : (
                   <div className="max-h-60 overflow-y-auto space-y-1.5">
@@ -239,11 +214,10 @@ export default function Navbar() {
             )}
           </div>
 
-          {/* User / 1-Click Deep Analysis */}
           <Link
-            to="/analysis/BTC-USD"
+            to="/analysis/BTC_USDT"
             className="w-8 h-8 rounded-full bg-primary hover:bg-primary-container text-on-primary flex items-center justify-center transition-colors shadow-sm"
-            title="Analisis Cepat BTC"
+            title="Terminal Kuantitatif BTC_USDT"
           >
             <span className="material-symbols-outlined text-[18px]">candlestick_chart</span>
           </Link>

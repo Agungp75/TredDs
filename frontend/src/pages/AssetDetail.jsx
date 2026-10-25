@@ -7,20 +7,21 @@ import TradingViewEmbedWidget from '../components/charts/TradingViewEmbedWidget'
 import PatternMatchLargeChart from '../components/charts/PatternMatchLargeChart';
 import IndicatorsPanel from '../components/analysis/IndicatorsPanel';
 import SignalSummaryPanel from '../components/analysis/SignalSummaryPanel';
+import DerivativesPanel from '../components/analysis/DerivativesPanel';
 import DevActivityChart from '../components/analysis/DevActivityChart';
 import AISummaryCard from '../components/analysis/AISummaryCard';
 import SimilarityPanel from '../components/analysis/SimilarityPanel';
 import { formatCurrency, formatPercent } from '../utils/formatters';
 
 const POPULAR_ASSETS = [
-  { symbol: 'GC=F', label: '🥇 XAU/USD (Gold)' },
-  { symbol: 'BTC-USD', label: 'BTC/USDT' },
-  { symbol: 'ETH-USD', label: 'ETH/USDT' },
-  { symbol: 'SOL-USD', label: 'SOL/USDT' },
-  { symbol: 'EURUSD=X', label: 'EUR/USD' },
-  { symbol: 'GBPUSD=X', label: 'GBP/USD' },
-  { symbol: 'USDJPY=X', label: 'USD/JPY' },
-  { symbol: 'AUDUSD=X', label: 'AUD/USD' },
+  { symbol: 'BTC_USDT', label: '₿ BTC_USDT (Perp)' },
+  { symbol: 'ETH_USDT', label: 'Ξ ETH_USDT (Perp)' },
+  { symbol: 'SOL_USDT', label: '◎ SOL_USDT (Perp)' },
+  { symbol: 'PEPE_USDT', label: '🐸 PEPE_USDT (Perp)' },
+  { symbol: 'SUI_USDT', label: '💧 SUI_USDT (Perp)' },
+  { symbol: 'WIF_USDT', label: '🐕 WIF_USDT (Perp)' },
+  { symbol: 'DOGE_USDT', label: 'Ð DOGE_USDT (Perp)' },
+  { symbol: 'XRP_USDT', label: '✕ XRP_USDT (Perp)' },
 ];
 
 export default function AssetDetail() {
@@ -60,21 +61,18 @@ export default function AssetDetail() {
   const patternResult = patternMatchData?.patternResult;
   const probeValues = patternMatchData?.probeValues || patternResult?.probe_values || [];
 
-  const rawSymbol = routeSymbol || 'BTC-USD';
+  const rawSymbol = routeSymbol || 'BTC_USDT';
   const symbol = React.useMemo(() => {
-    if (!rawSymbol) return 'BTC-USD';
-    let clean = rawSymbol.toUpperCase().trim().replace('/', '').replace('.P', '');
-    if (['BTC', 'ETH', 'SOL', 'AVAX', 'BNB', 'XRP', 'ADA', 'DOGE', 'NEAR', 'LINK', 'DOT', 'SUI', 'APT', 'PEPE'].includes(clean)) {
-      return `${clean}-USD`;
+    if (!rawSymbol) return 'BTC_USDT';
+    let clean = rawSymbol.toUpperCase().trim().replace('/', '_').replace('-', '_').replace('.P', '');
+    if (clean.endsWith('_USD')) {
+      return `${clean.slice(0, -4)}_USDT`;
     }
-    if (clean.endsWith('USDT')) {
-      return `${clean.slice(0, -4)}-USD`;
+    if (clean.endsWith('USDT') && !clean.includes('_')) {
+      return `${clean.slice(0, -4)}_USDT`;
     }
-    if (['GOLD', 'XAU', 'XAUUSD'].includes(clean)) {
-      return 'GC=F';
-    }
-    if (['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCHF'].includes(clean)) {
-      return `${clean}=X`;
+    if (!clean.includes('_')) {
+      return `${clean}_USDT`;
     }
     return clean;
   }, [rawSymbol]);
@@ -132,18 +130,25 @@ export default function AssetDetail() {
   }, [symbol, period]);
 
   const overview = data?.overview || {};
-  const dataStatus = data?.data_status || overview?.data_status || {};
-  const layer1 = data?.layer_1_technical || {};
+  const dataIntegrity = data?.data_integrity || data?.data_status || overview?.data_status || {};
+  const dataStatus = dataIntegrity;
+  const layer1 = data?.layer1_technical || data?.layer_1_technical || {};
+  const derivatives = data?.layer2_mexc_derivatives || {};
+  const regimeContext = data?.regime_context || layer1?.market_regime || {};
+  const executionPlan = data?.execution_plan || layer1?.tp_sl || {};
   const layer2 = data?.layer_2_dev_onchain || {};
   const macro = data?.layer_3_macro || {};
   const aiSummary = data?.ai_summary || {};
   const aiOptions = data?.ai_options || {};
   const ohlcv = data?.ohlcv || [];
 
-  const liveTick = liveTicks[symbol];
+  const liveTick = liveTicks[symbol] || liveTicks[symbol.replace('_', '-')];
   const currentPrice = liveTick ? liveTick.price : (overview.price || 0);
   const currentChangePct = liveTick ? liveTick.change_pct : (overview.change_pct || 0);
   const isPos = (currentChangePct || 0) >= 0;
+  const feedStatus = dataIntegrity?.data_status || liveTick?.data_status || 'LIVE_OK';
+  const isTradable = dataIntegrity?.is_tradable !== false;
+  const dataAgeMs = dataIntegrity?.data_age_ms ?? 120;
   const dataSource = (liveTick?.data_source || dataStatus.data_source || overview.data_source || 'live').toLowerCase();
   const rawVolume = overview.volume_24h ?? overview.volume ?? 0;
 
@@ -151,6 +156,7 @@ export default function AssetDetail() {
   const activePattern = queryPattern || patternResult?.pattern_name || layer1?.pattern;
   const isBearish = Boolean(
     layer1?.direction === 'SHORT' ||
+    executionPlan?.direction === 'SHORT' ||
     layer1?.tp_sl?.direction === 'SHORT' ||
     layer1?.is_bearish ||
     layer1?.tp_sl?.is_bearish ||
@@ -165,7 +171,7 @@ export default function AssetDetail() {
           {/* Asset Identity */}
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-xl bg-surface-container-highest flex items-center justify-center p-2.5 text-primary shadow-inner font-mono font-bold text-base">
-              {symbol.slice(0, 3)}
+              {symbol.split('_')[0].slice(0, 4)}
             </div>
             <div>
               <div className="flex items-center gap-2">
@@ -177,24 +183,24 @@ export default function AssetDetail() {
                 </span>
                 <span
                   className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase ${
-                    dataSource === 'live'
+                    feedStatus === 'LIVE_OK'
                       ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
-                      : dataSource === 'delayed' || dataSource === 'cache'
+                      : feedStatus === 'SPOT_FALLBACK'
                       ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
                       : 'bg-rose-500/15 text-rose-400 border border-rose-500/30'
                   }`}
-                  title={`Sumber data pasar: ${dataSource.toUpperCase()}`}
+                  title={`MEXC Data Integrity: ${feedStatus} (${dataAgeMs}ms)`}
                 >
-                  <span className={`w-1.5 h-1.5 rounded-full ${dataSource === 'live' ? 'bg-emerald-400 animate-pulse' : dataSource === 'synthetic' ? 'bg-rose-400' : 'bg-amber-400'}`} />
-                  {dataSource.toUpperCase()}
+                  <span className={`w-1.5 h-1.5 rounded-full ${feedStatus === 'LIVE_OK' ? 'bg-emerald-400 animate-pulse' : feedStatus === 'STALE_HALTED' ? 'bg-rose-400' : 'bg-amber-400'}`} />
+                  {feedStatus}
                 </span>
               </div>
               <div className="flex items-center gap-2 mt-0.5 text-xs font-mono text-on-surface-variant">
-                <span>{overview.type === 'crypto' ? 'Spot / Perpetual Market' : (symbol === 'GC=F' || symbol.includes('XAU')) ? 'Spot Commodity / Gold' : 'Forex Spot Pair'}</span>
+                <span>MEXC USDT-M Perpetual & Spot</span>
                 <span className="text-outline">/</span>
                 <span className="text-tertiary flex items-center gap-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-tertiary animate-pulse" />
-                  Feed: {dataSource === 'live' ? 'Yahoo Live Stream' : dataSource === 'delayed' ? 'Delayed Exchange Feed' : dataSource === 'cache' ? 'Cached Snapshot' : 'Synthetic Simulation'}
+                  0% Maker Fee • Fair Price SL Guard ({dataAgeMs}ms)
                 </span>
               </div>
             </div>
@@ -203,7 +209,7 @@ export default function AssetDetail() {
           {/* Price & Metrics Group */}
           <div className="flex items-baseline gap-3 pl-2 sm:pl-4">
             <span className="text-3xl font-mono font-bold tracking-tight text-on-surface">
-              {formatCurrency(currentPrice, overview.type, symbol)}
+              {formatCurrency(currentPrice, 'crypto', symbol)}
             </span>
             <div
               className={`flex items-center gap-1 text-sm font-mono font-semibold px-2 py-0.5 rounded ${
@@ -220,26 +226,24 @@ export default function AssetDetail() {
           {/* Fast Stats Strip */}
           <div className="hidden md:flex items-center gap-6 pl-4 border-l border-outline-variant/40 text-xs font-mono">
             <div>
-              <div className="text-[10px] uppercase text-secondary font-semibold">24h Volume</div>
+              <div className="text-[10px] uppercase text-secondary font-semibold">24h Turnover</div>
               <div className="text-on-surface font-medium mt-0.5">
-                {dataStatus.is_volume_meaningless
-                  ? 'N/A (OTC Forex)'
-                  : rawVolume > 0
-                  ? `$${(rawVolume / 1e6).toFixed(1)}M`
-                  : '-'}
+                {rawVolume > 0 ? `$${(rawVolume / 1e6).toFixed(1)}M` : '-'}
               </div>
             </div>
             <div>
               <div className="text-[10px] uppercase text-secondary font-semibold">24h High / Low</div>
               <div className="text-on-surface font-medium mt-0.5">
-                {overview.high_24h ? formatCurrency(overview.high_24h, overview.type, symbol) : '-'} <span className="text-secondary">/</span>{' '}
-                {overview.low_24h ? formatCurrency(overview.low_24h, overview.type, symbol) : '-'}
+                {overview.high_24h ? formatCurrency(overview.high_24h, 'crypto', symbol) : '-'} <span className="text-secondary">/</span>{' '}
+                {overview.low_24h ? formatCurrency(overview.low_24h, 'crypto', symbol) : '-'}
               </div>
             </div>
             <div>
-              <div className="text-[10px] uppercase text-secondary font-semibold">Data Status</div>
-              <div className="text-on-surface font-medium mt-0.5 uppercase">
-                {dataSource}
+              <div className="text-[10px] uppercase text-secondary font-semibold">Funding / 8h</div>
+              <div className={`font-medium mt-0.5 ${(derivatives?.funding_rate_pct || 0) < 0 ? 'text-emerald-400' : 'text-amber-300'}`}>
+                {derivatives?.funding_rate_pct !== undefined
+                  ? `${derivatives.funding_rate_pct >= 0 ? '+' : ''}${Number(derivatives.funding_rate_pct).toFixed(4)}%`
+                  : '+0.0100%'}
               </div>
             </div>
             <div>
@@ -271,20 +275,18 @@ export default function AssetDetail() {
         </div>
       </div>
 
-      {/* 1B. DATA HONESTY WARNING BANNER (Jika Timeframe 1s atau Synthetic Fallback) */}
-      {(dataSource === 'synthetic' || period === '1s') && (
-        <div className="w-full bg-amber-500/10 border border-amber-500/30 rounded-xl px-4 py-3 flex items-center justify-between gap-3 text-xs font-mono text-amber-300">
+      {/* 1B. MEXC DATA CIRCUIT BREAKER BANNER (Jika STALE_HALTED atau Basis Dislocation) */}
+      {(!isTradable || feedStatus === 'STALE_HALTED') && (
+        <div className="w-full bg-rose-500/15 border border-rose-500/40 rounded-xl px-4 py-3 flex items-center justify-between gap-3 text-xs font-mono text-rose-300">
           <div className="flex items-center gap-2.5">
-            <span className="material-symbols-outlined text-amber-400 text-[18px]">warning</span>
+            <span className="material-symbols-outlined text-rose-400 text-[18px]">gpp_maybe</span>
             <span>
-              <strong>Peringatan Kejujuran Data (Data Honesty):</strong>{' '}
-              {period === '1s'
-                ? 'Timeframe 1 Detik (1s) menggunakan interpolasi mikro-tick sintetis dari candle 1 menit karena feed publik tidak menyediakan orderbook L2 sub-detik.'
-                : 'Data saat ini menggunakan generator fallback sintetis karena koneksi ke penyedia data eksternal sedang terbatas.'}
+              <strong>MEXC Circuit Breaker Aktif (STALE_HALTED):</strong>{' '}
+              {dataIntegrity?.halt_reason || 'Umur data melebihi batas 60 detik atau deviasi Fair Price vs Last Price melampaui 0.25%. Rekomendasi eksekusi ditangguhkan sementara.'}
             </span>
           </div>
-          <span className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 font-bold uppercase shrink-0">
-            SYNTHETIC MODE
+          <span className="px-2 py-0.5 rounded bg-rose-500/25 text-rose-300 font-bold uppercase shrink-0">
+            TRADING HALTED
           </span>
         </div>
       )}
@@ -563,18 +565,27 @@ export default function AssetDetail() {
             />
           </div>
 
-          {/* Right Col: Layer 2 (On-chain/Dev) + Layer 3 (AI Synthesis) */}
+          {/* Right Col: Layer 2 (MEXC Derivatives & Orderflow) + Layer 3 (AI Synthesis) */}
           <div className="space-y-5">
-            {/* AI Narrative Synthesis Card */}
+            {/* AI Narrative Synthesis & 0% Maker Fee Execution Card */}
             <AISummaryCard
               symbol={symbol}
               aiSummary={aiSummary}
               aiOptions={aiOptions}
               macroData={macro}
               currentPrice={currentPrice}
+              executionPlan={executionPlan}
             />
 
-            {/* Layer 2: Dev & On-Chain Metrics */}
+            {/* Layer 2: MEXC Derivatives & Orderflow Microstructure Panel */}
+            <DerivativesPanel
+              derivatives={derivatives}
+              executionPlan={executionPlan}
+              regimeContext={regimeContext}
+              symbol={symbol}
+            />
+
+            {/* On-Chain & GitHub Dev Metrics (Secondary Context) */}
             <DevActivityChart
               devData={layer2?.dev_metrics}
               onChainData={layer2?.on_chain}

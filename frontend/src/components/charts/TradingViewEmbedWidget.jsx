@@ -117,6 +117,7 @@ const TradingViewEmbedWidget = memo(function TradingViewEmbedWidget({ symbol = '
       support_host: 'https://www.tradingview.com',
       backgroundColor: '#090d16',
       gridColor: 'rgba(30, 41, 59, 0.3)',
+      studies: ['STD;Stochastic'],
     });
 
     container.appendChild(script);

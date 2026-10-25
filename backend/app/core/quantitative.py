@@ -53,6 +53,26 @@ def calculate_bollinger_bands(series: pd.Series, period: int = 20, num_std: floa
     lower = sma - (std * num_std)
     return upper, sma, lower
 
+import time
+from app.core.config import settings
+
+
+def _dec(price: float) -> int:
+    """Menentukan jumlah desimal dinamis sesuai skala harga koin MEXC (misal PEPE vs BTC)."""
+    p = abs(float(price or 0.0))
+    if p == 0:
+        return 4
+    if p < 0.0001:
+        return 8
+    if p < 0.01:
+        return 6
+    if p < 1.0:
+        return 5
+    if p < 10.0:
+        return 4
+    return 2
+
+
 def detect_pivots(df: pd.DataFrame, distance: int = 5):
     """
     Menggunakan scipy.signal.find_peaks untuk mendeteksi Swing Highs dan Swing Lows
@@ -65,24 +85,90 @@ def detect_pivots(df: pd.DataFrame, distance: int = 5):
     
     return high_peaks, low_peaks
 
+
+def _robust_line_fit(x: np.ndarray, y: np.ndarray, atr_threshold: float):
+    """
+    Regresi Linier Robust (Huber / IRLS + RANSAC Outlier Rejection):
+    Mengabaikan Scam Wick Outliers yang memiliki |Residual_i| > 1.8 * ATR_14
+    agar kemiringan trendline tidak rusak oleh sumbu likuidasi sesaat.
+    """
+    if len(x) < 2:
+        val = float(y[0]) if len(y) == 1 else 0.0
+        return 0.0, val, []
+
+    x_arr = np.asarray(x, dtype=float)
+    y_arr = np.asarray(y, dtype=float)
+
+    # Fit awal menggunakan median-anchored slope jika >= 3 titik (tahan terhadap 1-2 scam wick)
+    slope, intercept = np.polyfit(x_arr, y_arr, 1)
+    outliers_idx = []
+
+    if len(x_arr) >= 3 and atr_threshold > 0:
+        # Iterasi IRLS / Huber 3 langkah
+        weights = np.ones_like(y_arr)
+        delta = max(atr_threshold, 1e-9)
+        for _ in range(3):
+            pred = slope * x_arr + intercept
+            res = np.abs(y_arr - pred)
+            weights = np.where(res <= delta, 1.0, delta / np.maximum(res, 1e-9))
+            if np.sum(weights > 0.5) >= 2:
+                slope, intercept = np.polyfit(x_arr, y_arr, 1, w=weights)
+
+        final_pred = slope * x_arr + intercept
+        final_res = np.abs(y_arr - final_pred)
+        inlier_mask = final_res <= delta
+        outlier_mask = ~inlier_mask
+        outliers_idx = [int(i) for i, is_out in enumerate(outlier_mask) if is_out]
+
+        if np.sum(inlier_mask) >= 2:
+            slope, intercept = np.polyfit(x_arr[inlier_mask], y_arr[inlier_mask], 1)
+
+    return float(slope), float(intercept), outliers_idx
+
+
 def calculate_trendlines(df: pd.DataFrame, high_peaks: np.ndarray, low_peaks: np.ndarray):
     """
-    Regresi linier tren Support dan Resistance via NumPy polyfit dengan bounded non-crossing channel.
-    Menjamin Resistance (upper) selalu berada di atas Support (lower) dan tidak menyilang terbalik.
+    Regresi linier tren Support dan Resistance via Robust RANSAC/Huber Regression.
+    Mengabaikan Scam Wick Outliers (|Residual_i| > 1.8 * ATR_14) dari perhitungan slope,
+    tetapi mencatat titik sumbu ekstrem tersebut sebagai 'liquidity_pool_targets'.
     """
     n = len(df)
-    
+    last_close = float(df['Close'].iloc[-1]) if n > 0 else 1.0
+    dec = _dec(last_close)
+    atr_series = calculate_atr(df, 14)
+    atr_val = float(atr_series.iloc[-1]) if len(atr_series) > 0 else (last_close * 0.01)
+    outlier_thresh = 1.8 * max(atr_val, last_close * 0.002)
+
+    liquidity_pools = []
+    wick_outliers_count = 0
+
     if len(high_peaks) >= 2:
         high_x = high_peaks
         high_y = df['High'].iloc[high_peaks].values
-        upper_slope, upper_intercept = np.polyfit(high_x, high_y, 1)
+        upper_slope, upper_intercept, hi_outliers = _robust_line_fit(high_x, high_y, outlier_thresh)
+        wick_outliers_count += len(hi_outliers)
+        for oi in hi_outliers:
+            bar_idx = int(high_x[oi])
+            liquidity_pools.append({
+                "index": bar_idx,
+                "price": round(float(high_y[oi]), dec),
+                "type": "UPPER_LIQUIDITY_POOL",
+            })
     else:
         upper_slope, upper_intercept = 0.0, float(df['High'].max())
         
     if len(low_peaks) >= 2:
         low_x = low_peaks
         low_y = df['Low'].iloc[low_peaks].values
-        lower_slope, lower_intercept = np.polyfit(low_x, low_y, 1)
+        lower_slope, lower_intercept, lo_outliers = _robust_line_fit(low_x, low_y, outlier_thresh)
+        wick_outliers_count += len(lo_outliers)
+        for oi in lo_outliers:
+            bar_idx = int(low_x[oi])
+            liquidity_pools.append({
+                "index": bar_idx,
+                "price": round(float(low_y[oi]), dec),
+                "type": "LOWER_LIQUIDITY_POOL",
+            })
     else:
         lower_slope, lower_intercept = 0.0, float(df['Low'].min())
 
@@ -97,7 +183,7 @@ def calculate_trendlines(df: pd.DataFrame, high_peaks: np.ndarray, low_peaks: np
     # Range harga keseluruhan
     max_h = float(df['High'].max())
     min_l = float(df['Low'].min())
-    price_span = max(max_h - min_l, 0.01)
+    price_span = max(max_h - min_l, last_close * 0.001)
     min_margin = price_span * 0.015
 
     # Pastikan upper selalu >= lower + min_margin di kedua ujung rentang
@@ -124,12 +210,12 @@ def calculate_trendlines(df: pd.DataFrame, high_peaks: np.ndarray, low_peaks: np
         u_end = l_end + min_margin
         
     upper_line = [
-        {"x": int(x_start), "price": round(u_start, 4)},
-        {"x": int(x_end), "price": round(u_end, 4)}
+        {"x": int(x_start), "price": round(u_start, dec)},
+        {"x": int(x_end), "price": round(u_end, dec)}
     ]
     lower_line = [
-        {"x": int(x_start), "price": round(l_start, 4)},
-        {"x": int(x_end), "price": round(l_end, 4)}
+        {"x": int(x_start), "price": round(l_start, dec)},
+        {"x": int(x_end), "price": round(l_end, dec)}
     ]
     
     eff_upper_slope = (u_end - u_start) / x_end
@@ -141,7 +227,325 @@ def calculate_trendlines(df: pd.DataFrame, high_peaks: np.ndarray, low_peaks: np
         "lower_slope": float(eff_lower_slope),
         "lower_intercept": float(l_start),
         "upper_line": upper_line,
-        "lower_line": lower_line
+        "lower_line": lower_line,
+        "wick_outliers_ignored": int(wick_outliers_count),
+        "liquidity_pool_targets": liquidity_pools[:6],
+    }
+
+
+def detect_sfp_stop_hunt(df: pd.DataFrame, lookback: int = 35) -> dict:
+    """
+    Swing Failure Pattern (SFP) / Liquidity Stop-Hunt Detector (ATRED v3.0):
+    - Bullish SFP (Long Signal):
+      Low_t < SwingLow_prev TETAPI Close_t > SwingLow_prev disertai ekor bawah panjang
+      (LowerWick_t > 0.45 * Range_t) dan konfirmasi volume.
+    - Bearish SFP (Short Signal):
+      High_t > SwingHigh_prev TETAPI Close_t < SwingHigh_prev disertai ekor atas panjang
+      (UpperWick_t > 0.45 * Range_t) dan konfirmasi volume.
+    """
+    n = len(df)
+    if n < 15:
+        return {
+            "sfp_detected": "NONE",
+            "sfp_type": None,
+            "swept_level": None,
+            "wick_extreme": None,
+            "bar_index": None,
+            "volume_ratio": 1.0,
+            "markers": [],
+        }
+
+    highs = df['High'].values.astype(float)
+    lows = df['Low'].values.astype(float)
+    opens = df['Open'].values.astype(float)
+    closes = df['Close'].values.astype(float)
+    vols = df['Volume'].values.astype(float)
+    times = df['Time'].values
+    dec = _dec(closes[-1])
+
+    vol_sma_series = df['Volume'].rolling(window=20, min_periods=5).mean().bfill()
+    vol_sma = vol_sma_series.values.astype(float)
+
+    markers = []
+    latest_sfp = "NONE"
+    latest_type = None
+    swept_lvl = None
+    wick_ext = None
+    sfp_idx = None
+    sfp_vol_ratio = 1.0
+
+    # Periksa 8 candle terakhir terhadap struktur swing sebelumnya (minimal 4 bar sebelumnya)
+    start_scan = max(10, n - 8)
+    for t in range(start_scan, n):
+        win_start = max(0, t - lookback)
+        prev_highs = highs[win_start:t - 2] if t - 2 > win_start else highs[win_start:t]
+        prev_lows = lows[win_start:t - 2] if t - 2 > win_start else lows[win_start:t]
+        if len(prev_highs) < 4 or len(prev_lows) < 4:
+            continue
+
+        swing_high_prev = float(np.max(prev_highs))
+        swing_low_prev = float(np.min(prev_lows))
+
+        rng = max(highs[t] - lows[t], 1e-9)
+        body_low = min(opens[t], closes[t])
+        body_high = max(opens[t], closes[t])
+        lower_wick = body_low - lows[t]
+        upper_wick = highs[t] - body_high
+        v_ratio = float(vols[t] / max(vol_sma[t], 1e-9))
+
+        # Bullish SFP: menembus swing_low_prev lalu ditutup kembali di atas swing_low_prev
+        if (
+            lows[t] < swing_low_prev
+            and closes[t] > swing_low_prev
+            and (lower_wick / rng) >= 0.42
+            and v_ratio >= 1.15
+        ):
+            latest_sfp = "BULLISH_SFP"
+            latest_type = "Bullish SFP (Stop-Hunt Liquidity Sweep)"
+            swept_lvl = round(swing_low_prev, dec)
+            wick_ext = round(float(lows[t]), dec)
+            sfp_idx = int(t)
+            sfp_vol_ratio = round(v_ratio, 2)
+            markers.append({
+                "index": int(t),
+                "time": _to_time(times[t]),
+                "price": wick_ext,
+                "swept_level": swept_lvl,
+                "type": "BULLISH_SFP",
+                "label": "Bullish SFP (Stop-Hunt)",
+                "volume_ratio": sfp_vol_ratio,
+            })
+
+        # Bearish SFP: menembus swing_high_prev lalu ditutup kembali di bawah swing_high_prev
+        elif (
+            highs[t] > swing_high_prev
+            and closes[t] < swing_high_prev
+            and (upper_wick / rng) >= 0.42
+            and v_ratio >= 1.15
+        ):
+            latest_sfp = "BEARISH_SFP"
+            latest_type = "Bearish SFP (Upthrust Liquidity Sweep)"
+            swept_lvl = round(swing_high_prev, dec)
+            wick_ext = round(float(highs[t]), dec)
+            sfp_idx = int(t)
+            sfp_vol_ratio = round(v_ratio, 2)
+            markers.append({
+                "index": int(t),
+                "time": _to_time(times[t]),
+                "price": wick_ext,
+                "swept_level": swept_lvl,
+                "type": "BEARISH_SFP",
+                "label": "Bearish SFP (Stop-Hunt)",
+                "volume_ratio": sfp_vol_ratio,
+            })
+
+    return {
+        "sfp_detected": latest_sfp,
+        "sfp_type": latest_type,
+        "swept_level": swept_lvl,
+        "wick_extreme": wick_ext,
+        "bar_index": sfp_idx,
+        "volume_ratio": sfp_vol_ratio,
+        "markers": markers[-3:],
+    }
+
+
+def calculate_adx(df: pd.DataFrame, period: int = 14) -> dict:
+    """Menghitung Wilder's ADX(14), +DI, dan -DI untuk deteksi kekuatan tren."""
+    if len(df) < period + 2:
+        return {"adx": 20.0, "plus_di": 20.0, "minus_di": 20.0}
+
+    high = df['High'].astype(float)
+    low = df['Low'].astype(float)
+    close = df['Close'].astype(float)
+
+    up_move = high.diff()
+    down_move = -low.diff()
+
+    plus_dm = pd.Series(
+        np.where((up_move > down_move) & (up_move > 0), up_move, 0.0),
+        index=df.index,
+    )
+    minus_dm = pd.Series(
+        np.where((down_move > up_move) & (down_move > 0), down_move, 0.0),
+        index=df.index,
+    )
+
+    atr = calculate_atr(df, period).replace(0, np.nan)
+    plus_di = 100.0 * (plus_dm.ewm(alpha=1.0 / period, adjust=False).mean() / atr)
+    minus_di = 100.0 * (minus_dm.ewm(alpha=1.0 / period, adjust=False).mean() / atr)
+
+    dx = 100.0 * ((plus_di - minus_di).abs() / (plus_di + minus_di).replace(0, np.nan))
+    adx = dx.ewm(alpha=1.0 / period, adjust=False).mean().bfill().fillna(20.0)
+
+    return {
+        "adx": round(float(adx.iloc[-1]), 2),
+        "plus_di": round(float(plus_di.bfill().fillna(20.0).iloc[-1]), 2),
+        "minus_di": round(float(minus_di.bfill().fillna(20.0).iloc[-1]), 2),
+    }
+
+
+def calculate_hurst_exponent(series: pd.Series, max_lag: int = 20) -> float:
+    """
+    Menghitung Hurst Exponent (H) menggunakan metode Rescaled Range (R/S) pada 100 bar terakhir:
+      - H > 0.55: Persistent / Trending Market
+      - H < 0.45: Anti-persistent / Mean-Reverting (Ranging) Market
+      - H ~ 0.50: Geometric Brownian Motion / Random Walk
+    """
+    clean = series.dropna().tail(100).values.astype(float)
+    if len(clean) < 25:
+        return 0.50
+
+    lags = range(2, min(max_lag, len(clean) // 2))
+    tau = []
+    valid_lags = []
+    for lag in lags:
+        diff = np.subtract(clean[lag:], clean[:-lag])
+        std_val = float(np.std(diff))
+        if std_val > 1e-12:
+            tau.append(std_val)
+            valid_lags.append(lag)
+
+    if len(valid_lags) < 3:
+        return 0.50
+
+    poly = np.polyfit(np.log(valid_lags), np.log(tau), 1)
+    hurst = float(poly[0])
+    return round(float(np.clip(hurst, 0.15, 0.85)), 3)
+
+
+def detect_market_regime(df: pd.DataFrame) -> dict:
+    """
+    Deteksi Rezim Pasar Kuantitatif (ADX(14) & Hurst Exponent):
+      - TRENDING (ADX > 25 & H > 0.55): Bobot 70% Trend-Following, 30% Oscillator (Matikan sinyal counter-trend RSI/Stoch!)
+      - MEAN_REVERTING (ADX < 20 atau H < 0.45): Bobot 75% Mean-Reversion (SFP, Stoch, RSI, BB), 25% Trend.
+      - TRANSITIONAL: Bobot seimbang 50% / 50%.
+    """
+    adx_info = calculate_adx(df, 14)
+    adx_val = adx_info["adx"]
+    hurst_val = calculate_hurst_exponent(df['Close'])
+
+    if adx_val > 25.0 and hurst_val > 0.55:
+        regime = "TRENDING"
+        trend_weight = 0.70
+        osc_weight = 0.30
+        disable_counter_trend = True
+        desc = f"Trending Kuat (ADX {adx_val:.1f}, Hurst {hurst_val:.2f}) — Prioritas 70% Trend-Following"
+    elif adx_val < 20.0 or hurst_val < 0.45:
+        regime = "MEAN_REVERTING"
+        trend_weight = 0.25
+        osc_weight = 0.75
+        disable_counter_trend = False
+        desc = f"Mean-Reverting / Ranging (ADX {adx_val:.1f}, Hurst {hurst_val:.2f}) — Prioritas 75% Oscillator & SFP"
+    else:
+        regime = "TRANSITIONAL"
+        trend_weight = 0.50
+        osc_weight = 0.50
+        disable_counter_trend = False
+        desc = f"Transisi Rezim (ADX {adx_val:.1f}, Hurst {hurst_val:.2f}) — Bobot Seimbang 50/50"
+
+    return {
+        "market_regime": regime,
+        "adx_14": adx_val,
+        "plus_di": adx_info["plus_di"],
+        "minus_di": adx_info["minus_di"],
+        "hurst_exponent": hurst_val,
+        "trend_weight": trend_weight,
+        "oscillator_weight": osc_weight,
+        "disable_counter_trend_oscillator": disable_counter_trend,
+        "description": desc,
+    }
+
+
+_btc_gate_cache: dict = {"data": None, "ts": 0.0}
+
+
+def check_btc_gate(df: pd.DataFrame, symbol: str = "BTC_USDT") -> dict:
+    """
+    Filter Korelasi Induk BTC (BTC Gate) & Relative Strength (RS_Alt/BTC):
+      - Mengambil & meng-cache status BTC_USDT 1h selama 30 detik.
+      - Menghitung RS_Alt/BTC = Return_Alt(12 bar) - Return_BTC(12 bar).
+      - Jika BTC_USDT sedang mengalami Dump keras (Return < -1.5% dan di bawah EMA-20),
+        blokir sinyal LONG pada Altcoin kecuali RS_Alt/BTC > +2.0% (Decoupled Strong Leader).
+    """
+    from app.services.market_data import resolve_symbol, fetch_ohlcv
+
+    f_sym = resolve_symbol(symbol, "futures")
+    now_ts = time.time()
+
+    # Hitung return 12 bar aset saat ini
+    if df is not None and len(df) >= 13:
+        c_now = float(df['Close'].iloc[-1])
+        c_12 = float(df['Close'].iloc[-13])
+        alt_ret_12 = ((c_now - c_12) / c_12) * 100.0 if c_12 > 0 else 0.0
+    else:
+        alt_ret_12 = 0.0
+
+    if f_sym == "BTC_USDT":
+        ema20_btc = float(calculate_ema(df['Close'], 20).iloc[-1]) if df is not None and len(df) >= 20 else 0.0
+        c_btc = float(df['Close'].iloc[-1]) if df is not None and len(df) > 0 else 0.0
+        ret_1bar = ((c_btc - float(df['Close'].iloc[-2])) / float(df['Close'].iloc[-2]) * 100.0) if df is not None and len(df) >= 2 else 0.0
+        btc_state = "BEARISH_DUMP" if (ret_1bar < -1.5 and c_btc < ema20_btc) else ("BULLISH_IMPULSE" if c_btc >= ema20_btc else "NEUTRAL")
+        return {
+            "btc_1h_regime": btc_state,
+            "btc_return_12bar_pct": round(alt_ret_12, 2),
+            "alt_rs_vs_btc_pct": 0.0,
+            "btc_gate_status": "MASTER_INDEX",
+            "allow_alt_long": True,
+        }
+
+    # Ambil cache BTC_USDT 1h
+    btc_df = None
+    if _btc_gate_cache["data"] is not None and (now_ts - _btc_gate_cache["ts"]) < 30.0:
+        btc_df = _btc_gate_cache["data"]
+    else:
+        try:
+            btc_df = fetch_ohlcv("BTC_USDT", interval="1h", limit=40)
+            if btc_df is not None and len(btc_df) >= 15:
+                _btc_gate_cache["data"] = btc_df
+                _btc_gate_cache["ts"] = now_ts
+        except Exception:
+            btc_df = None
+
+    if btc_df is None or len(btc_df) < 13:
+        return {
+            "btc_1h_regime": "NEUTRAL",
+            "btc_return_12bar_pct": 0.0,
+            "alt_rs_vs_btc_pct": round(alt_ret_12, 2),
+            "btc_gate_status": "PASS",
+            "allow_alt_long": True,
+        }
+
+    btc_close = float(btc_df['Close'].iloc[-1])
+    btc_prev1 = float(btc_df['Close'].iloc[-2])
+    btc_prev12 = float(btc_df['Close'].iloc[-13])
+    btc_ema20 = float(calculate_ema(btc_df['Close'], 20).iloc[-1])
+
+    btc_ret_1h = ((btc_close - btc_prev1) / btc_prev1) * 100.0 if btc_prev1 > 0 else 0.0
+    btc_ret_12 = ((btc_close - btc_prev12) / btc_prev12) * 100.0 if btc_prev12 > 0 else 0.0
+    rs_alt_btc = alt_ret_12 - btc_ret_12
+
+    is_btc_dumping = (btc_ret_1h < -1.5 or btc_ret_12 < -3.5) and (btc_close < btc_ema20)
+    if is_btc_dumping:
+        btc_regime = "BEARISH_DUMP"
+        if rs_alt_btc > 2.0:
+            gate_status = "PASS_DECOUPLED_LEADER"
+            allow_long = True
+        else:
+            gate_status = "BLOCKED_BY_BTC_DUMP"
+            allow_long = False
+    else:
+        btc_regime = "BULLISH_IMPULSE" if btc_close >= btc_ema20 else "NEUTRAL"
+        gate_status = "PASS_OUTPERFORMING_BTC" if rs_alt_btc > 0.5 else "PASS"
+        allow_long = True
+
+    return {
+        "btc_1h_regime": btc_regime,
+        "btc_return_1h_pct": round(btc_ret_1h, 2),
+        "btc_return_12bar_pct": round(btc_ret_12, 2),
+        "alt_rs_vs_btc_pct": round(rs_alt_btc, 2),
+        "btc_gate_status": gate_status,
+        "allow_alt_long": allow_long,
     }
 
 def check_volume_anomaly(df: pd.DataFrame, window: int = 20, multiplier: float = 1.5) -> bool:
@@ -162,22 +566,22 @@ def check_volume_anomaly(df: pd.DataFrame, window: int = 20, multiplier: float =
 
 
 # ---------------------------------------------------------------------------
-# Stochastic Oscillator (TradingView "Stoch 14 3 3")
+# Stochastic Oscillator (TradingView "Stoch" Inputs: %K Length=14, %K Smoothing=3, %D Smoothing=3)
 # ---------------------------------------------------------------------------
 def calculate_stochastic(df: pd.DataFrame, k_period: int = 14, k_smooth: int = 3, d_period: int = 3):
     """
-    Stochastic Slow standar TradingView (14, 3, 3):
-      raw %K = 100 * (Close - LowestLow14) / (HighestHigh14 - LowestLow14)
-      %K     = SMA(raw %K, 3)
-      %D     = SMA(%K, 3)
+    Stochastic Slow standar TradingView (Inputs: %K Length=14, %K Smoothing=3, %D Smoothing=3):
+      raw %K = 100 * (Close - LowestLow(k_period)) / (HighestHigh(k_period) - LowestLow(k_period))
+      %K     = SMA(raw %K, k_smooth)
+      %D     = SMA(%K, d_period)
     """
     low_min = df['Low'].rolling(window=k_period, min_periods=k_period).min()
     high_max = df['High'].rolling(window=k_period, min_periods=k_period).max()
     rng = (high_max - low_min).replace(0, np.nan)
     raw_k = 100.0 * (df['Close'] - low_min) / rng
-    k = raw_k.rolling(window=k_smooth, min_periods=1).mean()
-    d = k.rolling(window=d_period, min_periods=1).mean()
-    return k.fillna(50.0), d.fillna(50.0)
+    k = raw_k.rolling(window=k_smooth, min_periods=k_smooth).mean()
+    d = k.rolling(window=d_period, min_periods=d_period).mean()
+    return k.bfill().fillna(50.0), d.bfill().fillna(50.0)
 
 
 def analyze_stochastic(df: pd.DataFrame, k_period: int = 14, k_smooth: int = 3, d_period: int = 3) -> dict:
@@ -213,6 +617,14 @@ def analyze_stochastic(df: pd.DataFrame, k_period: int = 14, k_smooth: int = 3, 
 
     return {
         "settings": f"{k_period} {k_smooth} {d_period}",
+        "k_length": k_period,
+        "k_smoothing": k_smooth,
+        "d_smoothing": d_period,
+        "inputs": {
+            "k_length": k_period,
+            "k_smoothing": k_smooth,
+            "d_smoothing": d_period,
+        },
         "k": round(k_now, 2),
         "d": round(d_now, 2),
         "zone": zone,
@@ -688,16 +1100,17 @@ def calculate_signal_summary_and_backtest(
         avg_rr = round(max(1.5, min(rr, 2.5)), 2)
         max_dd = round(max(2.4, 7.5 - score_pts * 1.1), 2)
 
+    dec = _dec(close)
     return {
         "direction_label": "Short (Bias Bearish)" if is_short else "Long (Bias Bullish)",
         "direction": "SHORT" if is_short else "LONG",
-        "entry": round(entry, 4),
-        "sl": round(sl, 4),
-        "tp": round(tp, 4),
-        "risk": round(risk, 4),
-        "reward": round(reward, 4),
+        "entry": round(entry, dec),
+        "sl": round(sl, dec),
+        "tp": round(tp, dec),
+        "risk": round(risk, dec),
+        "reward": round(reward, dec),
         "risk_reward": rr,
-        "ema20": round(ema20, 4),
+        "ema20": round(ema20, dec),
         "indicator_confirmation": ema_confirm_str,
         "reasons": short_reasons[:3],
         "invalidation": invalidation_text,
@@ -779,117 +1192,142 @@ def determine_comprehensive_signal(
     macd_hist: float,
     stoch_data: dict,
     fib_data: dict,
+    symbol: str = "BTC_USDT",
+    orderflow_data: Optional[dict] = None,
 ) -> dict:
     """
-    Evaluasi kuantitatif multi-faktor untuk menentukan arah sinyal (LONG vs SHORT)
-    secara presisi dan selaras, mencegah kontradiksi antara indikator teknikal dan rekomendasi trading.
+    Evaluasi kuantitatif multi-faktor v3.0 untuk menentukan arah sinyal (LONG vs SHORT):
+      - Menggunakan Market Regime Detector (ADX(14) & Hurst Exponent) untuk adaptasi bobot
+        Trend-Following (70/30) vs Mean-Reverting (25/75) dan mematikan sinyal counter-trend
+        oscillator saat rezim Trending kuat.
+      - Mengintegrasikan Swing Failure Pattern (SFP) Stop-Hunt Detector.
+      - Mengintegrasikan BTC Gate & Relative Strength (RS_Alt/BTC).
     """
     close = float(df['Close'].iloc[-1])
     ema20 = float(calculate_ema(df['Close'], 20).iloc[-1])
     ema50 = float(calculate_ema(df['Close'], 50).iloc[-1])
-    
-    score = 0
+
+    regime_info = detect_market_regime(df)
+    sfp_info = pattern_res.get("sfp_info") or detect_sfp_stop_hunt(df)
+    btc_gate = check_btc_gate(df, symbol=symbol)
+
+    trend_score = 0.0
+    osc_score = 0.0
     reasons = []
 
-    # 1. Pola Chart Geometri
+    # 1. Pola Chart Geometri (Trend / Structure Component)
     ptype = str(pattern_res.get("type", "")).upper()
     pname = pattern_res.get("pattern", "Channel")
     if "STRONG BULL" in ptype:
-        score += 35
+        trend_score += 35
         reasons.append(f"Pola {pname} (Strong Bullish +35)")
     elif "BULL" in ptype:
-        score += 25
+        trend_score += 25
         reasons.append(f"Pola {pname} (Bullish +25)")
     elif "STRONG BEAR" in ptype:
-        score -= 35
+        trend_score -= 35
         reasons.append(f"Pola {pname} (Strong Bearish -35)")
     elif "BEAR" in ptype:
-        score -= 25
+        trend_score -= 25
         reasons.append(f"Pola {pname} (Bearish -25)")
     else:
-        # Pola Neutral / Channel: uji kemiringan slope
         upper_slope = pattern_res.get("trendlines", {}).get("upper_slope", 0)
         lower_slope = pattern_res.get("trendlines", {}).get("lower_slope", 0)
         if upper_slope < -0.0001 and lower_slope < -0.0001:
-            score -= 10
+            trend_score -= 10
             reasons.append("Channel miring ke bawah (-10)")
         elif upper_slope > 0.0001 and lower_slope > 0.0001:
-            score += 10
+            trend_score += 10
             reasons.append("Channel miring ke atas (+10)")
 
-    # 2. Struktur Tren Moving Average (EMA 20 & 50)
+    # 2. Struktur Tren Moving Average (EMA 20 & 50) & MACD
     if close < ema20 < ema50:
-        score -= 25
-        reasons.append("Harga di bawah EMA 20 & EMA 50 (Strong Downtrend -25)")
+        trend_score -= 28
+        reasons.append("Harga di bawah EMA 20 & EMA 50 (Strong Downtrend -28)")
     elif close < ema20:
-        score -= 15
+        trend_score -= 15
         reasons.append("Harga di bawah EMA 20 (-15)")
     elif close > ema20 > ema50:
-        score += 25
-        reasons.append("Harga di atas EMA 20 & EMA 50 (Strong Uptrend +25)")
+        trend_score += 28
+        reasons.append("Harga di atas EMA 20 & EMA 50 (Strong Uptrend +28)")
     elif close > ema20:
-        score += 15
+        trend_score += 15
         reasons.append("Harga di atas EMA 20 (+15)")
 
-    if ema20 < ema50:
-        score -= 8
-    elif ema20 > ema50:
-        score += 8
-
-    # 3. Momentum RSI & MACD
-    rsi = float(rsi_val)
     hist = float(macd_hist)
-    if rsi < 45:
-        score -= 12
-        reasons.append(f"RSI {rsi:.1f} di bawah 45 (-12)")
-    elif rsi > 55:
-        score += 12
-        reasons.append(f"RSI {rsi:.1f} di atas 55 (+12)")
-
     if hist < 0:
-        score -= 10
-        reasons.append(f"MACD Hist negatif ({hist:+.4f}) (-10)")
+        trend_score -= 12
+        reasons.append(f"MACD Hist negatif ({hist:+.4f}) (-12)")
     elif hist > 0:
-        score += 10
-        reasons.append(f"MACD Hist positif ({hist:+.4f}) (+10)")
+        trend_score += 12
+        reasons.append(f"MACD Hist positif ({hist:+.4f}) (+12)")
 
-    # 4. Stochastic (14 3 3)
+    fib_trend = str(fib_data.get("trend", "")).lower() if fib_data else ""
+    if fib_trend == "down":
+        trend_score -= 15
+        reasons.append("Struktur impulse Fibo turun (Swing High -> Low) (-15)")
+    elif fib_trend == "up":
+        trend_score += 15
+        reasons.append("Struktur impulse Fibo naik (Swing Low -> High) (+15)")
+
+    # 3. Oscillator & Mean-Reversion (RSI, Stoch 14 3 3, SFP Stop-Hunt)
+    rsi = float(rsi_val)
+    if rsi < 45:
+        osc_score -= 15
+    elif rsi > 55:
+        osc_score += 15
+
     stoch_bias = str(stoch_data.get("bias", "")).upper()
     stoch_k = float(stoch_data.get("k", 50))
     stoch_d = float(stoch_data.get("d", 50))
     if "STRONG BEAR" in stoch_bias or (stoch_k < stoch_d and stoch_k > 70):
-        score -= 20
-        reasons.append(f"Stoch 14 3 3 Bearish Cross di zona overbought (%K={stoch_k:.1f}) (-20)")
+        # Jika TRENDING kuat ke atas, matikan sinyal counter-trend overbought
+        if regime_info["disable_counter_trend_oscillator"] and trend_score > 20:
+            reasons.append(f"Rezim TRENDING (ADX {regime_info['adx_14']:.1f}): Sinyal counter-trend Stoch Overbought diabaikan")
+        else:
+            osc_score -= 24
+            reasons.append(f"Stoch 14 3 3 Bearish Cross di zona overbought (%K={stoch_k:.1f}) (-24)")
     elif "BEAR" in stoch_bias or stoch_k < stoch_d:
-        score -= 12
-        reasons.append(f"Stoch 14 3 3 %K < %D (-12)")
+        osc_score -= 12
     elif "STRONG BULL" in stoch_bias or (stoch_k > stoch_d and stoch_k < 30):
-        score += 20
-        reasons.append(f"Stoch 14 3 3 Bullish Cross di zona oversold (%K={stoch_k:.1f}) (+20)")
+        if regime_info["disable_counter_trend_oscillator"] and trend_score < -20:
+            reasons.append(f"Rezim TRENDING (ADX {regime_info['adx_14']:.1f}): Sinyal counter-trend Stoch Oversold diabaikan")
+        else:
+            osc_score += 24
+            reasons.append(f"Stoch 14 3 3 Bullish Cross di zona oversold (%K={stoch_k:.1f}) (+24)")
     elif "BULL" in stoch_bias or stoch_k > stoch_d:
-        score += 12
-        reasons.append(f"Stoch 14 3 3 %K > %D (+12)")
+        osc_score += 12
 
-    # 5. Struktur Fibonacci
-    fib_trend = str(fib_data.get("trend", "")).lower() if fib_data else ""
-    if fib_trend == "down":
-        score -= 15
-        reasons.append("Struktur impulse Fibo turun (Swing High -> Low) (-15)")
-    elif fib_trend == "up":
-        score += 15
-        reasons.append("Struktur impulse Fibo naik (Swing Low -> High) (+15)")
+    # 4. Swing Failure Pattern (SFP) / Stop-Hunt Reversal
+    sfp_state = sfp_info.get("sfp_detected", "NONE")
+    if sfp_state == "BULLISH_SFP":
+        osc_score += 35
+        reasons.append(f"Terdeteksi Bullish SFP Stop-Hunt di bawah {sfp_info.get('swept_level')} (+35)")
+    elif sfp_state == "BEARISH_SFP":
+        osc_score -= 35
+        reasons.append(f"Terdeteksi Bearish SFP Upthrust di atas {sfp_info.get('swept_level')} (-35)")
 
-    # 6. Candlestick Formations
+    # 5. Candlestick Formations
     for cp in pattern_res.get("candlestick_patterns", []):
         cp_bias = cp.get("bias")
         if cp_bias == "Bearish":
-            score -= 10
+            osc_score -= 10
             reasons.append(f"Candle {cp.get('name')} (-10)")
         elif cp_bias == "Bullish":
-            score += 10
+            osc_score += 10
             reasons.append(f"Candle {cp.get('name')} (+10)")
 
-    score = int(np.clip(score, -100, 100))
+    # Gabungkan sesuai bobot Rezim Pasar (Trending 70/30 vs Mean-Reverting 25/75 vs Transitional 50/50)
+    w_t = regime_info["trend_weight"]
+    w_o = regime_info["oscillator_weight"]
+    combined = (trend_score * w_t + osc_score * w_o) * 1.45
+
+    # Tambahan dorongan dari Orderflow Layer 2 jika tersedia
+    if orderflow_data:
+        of_score = float(orderflow_data.get("orderflow_score") or 0.0)
+        combined += of_score * 0.25
+
+    score = int(np.clip(round(combined), -100, 100))
 
     if score <= -12:
         direction = "SHORT"
@@ -900,7 +1338,6 @@ def determine_comprehensive_signal(
         is_bearish = False
         signal_type = "Strong Bullish" if score >= 40 else "Bullish"
     else:
-        # Netral: gunakan tie-breaker arah harga 5 candle terakhir & EMA20
         if close < ema20 or (len(df) >= 5 and float(df['Close'].iloc[-1]) < float(df['Close'].iloc[-5])):
             direction = "SHORT"
             is_bearish = True
@@ -910,7 +1347,18 @@ def determine_comprehensive_signal(
             is_bearish = False
             signal_type = "Bullish"
 
-    confidence = min(95, max(60, 50 + abs(score) // 2))
+    # 6. Evaluasi BTC Gatekeeper (Blokir LONG Altcoin saat BTC Dump keras kecuali RS > +2%)
+    btc_blocked = False
+    if direction == "LONG" and not btc_gate.get("allow_alt_long", True):
+        btc_blocked = True
+        reasons.append(
+            f"BTC GATEKEEPER: BTC_USDT sedang Dump ({btc_gate.get('btc_return_1h_pct', 0):+.2f}% 1h) & "
+            f"RS Alt/BTC ({btc_gate.get('alt_rs_vs_btc_pct', 0):+.2f}%) < +2.0% — Sinyal LONG ditahan!"
+        )
+
+    confidence = min(95, max(58, 52 + abs(score) // 2))
+    if btc_blocked:
+        confidence = max(40, confidence - 20)
 
     return {
         "direction": direction,
@@ -918,7 +1366,11 @@ def determine_comprehensive_signal(
         "signal_type": signal_type,
         "score": score,
         "confidence": confidence,
-        "reasons": reasons
+        "reasons": reasons,
+        "regime_context": regime_info,
+        "sfp_info": sfp_info,
+        "btc_gate": btc_gate,
+        "btc_blocked": btc_blocked,
     }
 
 
@@ -929,78 +1381,160 @@ def calculate_dynamic_tp_sl(
     atr_14: float,
     swing_high: Optional[float] = None,
     signal_type: str = "Bullish",
-    direction: Optional[str] = None
+    direction: Optional[str] = None,
+    win_rate_pct: float = 56.0,
+    adx_val: float = 22.0,
+    obi_val: float = 0.0,
+    spread_pct: float = 0.01,
+    funding_rate_pct: float = 0.01,
+    max_zero_slippage_usdt: float = 25000.0,
 ):
     """
-    Kalkulasi target TP dan SL secara dinamis sesuai arah sinyal (Bullish/Long vs Bearish/Short).
-    
-    Posisi LONG (Bullish):
-      - Entry: breakout_price
-      - Take Profit (TP): di ATAS entry (breakout_price + target_height)
-      - Stop Loss (SL): di BAWAH entry (swing_low - 1.5 * ATR_14)
-      
-    Posisi SHORT (Bearish):
-      - Entry: breakout_price
-      - Take Profit (TP): di BAWAH entry (breakout_price - target_height)
-      - Stop Loss (SL): di ATAS entry (swing_high + 1.5 * ATR_14)
+    ATRED v3.0 - Mesin Eksekusi & Manajemen Risiko Khusus Struktur Biaya MEXC (0% Maker Fee):
+      - Dual Entry Strategy:
+          * Primary Entry (`maker_limit_entry` - 0% Fee): Close -/+ 0.35 * ATR_14
+          * Secondary Entry (`aggressive_market_entry` - 0.02% Taker Fee): Breakout entry
+      - Split Take-Profit (TP1 50% posisi @ 1.5*ATR + Move SL to Breakeven, TP2 50% runner @ 3.0*ATR / Target Struktur)
+      - Stop-Loss berbasis MEXC FAIR_PRICE (anti-scam wick)
+      - Net Expected Value (EV_net%) setelah biaya & Gatekeeper (SKIP_LOW_EV jika EV_net <= 0.15% atau Net RR < 1.5)
+      - Half-Kelly Position Sizing & Safe Max Leverage
     """
     sig_str = str(signal_type or "").upper()
     if direction:
         is_bearish = (str(direction).upper() == "SHORT")
     else:
         is_bearish = any(w in sig_str for w in ["BEAR", "SHORT", "SELL", "DROP", "DOWN"])
-    
-    # Rasionalisasi target height (hindari nilai ekstrem)
-    target_height = max(pattern_height, atr_14 * 2.0)
-    max_height = max(atr_14 * 4.0, breakout_price * 0.05)
+
+    dec = _dec(breakout_price)
+    safe_atr = max(float(atr_14 or 0.0), breakout_price * 0.004)
+
+    # Rasionalisasi target height (TP2 / Major Target)
+    target_height = max(float(pattern_height or 0.0), safe_atr * 3.0)
+    max_height = max(safe_atr * 4.5, breakout_price * 0.06)
     if target_height > max_height:
         target_height = max_height
-        
+
+    # Pilih tipe entry optimal: Maker Limit (0% Fee) kecuali momentum ekstrem (ADX > 30 & |OBI| > 0.30)
+    is_extreme_momentum = (adx_val > 30.0) and ((obi_val < -0.30) if is_bearish else (obi_val > 0.30))
+    recommended_entry_type = "TAKER_BREAKOUT_002_FEE" if is_extreme_momentum else "MAKER_LIMIT_0_FEE"
+
     if is_bearish:
         direction = "SHORT"
-        tp = breakout_price - target_height
-        if tp <= 0 or tp >= breakout_price:
-            tp = breakout_price - (atr_14 * 2.0)
-            if tp <= 0:
-                tp = breakout_price * 0.95
-                
-        # SL posisi Short HARUS DI ATAS Entry
+        maker_limit_entry = breakout_price + (0.35 * safe_atr)
+        aggressive_entry = breakout_price
+
+        tp1_price = breakout_price - (1.5 * safe_atr)
+        tp2_price = breakout_price - target_height
+        if tp2_price <= 0 or tp2_price >= tp1_price:
+            tp2_price = breakout_price - (3.0 * safe_atr)
+            if tp2_price <= 0:
+                tp2_price = breakout_price * 0.94
+        if tp1_price <= 0 or tp1_price >= breakout_price:
+            tp1_price = breakout_price * 0.97
+
         if swing_high is not None and swing_high > breakout_price:
-            sl = swing_high + (1.5 * atr_14)
+            sl = min(swing_high + (1.2 * safe_atr), breakout_price + (1.8 * safe_atr))
         else:
-            sl = breakout_price + (1.5 * atr_14)
-            
-        if sl <= breakout_price:
-            sl = breakout_price + (1.5 * atr_14)
-            
-        risk = sl - breakout_price
-        reward = breakout_price - tp
+            sl = breakout_price + (1.5 * safe_atr)
+        if sl <= maker_limit_entry:
+            sl = maker_limit_entry + (1.2 * safe_atr)
+
+        ref_entry = aggressive_entry if is_extreme_momentum else maker_limit_entry
+        risk = max(sl - ref_entry, breakout_price * 0.002)
+        reward_tp1 = max(ref_entry - tp1_price, 0.0)
+        reward_tp2 = max(ref_entry - tp2_price, 0.0)
     else:
         direction = "LONG"
-        tp = breakout_price + target_height
-        
-        # SL posisi Long HARUS DI BAWAH Entry
-        if swing_low is not None and 0 < swing_low < breakout_price:
-            sl = swing_low - (1.5 * atr_14)
-        else:
-            sl = breakout_price - (1.5 * atr_14)
-            
-        if sl <= 0 or sl >= breakout_price:
-            sl = breakout_price - (1.5 * atr_14)
-            if sl <= 0:
-                sl = breakout_price * 0.95
-                
-        risk = breakout_price - sl
-        reward = tp - breakout_price
+        maker_limit_entry = max(breakout_price * 0.5, breakout_price - (0.35 * safe_atr))
+        aggressive_entry = breakout_price
 
-    risk_reward = round(reward / risk, 2) if risk > 0 else 2.0
-    
+        tp1_price = breakout_price + (1.5 * safe_atr)
+        tp2_price = breakout_price + target_height
+        if tp2_price <= tp1_price:
+            tp2_price = breakout_price + (3.0 * safe_atr)
+
+        if swing_low is not None and 0 < swing_low < breakout_price:
+            sl = max(swing_low - (1.2 * safe_atr), breakout_price - (1.8 * safe_atr))
+        else:
+            sl = breakout_price - (1.5 * safe_atr)
+        if sl <= 0 or sl >= maker_limit_entry:
+            sl = max(breakout_price * 0.90, maker_limit_entry - (1.2 * safe_atr))
+
+        ref_entry = aggressive_entry if is_extreme_momentum else maker_limit_entry
+        risk = max(ref_entry - sl, breakout_price * 0.002)
+        reward_tp1 = max(tp1_price - ref_entry, 0.0)
+        reward_tp2 = max(tp2_price - ref_entry, 0.0)
+
+    # Blended reward (50% TP1 + 50% TP2) & full TP2 reward
+    blended_reward = 0.5 * reward_tp1 + 0.5 * reward_tp2
+    gross_rr = round(reward_tp2 / risk, 2) if risk > 0 else 2.0
+
+    # Kalkulasi Biaya Round-Trip MEXC:
+    # Maker 0% (0.00%) vs Taker 0.02% x 2 (0.04%) + Spread% + Estimasi Funding
+    fee_entry_exit_pct = (settings.MEXC_TAKER_FEE_PCT * 2.0) if is_extreme_momentum else (settings.MEXC_MAKER_FEE_PCT + settings.MEXC_TAKER_FEE_PCT)
+    fee_rt_pct = fee_entry_exit_pct + max(0.005, float(spread_pct or 0.01) * 0.5) + abs(float(funding_rate_pct or 0.0)) * 0.5
+
+    risk_pct = (risk / ref_entry) * 100.0 if ref_entry > 0 else 1.0
+    reward_tp2_pct = (reward_tp2 / ref_entry) * 100.0 if ref_entry > 0 else 2.0
+    blended_reward_pct = (blended_reward / ref_entry) * 100.0 if ref_entry > 0 else 1.8
+
+    net_reward_pct = max(0.0, reward_tp2_pct - fee_rt_pct)
+    net_risk_pct = risk_pct + fee_rt_pct
+    net_rr = round(net_reward_pct / net_risk_pct, 2) if net_risk_pct > 0 else gross_rr
+
+    # Probabilitas menang (p) dari Layer 3 / Backtest
+    p = float(np.clip(win_rate_pct / 100.0, 0.30, 0.85))
+    q = 1.0 - p
+    ev_net_pct = round((p * blended_reward_pct) - (q * risk_pct) - fee_rt_pct, 3)
+
+    # Gatekeeper Eksekusi
+    if ev_net_pct > settings.MIN_NET_EV_PCT and net_rr >= settings.MIN_NET_RR:
+        trade_validity = "EXECUTABLE_HIGH_EDGE"
+    else:
+        trade_validity = "SKIP_LOW_EV"
+
+    # Half-Kelly Criterion & Safe Max Leverage (Risiko 1.0% ekuitas per transaksi)
+    b = max(net_rr, 0.1)
+    full_kelly = max(0.0, (p * b - q) / b)
+    half_kelly_pct = round(float(np.clip(0.5 * full_kelly * 100.0, 1.0, 25.0)), 2)
+
+    account_risk_per_trade_pct = 1.0
+    safe_max_lev = int(np.clip(np.floor(account_risk_per_trade_pct / max(risk_pct + 0.15, 0.05)), 1, 20))
+
     return {
-        "tp": round(float(tp), 4),
-        "sl": round(float(sl), 4),
-        "breakout_price": round(float(breakout_price), 4),
-        "risk_reward": risk_reward,
-        "atr": round(float(atr_14), 4),
+        "tp": round(float(tp2_price), dec),
+        "tp1": round(float(tp1_price), dec),
+        "tp2": round(float(tp2_price), dec),
+        "sl": round(float(sl), dec),
+        "stop_loss": round(float(sl), dec),
+        "sl_trigger_type": "FAIR_PRICE",
+        "breakout_price": round(float(breakout_price), dec),
+        "maker_limit_entry": round(float(maker_limit_entry), dec),
+        "aggressive_market_entry": round(float(aggressive_entry), dec),
+        "recommended_entry_type": recommended_entry_type,
+        "take_profit_1": {
+            "price": round(float(tp1_price), dec),
+            "size_pct": 50,
+            "action": "CLOSE_50_PCT_AND_MOVE_SL_TO_BREAKEVEN",
+        },
+        "take_profit_2": {
+            "price": round(float(tp2_price), dec),
+            "size_pct": 50,
+            "action": "TRAIL_REMAINING_50_PCT_BY_EMA20",
+        },
+        "risk_reward": gross_rr,
+        "gross_rr": gross_rr,
+        "net_rr_after_mexc_fees": net_rr,
+        "net_expected_value_pct": ev_net_pct,
+        "round_trip_fee_pct": round(fee_rt_pct, 4),
+        "trade_validity": trade_validity,
+        "position_sizing": {
+            "half_kelly_capital_fraction_pct": half_kelly_pct,
+            "safe_max_leverage": f"{safe_max_lev}x",
+            "safe_max_leverage_num": safe_max_lev,
+            "max_zero_slippage_position_usdt": round(float(max_zero_slippage_usdt), 2),
+        },
+        "atr": round(float(safe_atr), dec),
         "direction": direction,
-        "is_bearish": is_bearish
+        "is_bearish": is_bearish,
     }

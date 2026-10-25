@@ -21,7 +21,8 @@ Tanpa AI -- murni perhitungan Python/numpy/scipy.
 import numpy as np
 import pandas as pd
 from scipy.signal import find_peaks
-from app.core.quantitative import calculate_rsi, calculate_macd, calculate_atr
+from scipy import stats as scipy_stats
+from app.core.quantitative import calculate_rsi, calculate_macd, calculate_atr, _dec
 
 # Bobot komponen fitur
 WEIGHTS = {
@@ -34,6 +35,77 @@ METHODS = ["zscore_euclidean", "pearson", "dtw_sakoe_chiba"]
 
 # Proyeksi horizon (jumlah bar ke depan) yang dievaluasi per segmen
 DEFAULT_HORIZON_STEPS = [5, 10, 15]
+
+
+def compute_statistical_significance(returns: list[float], prob_up: float = None) -> dict:
+    """
+    ATRED v3.0 - Uji Signifikansi Statistik (Wilcoxon Signed-Rank / One-Sample t-test):
+    Menguji hipotesis nol H0: median/rata-rata forward return == 0.0.
+    Jika p_value >= 0.05, sinyal dianggap kebetulan acak -> NEUTRAL (NO STATISTICAL EDGE).
+    """
+    arr = np.asarray([float(x) for x in returns if x is not None and not np.isnan(x)], dtype=float)
+    n_samples = len(arr)
+    if n_samples < 3:
+        return {
+            "sample_size": n_samples,
+            "p_value": 1.0,
+            "is_statistically_significant": False,
+            "statistical_verdict": "NEUTRAL (NO STATISTICAL EDGE)",
+            "win_rate_pct": 50.0,
+            "mean_return_pct": 0.0,
+            "median_return_pct": 0.0,
+        }
+
+    win_rate = float((arr > 0).mean()) * 100.0 if prob_up is None else float(prob_up) * 100.0
+    mean_ret = float(np.mean(arr))
+    med_ret = float(np.median(arr))
+
+    # Gunakan kombinasi One-Sample t-test dan Wilcoxon Signed-Rank Test
+    p_val_t = 1.0
+    p_val_w = 1.0
+    try:
+        if float(np.std(arr)) > 1e-12:
+            _, p_t = scipy_stats.ttest_1samp(arr, 0.0)
+            if not np.isnan(p_t):
+                p_val_t = float(p_t)
+    except Exception:
+        pass
+
+    try:
+        non_zero = arr[np.abs(arr) > 1e-12]
+        if len(non_zero) >= 5:
+            _, p_w = scipy_stats.wilcoxon(non_zero)
+            if not np.isnan(p_w):
+                p_val_w = float(p_w)
+    except Exception:
+        pass
+
+    p_value = round(min(p_val_t, p_val_w), 4)
+    is_sig = bool(p_value < 0.05)
+
+    if not is_sig:
+        verdict = "NEUTRAL (NO STATISTICAL EDGE)"
+    else:
+        if win_rate >= 55.0 and mean_ret > 0:
+            verdict = "BULLISH"
+        elif win_rate <= 45.0 and mean_ret < 0:
+            verdict = "BEARISH"
+        elif mean_ret > 0.15:
+            verdict = "BULLISH"
+        elif mean_ret < -0.15:
+            verdict = "BEARISH"
+        else:
+            verdict = "NEUTRAL (NO STATISTICAL EDGE)"
+
+    return {
+        "sample_size": int(n_samples),
+        "p_value": p_value,
+        "is_statistically_significant": is_sig,
+        "statistical_verdict": verdict,
+        "win_rate_pct": round(win_rate, 1),
+        "mean_return_pct": round(mean_ret, 2),
+        "median_return_pct": round(med_ret, 2),
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -240,9 +312,9 @@ def _find_segments_for_probe(features, probe_len, top_k, min_separation,
                              dtw_prefilter: int = 120):
     """
     Untuk satu panjang probe, evaluasi semua jendela di history pool dengan
-    ketiga metode, agregasi ranking, lalu kembalikan top-k segmen beserta skor.
+    ketiga metode, pre-filter rezim EMA-200, agregasi ranking, lalu kembalikan top-k segmen.
 
-    Euclidean & Pearson: tervektorisasi (sliding-window matrix).  DTW: hanya
+    Euclidean & Pearson: tervektorisasi (sliding-window matrix). DTW: hanya
     dihitung pada kandidat teratas hasil pre-filter Pearson (untuk kecepatan).
     """
     closes, vol_feat, rsi_norm, macd_norm, atr_norm = features
@@ -254,6 +326,10 @@ def _find_segments_for_probe(features, probe_len, top_k, min_separation,
         return []
 
     price_norm_all = _normalize_price(closes)
+
+    # Pre-filter Rezim Makro EMA-200 (Bull Regime vs Bear Regime)
+    ema200 = pd.Series(closes).ewm(span=min(200, max(50, n // 2)), adjust=False).mean().to_numpy(dtype=float)
+    probe_bull_regime = bool(closes[-1] >= ema200[-1])
 
     # Probe vectors
     price_p = _normalize_price(closes[p_s:n])
@@ -274,6 +350,12 @@ def _find_segments_for_probe(features, probe_len, top_k, min_separation,
 
     n_cand = len(W_price)
 
+    # Evaluasi kecocokan rezim EMA-200 di titik akhir setiap kandidat window
+    end_indices = np.arange(n_cand) + (probe_len - 1)
+    cand_bull_regime = closes[end_indices] >= ema200[end_indices]
+    regime_match_mask = (cand_bull_regime == probe_bull_regime)
+    regime_bonus = np.where(regime_match_mask, 0.04, 0.0)
+
     # --- Euclidean (vektorisasi penuh)
     s_price = _zscore_euclid_vec_matrix(W_price, price_p)
     s_vol = _zscore_euclid_vec_matrix(W_vol, vol_p) if W_vol is not None else np.full(n_cand, 0.0)
@@ -281,7 +363,7 @@ def _find_segments_for_probe(features, probe_len, top_k, min_separation,
     s_macd = _zscore_euclid_vec_matrix(W_macd, macd_p) if W_macd is not None else np.full(n_cand, 0.0)
     s_atr = _zscore_euclid_vec_matrix(W_atr, atr_p) if W_atr is not None else np.full(n_cand, 0.0)
     euclid = (WEIGHTS["price"] * s_price + WEIGHTS["volume"] * s_vol +
-              WEIGHTS["indicators"] * ((s_rsi + s_macd + s_atr) / 3.0))
+              WEIGHTS["indicators"] * ((s_rsi + s_macd + s_atr) / 3.0)) + regime_bonus
 
     # --- Pearson (vektorisasi penuh)
     p_price = _pearson_vec_matrix(W_price, price_p)
@@ -290,7 +372,7 @@ def _find_segments_for_probe(features, probe_len, top_k, min_separation,
     p_macd = _pearson_vec_matrix(W_macd, macd_p) if W_macd is not None else np.full(n_cand, 0.0)
     p_atr = _pearson_vec_matrix(W_atr, atr_p) if W_atr is not None else np.full(n_cand, 0.0)
     pearson = (WEIGHTS["price"] * p_price + WEIGHTS["volume"] * p_vol +
-               WEIGHTS["indicators"] * ((p_rsi + p_macd + p_atr) / 3.0))
+               WEIGHTS["indicators"] * ((p_rsi + p_macd + p_atr) / 3.0)) + regime_bonus
 
     # --- DTW (pre-filter: ambil top-N dari Pearson lalu hitung penuh)
     dtw = np.zeros(n_cand)
@@ -302,7 +384,7 @@ def _find_segments_for_probe(features, probe_len, top_k, min_separation,
         d_macd = _score_from_distance(_dtw_distance(macd_p, W_macd[ci])) if W_macd is not None else 0.0
         d_atr = _score_from_distance(_dtw_distance(atr_p, W_atr[ci])) if W_atr is not None else 0.0
         dtw[ci] = (WEIGHTS["price"] * d_price + WEIGHTS["volume"] * d_vol +
-                   WEIGHTS["indicators"] * ((d_rsi + d_macd + d_atr) / 3.0))
+                   WEIGHTS["indicators"] * ((d_rsi + d_macd + d_atr) / 3.0)) + float(regime_bonus[ci])
 
     method_scores = np.stack([euclid, pearson, dtw], axis=0)  # (3, n_cand)
 
@@ -326,7 +408,6 @@ def _find_segments_for_probe(features, probe_len, top_k, min_separation,
                 keep = False
                 break
         if keep:
-            # Skor metode utk segmen ini
             seg_methods = []
             for m_idx, method in enumerate(METHODS):
                 scr = {
@@ -349,6 +430,7 @@ def _find_segments_for_probe(features, probe_len, top_k, min_separation,
                 "start": int(s),
                 "end": int(s + probe_len),
                 "mean_rank": float(rank_sum[idx] / len(METHODS)),
+                "regime_matched": bool(regime_match_mask[idx]),
                 "methods": seg_methods,
             })
             if len(selected) >= top_k:
@@ -381,7 +463,7 @@ def _forward_projection(closes, segment_starts, probe_len, horizon_steps):
 
         if not returns:
             forward_stats[step] = {"median_pct": 0.0, "prob_up": 0.5,
-                                   "p25": 0.0, "p75": 0.0, "n": 0}
+                                   "p25": 0.0, "p75": 0.0, "n": 0, "returns": []}
             continue
 
         arr = np.array(returns)
@@ -391,6 +473,7 @@ def _forward_projection(closes, segment_starts, probe_len, horizon_steps):
             "p25": round(float(np.percentile(arr, 25)), 2),
             "p75": round(float(np.percentile(arr, 75)), 2),
             "n": int(len(arr)),
+            "returns": returns,
         }
     return forward_stats
 
@@ -406,9 +489,9 @@ def _verdict_from_prob(prob_up: float, threshold: float = 0.55) -> str:
     return "NEUTRAL"
 
 
-def _consensus_over_methods(methods):
+def _consensus_over_methods(methods, fwd_returns_sample=None):
     """
-    Konsensus dari k kartu metode berdasarkan probability_up paling jauh dari 0.5.
+    Konsensus dari k kartu metode + Uji Signifikansi Statistik (p-value < 0.05).
     """
     verdicts = []
     probs = []
@@ -417,13 +500,21 @@ def _consensus_over_methods(methods):
             verdicts.append(m["verdict"])
             probs.append(m.get("probability_up", 0.5))
     if not probs:
-        return {"verdict": "NEUTRAL", "confidence": 0.0, "probability_up": 0.5,
-                "expected_return_pct": 0.0, "method_agreement": 0.0}
+        return {
+            "verdict": "NEUTRAL",
+            "statistical_verdict": "NEUTRAL (NO STATISTICAL EDGE)",
+            "confidence": 0.0,
+            "probability_up": 0.5,
+            "expected_return_pct": 0.0,
+            "method_agreement": 0.0,
+            "p_value": 1.0,
+            "is_statistically_significant": False,
+            "sample_size": 0,
+        }
 
     avg_prob = float(np.mean(probs))
-    verdict = _verdict_from_prob(avg_prob)
-    agreement = float(np.mean([1 if v == verdict else 0 for v in verdicts]))
-    # Confidence: gabungan jarak dari 0.5 & agree
+    raw_verdict = _verdict_from_prob(avg_prob)
+    agreement = float(np.mean([1 if v == raw_verdict else 0 for v in verdicts]))
     confidence = round(float(abs(avg_prob - 0.5) * 2.0 * (0.5 + 0.5 * agreement)), 2)
     confidence = max(0.0, min(1.0, confidence))
 
@@ -431,12 +522,18 @@ def _consensus_over_methods(methods):
                         if m.get("expected_return_15d") is not None]
     expected = float(np.mean(expected_returns)) if expected_returns else 0.0
 
+    stat_info = compute_statistical_significance(fwd_returns_sample or [], prob_up=avg_prob)
+
     return {
-        "verdict": verdict,
+        "verdict": raw_verdict,
+        "statistical_verdict": stat_info["statistical_verdict"],
         "confidence": confidence,
         "probability_up": round(float(avg_prob), 3),
         "expected_return_pct": round(expected, 2),
         "method_agreement": round(agreement, 2),
+        "p_value": stat_info["p_value"],
+        "is_statistically_significant": stat_info["is_statistically_significant"],
+        "sample_size": stat_info["sample_size"],
     }
 
 
@@ -447,45 +544,47 @@ def compute_similarity(
     df: pd.DataFrame,
     timeframe: str = "1d",
     probe_lengths=None,
-    top_k: int = 8,
+    top_k: int = 30,
     horizon_steps=None,
-    min_separation: int = 25,
+    min_separation: int = 12,
     data_source: str = "live",
     summary_only: bool = False,
 ):
     """
-    Jalankan engine pencocokan pola historis.
-
-    df           : DataFrame OHLCV (Time, Open, High, Low, Close, Volume)
-    timeframe    : "1d" atau "1h" (label saja untuk output)
-    probe_lengths: daftar panjang window probe (default [15, 30, 60])
-    top_k        : jumlah segmen mirip teratas
-    horizon_steps: daftar bar ke depan untuk proyeksi (default [5,10,15])
-    data_source  : "live" | "synthetic"
-    summary_only : True -> hanya kembalikan ringkasan untuk screener
+    Jalankan engine pencocokan pola historis v3.0 (K=30 sampel, EMA-200 Regime Pre-Filter,
+    dan Uji Signifikansi Statistik Wilcoxon/t-test p-value < 0.05).
     """
-    if df is None or df.empty or len(df) < max((probe_lengths or [30])) + min_separation + 15:
+    if df is None or df.empty:
         return None
 
     df = df.reset_index(drop=True)
+    n_total = len(df)
+    if n_total < 45:
+        return None
+
     if probe_lengths is None:
         probe_lengths = [15, 30, 60]
     if horizon_steps is None:
         horizon_steps = DEFAULT_HORIZON_STEPS
 
+    # Adaptasi min_separation jika bar terbatas agar tetap bisa mengambil sampel memadai
+    eff_min_sep = min(min_separation, max(6, (n_total - max(probe_lengths)) // max(top_k, 8)))
+
     features = _extract_features(df)
     closes = features[0]
     n = len(closes)
+    dec_global = _dec(closes[-1])
 
     probes = []
     for probe_len in probe_lengths:
-        if n < probe_len + min_separation + 15:
+        if n < probe_len + eff_min_sep + 10:
             continue
-        segments = _find_segments_for_probe(features, probe_len, top_k, min_separation)
+        segments = _find_segments_for_probe(features, probe_len, top_k, eff_min_sep)
         if not segments:
             continue
 
         p_s = n - probe_len
+        regime_matched_cnt = sum(1 for sg in segments if sg.get("regime_matched"))
 
         # Build per-method objects
         methods = []
@@ -493,7 +592,6 @@ def compute_similarity(
             seg_scores = []
             fwd_returns = {}
             for sg in segments:
-                # Ambil metode terkait
                 m_info = next((m for m in sg["methods"] if m["method"] == method), None)
                 score = m_info["score"] if m_info else 0.0
                 components = m_info["components"] if m_info else {}
@@ -523,7 +621,7 @@ def compute_similarity(
                     seg_sub_df = df.iloc[seg_start:seg_end]
                     for _, row in seg_sub_df.iterrows():
                         c_val = float(row['Close'])
-                        dec = 4 if c_val < 10 else 2
+                        dec = _dec(c_val)
                         seg_candles.append({
                             "open": round(float(row.get('Open', c_val)), dec),
                             "high": round(float(row.get('High', c_val)), dec),
@@ -538,22 +636,22 @@ def compute_similarity(
                     "start_date": str(df['Time'].iloc[seg_start]),
                     "end_date": str(df['Time'].iloc[seg_end - 1]),
                     "score": round(float(score), 4),
+                    "regime_matched": sg.get("regime_matched", True),
                     "components": components,
                     "forward_returns": fwd,
                     "segment_values": [round(float(x), 3) for x in norm_vals],
-                    "raw_prices": [round(float(x), 2 if x > 10 else 4) for x in seg_closes],
+                    "raw_prices": [round(float(x), dec_global) for x in seg_closes],
                     "forward_values": [round(float(x), 3) for x in fwd_norm_vals],
-                    "forward_prices": [round(float(x), 2 if x > 10 else 4) for x in fwd_closes],
+                    "forward_prices": [round(float(x), dec_global) for x in fwd_closes],
                     "candles": seg_candles,
-                    "start_price": round(float(seg_closes[0]), 2 if seg_closes[0] > 10 else 4),
-                    "end_price": round(float(seg_closes[-1]), 2 if seg_closes[-1] > 10 else 4),
-                    "high_price": round(float(np.max(seg_closes)), 2 if np.max(seg_closes) > 10 else 4),
-                    "low_price": round(float(np.min(seg_closes)), 2 if np.min(seg_closes) > 10 else 4),
+                    "start_price": round(float(seg_closes[0]), dec_global),
+                    "end_price": round(float(seg_closes[-1]), dec_global),
+                    "high_price": round(float(np.max(seg_closes)), dec_global),
+                    "low_price": round(float(np.min(seg_closes)), dec_global),
                 })
 
-            # prob_up & expected_return untuk horizon terbesar yang tersedia
             last_step = max(int(k) for k in fwd_returns) if fwd_returns else horizon_steps[-1]
-            last_returns = [sg["forward_returns"].get(str(last_step), 0.0) for sg in seg_scores]
+            last_returns = [sg["forward_returns"].get(str(last_step), 0.0) for sg in seg_scores if str(last_step) in sg["forward_returns"]]
             prob_up = round(float((np.array(last_returns) > 0).mean()), 3) if last_returns else 0.5
             expected = round(float(np.mean(last_returns)), 2) if last_returns else 0.0
             verdict = _verdict_from_prob(prob_up)
@@ -573,15 +671,20 @@ def compute_similarity(
                 "expected_return_15d": expected,
             })
 
-        # Forward distribution dari konsensus seluruh segmen (mean_rank)
         top_starts = [sg["start"] for sg in segments[:top_k]]
         fwd_stats = _forward_projection(closes, top_starts, probe_len, horizon_steps)
 
-        consensus = _consensus_over_methods(methods)
+        # Ambil sampel forward returns step 10 (atau step terbesar) untuk uji signifikansi p-value
+        ref_step = 10 if 10 in fwd_stats and fwd_stats[10]["n"] >= 3 else max(horizon_steps)
+        ref_returns = fwd_stats.get(ref_step, {}).get("returns", [])
+        consensus = _consensus_over_methods(methods, fwd_returns_sample=ref_returns)
+        consensus["regime_matched_count"] = regime_matched_cnt
 
         probes.append({
             "probe_len": probe_len,
             "is_best": False,
+            "sample_size": len(segments),
+            "regime_matched_count": regime_matched_cnt,
             "probe_dates": [str(df['Time'].iloc[p_s]),
                             str(df['Time'].iloc[n - 1])],
             "probe_values": [round(float(x), 3) for x in _normalize_price(closes[p_s:n])],
@@ -592,7 +695,8 @@ def compute_similarity(
                  "median_pct": fwd_stats[step]["median_pct"],
                  "prob_up": fwd_stats[step]["prob_up"],
                  "p25": fwd_stats[step]["p25"],
-                 "p75": fwd_stats[step]["p75"]}
+                 "p75": fwd_stats[step]["p75"],
+                 "n": fwd_stats[step]["n"]}
                 for step in horizon_steps if step in fwd_stats
             ],
         })
@@ -600,7 +704,6 @@ def compute_similarity(
     if not probes:
         return None
 
-    # Pilih probe terbaik: confidence konsensus + rata-rata skor top segmen
     def _probe_quality(p):
         avg_scr = 0.0
         cnt = 0
@@ -608,10 +711,7 @@ def compute_similarity(
             if m["segments"]:
                 avg_scr += np.mean([s["score"] for s in m["segments"]])
                 cnt += 1
-        if cnt == 0:
-            score_avg = 0.0
-        else:
-            score_avg = avg_scr / cnt
+        score_avg = (avg_scr / cnt) if cnt > 0 else 0.0
         return score_avg * p["consensus"]["probability_up"], score_avg
 
     qualities = [(_probe_quality(p)[0]) for p in probes]
@@ -628,8 +728,12 @@ def compute_similarity(
     best = probes[best_idx]["consensus"]
     result["screener_summary"] = {
         "consensus_verdict": best["verdict"],
+        "statistical_verdict": best.get("statistical_verdict", "NEUTRAL (NO STATISTICAL EDGE)"),
         "confidence": best["confidence"],
         "probability_up": best["probability_up"],
+        "p_value": best.get("p_value", 1.0),
+        "is_statistically_significant": best.get("is_statistically_significant", False),
+        "sample_size": best.get("sample_size", 0),
         "score_bonus": int(round(12 * (2 * best["probability_up"] - 1)))
         if best["verdict"] != "NEUTRAL" else 0,
     }

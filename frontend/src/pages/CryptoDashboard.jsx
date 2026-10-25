@@ -76,10 +76,12 @@ export default function CryptoDashboard() {
 
   // Filter token list by category
   const filteredTokens = tokens.filter((t) => {
+    const sym = (t.symbol || '').toUpperCase();
     if (selectedCategory === 'all') return true;
-    if (selectedCategory === 'l1') return t.category === 'l1' || ['BTC-USD', 'ETH-USD', 'SOL-USD', 'BNB-USD', 'AVAX-USD'].includes(t.symbol);
-    if (selectedCategory === 'defi') return t.category === 'defi' || ['UNI-USD', 'AAVE-USD', 'LINK-USD', 'MKR-USD'].includes(t.symbol);
-    if (selectedCategory === 'ai') return t.category === 'ai' || ['NEAR-USD', 'RENDER-USD', 'FET-USD', 'TAO-USD'].includes(t.symbol);
+    if (selectedCategory === 'l1') return t.category === 'l1' || ['BTC_USDT', 'ETH_USDT', 'SOL_USDT', 'BNB_USDT', 'AVAX_USDT', 'SUI_USDT', 'TON_USDT', 'TRX_USDT'].includes(sym);
+    if (selectedCategory === 'defi') return t.category === 'defi' || ['UNI_USDT', 'AAVE_USDT', 'LINK_USDT', 'INJ_USDT', 'JUP_USDT', 'ENA_USDT', 'PENDLE_USDT', 'ONDO_USDT'].includes(sym);
+    if (selectedCategory === 'ai') return t.category === 'ai' || ['NEAR_USDT', 'RENDER_USDT', 'FET_USDT', 'TAO_USDT', 'WLD_USDT', 'AR_USDT'].includes(sym);
+    if (selectedCategory === 'meme') return t.category === 'meme' || ['DOGE_USDT', 'PEPE_USDT', 'SHIB_USDT', 'WIF_USDT', 'BONK_USDT', 'FLOKI_USDT', 'ORDI_USDT'].includes(sym);
     if (selectedCategory === 'whale') return (t.volume_24h || t.volume || 0) > 10000000;
     return true;
   });
@@ -141,10 +143,11 @@ export default function CryptoDashboard() {
         <div className="flex items-center justify-between gap-4 overflow-x-auto pb-1 select-none">
           <div className="flex items-center gap-2">
             {[
-              { id: 'all', label: 'Semua Koin' },
+              { id: 'all', label: 'Semua Koin (MEXC)' },
               { id: 'l1', label: 'Layer 1 / L2' },
-              { id: 'defi', label: 'DeFi' },
+              { id: 'defi', label: 'DeFi & RWA' },
               { id: 'ai', label: 'AI & DePIN' },
+              { id: 'meme', label: '🐸 Meme & High-Beta' },
               { id: 'whale', label: 'Whale Inflow > $10M', icon: 'water_drop' },
             ].map((cat) => (
               <button
@@ -176,7 +179,7 @@ export default function CryptoDashboard() {
             const displayPrice = tick ? tick.price : tok.price;
             const displayChangePct = tick ? tick.change_pct : tok.change_pct;
             const isPos = (displayChangePct || 0) >= 0;
-            const cleanSym = tok.symbol.replace('-USD', '');
+            const cleanSym = tok.symbol.replace('_USDT', '').replace('-USD', '');
             const tokVol = tok.volume_24h || tok.volume || 0;
 
             return (
@@ -256,17 +259,17 @@ export default function CryptoDashboard() {
           <div>
             <div className="flex items-center gap-2">
               <span className="text-primary font-mono text-xs uppercase font-bold tracking-wider">
-                Fitur Eksklusif
+                Fitur Eksklusif MEXC v3.0
               </span>
               <span className="px-2 py-0.5 rounded text-[10px] font-mono font-semibold bg-primary-container text-on-primary-container">
-                SciPy Pattern Matching
+                Dynamic Top-40 MEXC Volume Scanner
               </span>
             </div>
             <h2 className="text-xl font-headline font-bold text-on-surface mt-1">
-              Draw Pattern Search (Pencarian Pola Real-Time Masa Sekarang)
+              Draw Pattern Search (Pemindaian Dinamis Top-40 Koin Teraktif MEXC)
             </h2>
             <p className="text-xs text-on-surface-variant mt-0.5">
-              Gambar formasi grafik apa saja, dan sistem akan langsung memindai koin kripto di pasar saat ini yang membentuk pergerakan serupa dalam rentang 24 jam terakhir.
+              Gambar formasi grafik apa saja, dan sistem akan langsung memindai Top-40 kontrak kripto dengan volume 24 jam tertinggi di MEXC secara real-time menggunakan Z-score Cosine Similarity & Pearson Correlation.
             </p>
           </div>
 
@@ -316,7 +319,7 @@ export default function CryptoDashboard() {
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="text-lg font-headline font-bold text-on-surface">
-                  On-Chain & GitHub Developer Intelligence: {selectedToken.symbol.replace('-USD', '')}
+                  On-Chain & GitHub Developer Intelligence: {selectedToken.symbol.replace('_USDT', '').replace('-USD', '')}
                 </h3>
                 <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-surface-container-highest text-tertiary">
                   Verified Data

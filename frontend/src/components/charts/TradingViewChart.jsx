@@ -7,6 +7,7 @@ import {
   ColorType,
   LineStyle,
 } from 'lightweight-charts';
+import { Settings, X, RotateCcw } from 'lucide-react';
 
 function normalizeTime(t) {
   if (t === null || t === undefined) return 0;
@@ -49,28 +50,59 @@ function calculateEMA(candles, period) {
   return res;
 }
 
-// Stochastic Slow (TradingView "Stoch 14 3 3"): %K = SMA(rawK, 3), %D = SMA(%K, 3)
-function calculateStochastic(candles, kPeriod = 14, kSmooth = 3, dPeriod = 3) {
-  if (!candles || candles.length < kPeriod) return { k: [], d: [] };
+/**
+ * Stochastic Slow sesuai standar TradingView ("Stoch"):
+ * Inputs default sesuai gambar:
+ *   - %K Length    = 14
+ *   - %K Smoothing = 3
+ *   - %D Smoothing = 3
+ * Rumus PineScript TradingView:
+ *   rawK = 100 * (close - lowest(low, kLength)) / (highest(high, kLength) - lowest(low, kLength))
+ *   %K   = SMA(rawK, kSmoothing)
+ *   %D   = SMA(%K, dSmoothing)
+ */
+function calculateStochastic(candles, kLength = 14, kSmoothing = 3, dSmoothing = 3) {
+  const kLen = Math.max(1, Number(kLength) || 14);
+  const kSm = Math.max(1, Number(kSmoothing) || 3);
+  const dSm = Math.max(1, Number(dSmoothing) || 3);
+
+  if (!candles || candles.length < kLen) return { k: [], d: [] };
+
   const raw = [];
-  for (let i = kPeriod - 1; i < candles.length; i++) {
+  for (let i = kLen - 1; i < candles.length; i++) {
     let hh = -Infinity;
     let ll = Infinity;
-    for (let j = i - kPeriod + 1; j <= i; j++) {
+    for (let j = i - kLen + 1; j <= i; j++) {
       hh = Math.max(hh, candles[j].high);
       ll = Math.min(ll, candles[j].low);
     }
     const rng = hh - ll;
-    raw.push({ time: candles[i].time, value: rng > 0 ? ((candles[i].close - ll) / rng) * 100 : 50 });
-  }
-  const sma = (arr, n) =>
-    arr.map((p, i) => {
-      const s = arr.slice(Math.max(0, i - n + 1), i + 1);
-      return { time: p.time, value: roundFloat(s.reduce((a, b) => a + b.value, 0) / s.length, 2) };
+    raw.push({
+      time: candles[i].time,
+      value: rng > 0 ? ((candles[i].close - ll) / rng) * 100 : 50,
     });
-  const k = sma(raw, kSmooth);
-  const d = sma(k, dPeriod);
-  return { k, d };
+  }
+
+  const smaRaw = (arr, period) => {
+    const out = [];
+    for (let i = 0; i < arr.length; i++) {
+      if (i < period - 1) continue;
+      let sum = 0;
+      for (let j = i - period + 1; j <= i; j++) {
+        sum += arr[j].value;
+      }
+      out.push({ time: arr[i].time, value: sum / period });
+    }
+    return out;
+  };
+
+  const kUnrounded = smaRaw(raw, kSm);
+  const dUnrounded = smaRaw(kUnrounded, dSm);
+
+  return {
+    k: kUnrounded.map((p) => ({ time: p.time, value: roundFloat(p.value, 2) })),
+    d: dUnrounded.map((p) => ({ time: p.time, value: roundFloat(p.value, 2) })),
+  };
 }
 
 function formatVolShort(v) {
@@ -95,6 +127,18 @@ const COLOR_SEMANTICS = {
   REF_DIM: '#64748b', // Abu-abu redup untuk garis pendukung
 };
 
+const DEFAULT_STOCH_CONFIG = {
+  kLength: 14,
+  kSmoothing: 3,
+  dSmoothing: 3,
+  kColor: '#2962FF',
+  dColor: '#FF6D00',
+  showK: true,
+  showD: true,
+  upperBand: 80,
+  lowerBand: 20,
+};
+
 const TradingViewChart = React.memo(function TradingViewChart({
   data = [],
   ohlcvData = null,
@@ -102,7 +146,7 @@ const TradingViewChart = React.memo(function TradingViewChart({
   tpSl = null,
   levels = null,
   liveTick = null,
-  height = 500,
+  height = 540,
   chartHeight = null,
   fibonacci = null,
   targets = [],
@@ -114,25 +158,33 @@ const TradingViewChart = React.memo(function TradingViewChart({
   const volumeSeriesRef = useRef(null);
   const ema20SeriesRef = useRef(null);
   const ema50SeriesRef = useRef(null);
+  const stochKSeriesRef = useRef(null);
+  const stochDSeriesRef = useRef(null);
   const lastCandleRef = useRef(null);
 
   const [hoverInfo, setHoverInfo] = useState(null);
+  const [hoverStoch, setHoverStoch] = useState(null);
   const [hoveredLevel, setHoveredLevel] = useState(null);
   const [overlayRects, setOverlayRects] = useState({ zones: [], badges: [] });
 
+  // Konfigurasi Stochastic sesuai gambar TradingView:
+  // %K Length = 14, %K Smoothing = 3, %D Smoothing = 3
+  const [stochConfig, setStochConfig] = useState(DEFAULT_STOCH_CONFIG);
+  const [showStochModal, setShowStochModal] = useState(false);
+  const [stochModalTab, setStochModalTab] = useState('inputs'); // 'inputs' | 'style' | 'visibility'
+  const [draftStoch, setDraftStoch] = useState(DEFAULT_STOCH_CONFIG);
+
   // Fase 3 - Interaktivitas & Default Minimal:
-  // Default hanya menampilkan layer inti: Entry, SL, TP, dan EMA 20.
-  // Mode "Simple" vs "Detail" untuk memilih kepadatan informasi.
+  // Panel Stochastic (14, 3, 3) aktif secara default agar sesuai dengan indikator utama yang diminta.
   const [viewMode, setViewMode] = useState('simple'); // 'simple' | 'detail'
   const [showEma20, setShowEma20] = useState(true);
   const [showEma50, setShowEma50] = useState(false);
   const [showTrendlines, setShowTrendlines] = useState(false);
   const [showFib, setShowFib] = useState(false);
   const [showTargets, setShowTargets] = useState(false);
-  const [showStoch, setShowStoch] = useState(false);
+  const [showStoch, setShowStoch] = useState(true);
   const [showZones, setShowZones] = useState(true);
 
-  // Berganti mode Simple <-> Detail secara instan
   const handleSelectMode = (mode) => {
     setViewMode(mode);
     if (mode === 'simple') {
@@ -141,7 +193,7 @@ const TradingViewChart = React.memo(function TradingViewChart({
       setShowTrendlines(false);
       setShowFib(false);
       setShowTargets(false);
-      setShowStoch(false);
+      setShowStoch(true);
       setShowZones(true);
     } else {
       setShowEma20(true);
@@ -157,12 +209,18 @@ const TradingViewChart = React.memo(function TradingViewChart({
   const activeTpSl = tpSl || levels;
   const activeHeight = chartHeight || height;
 
-  const isForex = useMemo(() => {
-    return candlesSource.some((d) => d.close < 10 && d.close > 0) || (trendlines?.upper_line?.[0]?.price < 10);
-  }, [candlesSource, trendlines]);
-
-  const decimals = isForex ? 4 : 2;
-  const minMove = isForex ? 0.0001 : 0.01;
+  const decimals = useMemo(() => {
+    const sampleP =
+      candlesSource.length > 0
+        ? Math.abs(Number(candlesSource[candlesSource.length - 1].close) || 1)
+        : 1;
+    if (sampleP > 0 && sampleP < 0.0001) return 8;
+    if (sampleP > 0 && sampleP < 0.01) return 6;
+    if (sampleP > 0 && sampleP < 10) return 4;
+    return 2;
+  }, [candlesSource]);
+  const minMove = useMemo(() => Math.pow(10, -decimals), [decimals]);
+  const isForex = decimals >= 4;
 
   const formattedCandles = useMemo(() => {
     return candlesSource.map((d) => ({
@@ -182,13 +240,32 @@ const TradingViewChart = React.memo(function TradingViewChart({
     }));
   }, [candlesSource]);
 
+  // Kalkulasi data Stochastic berdasarkan input (%K Length: 14, %K Smoothing: 3, %D Smoothing: 3)
+  const stochData = useMemo(() => {
+    return calculateStochastic(
+      formattedCandles,
+      stochConfig.kLength,
+      stochConfig.kSmoothing,
+      stochConfig.dSmoothing
+    );
+  }, [formattedCandles, stochConfig.kLength, stochConfig.kSmoothing, stochConfig.dSmoothing]);
+
+  const latestStoch = useMemo(() => {
+    const kArr = stochData.k || [];
+    const dArr = stochData.d || [];
+    return {
+      k: kArr.length > 0 ? kArr[kArr.length - 1].value : null,
+      d: dArr.length > 0 ? dArr[dArr.length - 1].value : null,
+    };
+  }, [stochData]);
+
   const lastCandle = formattedCandles.length > 0 ? formattedCandles[formattedCandles.length - 1] : null;
   const currentClose = lastCandle ? lastCandle.close : 0;
 
   // Hitung daftar level horizontal dengan aturan Fase 1:
   // - Hierarki 3 tingkat (Utama: Entry/SL/TP, Pendukung: EMA/Trend, Opsional: Fib/Targets)
   // - Batasi maksimal 6 garis horizontal pada tampilan
-  // - Gabungkan / saring level yang terlalu dekat (< ~0.5% dari rentang harga) agar tidak bertabrakan
+  // - Gabungkan / saring level yang terlalu dekat agar tidak bertabrakan
   // - Format seragam: `Entry 100.69`, `SL 101.68`, `TP 98.98`, `TP1 100.24`, `Fib 0.618`
   const curatedHorizontalLevels = useMemo(() => {
     if (!formattedCandles.length) return [];
@@ -200,9 +277,10 @@ const TradingViewChart = React.memo(function TradingViewChart({
 
     const coreLevels = [];
     if (activeTpSl) {
-      const entryVal = Number(activeTpSl.breakout_price);
+      const entryVal = Number(activeTpSl.maker_limit_entry || activeTpSl.breakout_price);
       const slVal = Number(activeTpSl.sl);
-      const tpVal = Number(activeTpSl.tp);
+      const tp1Val = Number(activeTpSl.tp1);
+      const tpVal = Number(activeTpSl.tp2 || activeTpSl.tp);
       const isShort = Boolean(
         activeTpSl.is_bearish ||
         activeTpSl.direction === 'SHORT' ||
@@ -210,6 +288,7 @@ const TradingViewChart = React.memo(function TradingViewChart({
       );
 
       if (!isNaN(entryVal) && entryVal > 0) {
+        const isMaker = Boolean(activeTpSl.maker_limit_entry);
         coreLevels.push({
           id: 'entry',
           tier: 1,
@@ -217,10 +296,10 @@ const TradingViewChart = React.memo(function TradingViewChart({
           price: entryVal,
           color: COLOR_SEMANTICS.ENTRY,
           lineWidth: 2,
-          lineStyle: LineStyle.Solid,
-          label: `Entry ${entryVal.toFixed(decimals)}`,
-          shortTag: 'Entry',
-          reason: `Titik eksekusi ${isShort ? 'Short' : 'Long'} mengacu pada harga penutupan / breakout aktif.`,
+          lineStyle: isMaker ? LineStyle.Dashed : LineStyle.Solid,
+          label: `${isMaker ? 'Maker 0%' : 'Entry'} ${entryVal.toFixed(decimals)}`,
+          shortTag: isMaker ? 'Maker 0%' : 'Entry',
+          reason: `Titik eksekusi ${isShort ? 'Short' : 'Long'} menggunakan Limit Order MEXC (0% Maker Fee) pada pullback ATR.`,
         });
       }
       if (!isNaN(slVal) && slVal > 0) {
@@ -232,9 +311,23 @@ const TradingViewChart = React.memo(function TradingViewChart({
           color: COLOR_SEMANTICS.SL,
           lineWidth: 2,
           lineStyle: LineStyle.Solid,
-          label: `SL ${slVal.toFixed(decimals)}`,
-          shortTag: 'SL',
-          reason: `Batas pembatalan analisa (Stop Loss) berbasis swing ${isShort ? 'high' : 'low'} + 1.5x ATR.`,
+          label: `SL (Fair) ${slVal.toFixed(decimals)}`,
+          shortTag: 'SL (Fair)',
+          reason: `Stop Loss berbasis MEXC FAIR_PRICE (anti-scam wick) di balik swing ${isShort ? 'high' : 'low'} + 1.5x ATR.`,
+        });
+      }
+      if (!isNaN(tp1Val) && tp1Val > 0 && Math.abs(tp1Val - tpVal) >= minPriceGap * 0.5) {
+        coreLevels.push({
+          id: 'tp1',
+          tier: 1,
+          category: 'TP',
+          price: tp1Val,
+          color: COLOR_SEMANTICS.TP,
+          lineWidth: 1.5,
+          lineStyle: LineStyle.Dashed,
+          label: `TP1 (50%) ${tp1Val.toFixed(decimals)}`,
+          shortTag: 'TP1 (50%)',
+          reason: 'Target Take Profit 1 (1.5x ATR): Tutup 50% posisi & geser Stop Loss ke Breakeven (BEP).',
         });
       }
       if (!isNaN(tpVal) && tpVal > 0) {
@@ -246,16 +339,15 @@ const TradingViewChart = React.memo(function TradingViewChart({
           color: COLOR_SEMANTICS.TP,
           lineWidth: 2,
           lineStyle: LineStyle.Solid,
-          label: `TP ${tpVal.toFixed(decimals)}`,
-          shortTag: 'TP',
-          reason: `Target utama Take Profit berdasarkan proyeksi tinggi pola geometris & volatilitas ATR.`,
+          label: `TP2 ${tpVal.toFixed(decimals)}`,
+          shortTag: 'TP2',
+          reason: `Target utama Take Profit Runner (50% sisa posisi) berdasarkan struktur likuiditas & proyeksi ATR.`,
         });
       }
     }
 
     const optionalCandidates = [];
 
-    // Targets (TP1, TP2) -> Warna Hijau (Target), garis tipis putus-putus
     if (showTargets && Array.isArray(targets)) {
       targets.slice(0, 2).forEach((t, idx) => {
         const p = Number(t.price);
@@ -277,8 +369,6 @@ const TradingViewChart = React.memo(function TradingViewChart({
       });
     }
 
-    // Fibonacci levels -> Warna Abu-abu (Referensi), hanya tampil saat toggle FIBO aktif
-    // Catatan 1.6: Hapus garis Ext 1.272 yang menggantung di luar area harga, pastikan Fib 1 tidak terpotong
     if (showFib && fibonacci?.levels?.length) {
       fibonacci.levels.forEach((lv) => {
         const p = Number(lv.price);
@@ -303,10 +393,8 @@ const TradingViewChart = React.memo(function TradingViewChart({
       });
     }
 
-    // Urutkan kandidat opsional berdasarkan kedekatan dengan harga saat ini (pilih yang paling dekat)
     optionalCandidates.sort((a, b) => Math.abs(a.price - currentClose) - Math.abs(b.price - currentClose));
 
-    // Maksimal 6 garis horizontal ditampilkan sekaligus, anti-tabrakan dengan level yang sudah terpilih
     const selected = [...coreLevels];
     for (const cand of optionalCandidates) {
       if (selected.length >= 6) break;
@@ -319,13 +407,12 @@ const TradingViewChart = React.memo(function TradingViewChart({
     return selected;
   }, [formattedCandles, activeTpSl, showTargets, targets, showFib, fibonacci, currentClose, decimals, isForex]);
 
-  // Zona Konfluensi S/R (Fase 1.3: Gunakan zona kotak semi-transparan untuk level berdekatan)
+  // Zona Konfluensi S/R (Fase 1.3)
   const computedZones = useMemo(() => {
     if (!showZones || !formattedCandles.length) return [];
     if (Array.isArray(priceZones) && priceZones.length > 0) {
       return priceZones;
     }
-    // Fallback otomatis jika backend tidak mengirim price_zones: buat dari Golden Pocket Fib 0.5 - 0.618
     if (fibonacci?.golden_pocket) {
       const low = Number(fibonacci.golden_pocket.bottom);
       const high = Number(fibonacci.golden_pocket.top);
@@ -345,15 +432,15 @@ const TradingViewChart = React.memo(function TradingViewChart({
     return [];
   }, [showZones, priceZones, fibonacci, formattedCandles.length, currentClose]);
 
-  // Fungsi sinkronisasi koordinat Y untuk menggambar Zona Kotak & Label Anti-Tabrakan di sisi kanan
+  const stochPaneHeight = Math.round(activeHeight * 0.24);
+  const mainPaneMaxY = showStoch ? activeHeight - stochPaneHeight - 28 : activeHeight - 28;
+
+  // Sinkronisasi koordinat Y untuk menggambar Zona Kotak & Label Anti-Tabrakan di sisi kanan
   const syncOverlays = useCallback(() => {
     const series = candleSeriesRef.current;
     const container = chartContainerRef.current;
     if (!series || !container) return;
 
-    const mainPaneMaxY = showStoch ? Math.round(activeHeight * 0.72) : activeHeight - 28;
-
-    // 1. Hitung kotak Zona S/R
     const zoneBoxes = [];
     computedZones.forEach((z, idx) => {
       const yTopRaw = series.priceToCoordinate(Number(z.high));
@@ -375,7 +462,6 @@ const TradingViewChart = React.memo(function TradingViewChart({
       });
     });
 
-    // 2. Hitung posisi Y untuk badge label di sisi kanan dengan algoritma anti-tabrakan (min gap 22px)
     const rawBadges = [];
     curatedHorizontalLevels.forEach((lv) => {
       const yCoord = series.priceToCoordinate(lv.price);
@@ -387,16 +473,13 @@ const TradingViewChart = React.memo(function TradingViewChart({
       });
     });
 
-    // Sort dari atas ke bawah (Y kecil ke Y besar)
     rawBadges.sort((a, b) => a.rawY - b.rawY);
     const minBadgeDist = 23;
     for (let i = 1; i < rawBadges.length; i++) {
       if (rawBadges[i].y - rawBadges[i - 1].y < minBadgeDist) {
-        // Jika bertabrakan dan salah satu adalah tier 3 sedangkan lainnya tier 1, sembunyikan tier 3 atau geser
         rawBadges[i].y = rawBadges[i - 1].y + minBadgeDist;
       }
     }
-    // Clamp agar tidak melewati batas bawah pane utama
     for (let i = rawBadges.length - 1; i >= 0; i--) {
       if (rawBadges[i].y > mainPaneMaxY - 14) {
         rawBadges[i].y = mainPaneMaxY - 14;
@@ -407,7 +490,7 @@ const TradingViewChart = React.memo(function TradingViewChart({
     }
 
     setOverlayRects({ zones: zoneBoxes, badges: rawBadges });
-  }, [computedZones, curatedHorizontalLevels, activeHeight, showStoch]);
+  }, [computedZones, curatedHorizontalLevels, mainPaneMaxY]);
 
   // Render chart canvas
   useEffect(() => {
@@ -455,7 +538,7 @@ const TradingViewChart = React.memo(function TradingViewChart({
         autoScale: true,
         scaleMargins: {
           top: 0.08,
-          bottom: 0.14, // beri margin agar level bawah seperti Fib 1 tidak terpotong
+          bottom: 0.14,
         },
       },
     });
@@ -486,7 +569,7 @@ const TradingViewChart = React.memo(function TradingViewChart({
       lastCandleRef.current = { ...formattedCandles[formattedCandles.length - 1] };
     }
 
-    // 2. Series Volume (Fase 1.6: Matikan lastValueVisible & priceLineVisible agar tidak muncul kotak "2.02B" tanpa konteks)
+    // 2. Series Volume (Matikan lastValueVisible & priceLineVisible agar tidak muncul kotak "2.02B" tanpa konteks)
     const volumeSeries = chart.addSeries(HistogramSeries, {
       color: '#64748b',
       lastValueVisible: false,
@@ -494,7 +577,7 @@ const TradingViewChart = React.memo(function TradingViewChart({
       priceFormat: {
         type: 'volume',
       },
-      priceScaleId: 'vol_scale',
+      priceScaleId: '',
     });
     volumeSeriesRef.current = volumeSeries;
 
@@ -503,12 +586,11 @@ const TradingViewChart = React.memo(function TradingViewChart({
         top: 0.84,
         bottom: 0,
       },
-      visible: false,
     });
 
     volumeSeries.setData(formattedVolume);
 
-    // 3. EMA 20 Overlay (Tingkat 2 - Pendukung: Garis tipis, putus-putus, warna Abu-abu Referensi, tanpa label sumbu Y agar tidak menabrak Entry/SL)
+    // 3. EMA 20 Overlay
     const ema20Data = calculateEMA(formattedCandles, 20);
     const ema20Series = chart.addSeries(LineSeries, {
       color: COLOR_SEMANTICS.REF,
@@ -523,7 +605,7 @@ const TradingViewChart = React.memo(function TradingViewChart({
     ema20Series.setData(ema20Data);
     ema20SeriesRef.current = ema20Series;
 
-    // 4. EMA 50 Overlay (Opsional - Referensi Abu-abu redup)
+    // 4. EMA 50 Overlay
     const ema50Data = calculateEMA(formattedCandles, 50);
     const ema50Series = chart.addSeries(LineSeries, {
       color: COLOR_SEMANTICS.REF_DIM,
@@ -538,7 +620,7 @@ const TradingViewChart = React.memo(function TradingViewChart({
     ema50Series.setData(ema50Data);
     ema50SeriesRef.current = ema50Series;
 
-    // 5. Geometric Trendlines (Tingkat 2 - Pendukung: warna Abu-abu referensi, tipis putus-putus, tidak kusut)
+    // 5. Geometric Trendlines
     if (showTrendlines && trendlines) {
       if (Array.isArray(trendlines.upper_line) && trendlines.upper_line.length >= 2) {
         const uPts = trendlines.upper_line
@@ -576,8 +658,7 @@ const TradingViewChart = React.memo(function TradingViewChart({
       }
     }
 
-    // 6. Render Maksimal 6 Garis Horizontal Terkurasi (Entry, SL, TP, dan Opsional terpilih)
-    // Matikan axisLabelVisible bawaan agar kita menggambar badge di sisi kanan yang dijamin anti-tabrakan & memiliki tooltip alasan
+    // 6. Render Maksimal 6 Garis Horizontal Terkurasi
     curatedHorizontalLevels.forEach((lv) => {
       candleSeries.createPriceLine({
         price: lv.price,
@@ -589,53 +670,91 @@ const TradingViewChart = React.memo(function TradingViewChart({
       });
     });
 
-    // 7. Stochastic 14 3 3 di panel terpisah (pane 1) - Hanya saat toggle STOCH aktif, tinggi proporsional
-    if (showStoch) {
-      const { k, d } = calculateStochastic(formattedCandles, 14, 3, 3);
-      if (k.length) {
-        const kSeries = chart.addSeries(
-          LineSeries,
-          { color: COLOR_SEMANTICS.ENTRY, lineWidth: 1.5, title: '%K', priceLineVisible: false, lastValueVisible: false },
-          1
-        );
-        const dSeries = chart.addSeries(
-          LineSeries,
-          { color: COLOR_SEMANTICS.REF, lineWidth: 1.2, lineStyle: LineStyle.Dashed, title: '%D', priceLineVisible: false, lastValueVisible: false },
-          1
-        );
-        kSeries.setData(k);
-        dSeries.setData(d);
-        [80, 20].forEach((lvl) =>
-          kSeries.createPriceLine({
-            price: lvl,
-            color: lvl === 80 ? 'rgba(239,68,68,0.45)' : 'rgba(16,185,129,0.45)',
-            lineWidth: 1,
-            lineStyle: LineStyle.Dashed,
-            axisLabelVisible: true,
-            title: lvl === 80 ? 'OB 80' : 'OS 20',
-          })
-        );
-        try {
-          const panes = chart.panes();
-          if (panes[1]) panes[1].setHeight(Math.round(activeHeight * 0.22));
-        } catch {
-          /* pane API fallback */
-        }
+    // 7. Stochastic Slow (Inputs: %K Length=14, %K Smoothing=3, %D Smoothing=3) di Panel Terpisah (Pane 1)
+    stochKSeriesRef.current = null;
+    stochDSeriesRef.current = null;
+    if (showStoch && stochData.k.length > 0) {
+      const kSeries = chart.addSeries(
+        LineSeries,
+        {
+          color: stochConfig.kColor,
+          lineWidth: 1.5,
+          lineStyle: LineStyle.Solid,
+          title: '%K',
+          visible: stochConfig.showK,
+          priceLineVisible: false,
+          lastValueVisible: true,
+          priceFormat: { type: 'price', precision: 2, minMove: 0.01 },
+        },
+        1
+      );
+      const dSeries = chart.addSeries(
+        LineSeries,
+        {
+          color: stochConfig.dColor,
+          lineWidth: 1.5,
+          lineStyle: LineStyle.Solid,
+          title: '%D',
+          visible: stochConfig.showD,
+          priceLineVisible: false,
+          lastValueVisible: true,
+          priceFormat: { type: 'price', precision: 2, minMove: 0.01 },
+        },
+        1
+      );
+      kSeries.setData(stochData.k);
+      dSeries.setData(stochData.d);
+      stochKSeriesRef.current = kSeries;
+      stochDSeriesRef.current = dSeries;
+
+      // Garis batas Upper Band (80), Middle Band (50), Lower Band (20) standar TradingView Stoch
+      kSeries.createPriceLine({
+        price: stochConfig.upperBand,
+        color: 'rgba(148, 163, 184, 0.45)',
+        lineWidth: 1,
+        lineStyle: LineStyle.Dashed,
+        axisLabelVisible: true,
+        title: '',
+      });
+      kSeries.createPriceLine({
+        price: 50,
+        color: 'rgba(148, 163, 184, 0.22)',
+        lineWidth: 1,
+        lineStyle: LineStyle.Dotted,
+        axisLabelVisible: false,
+        title: '',
+      });
+      kSeries.createPriceLine({
+        price: stochConfig.lowerBand,
+        color: 'rgba(148, 163, 184, 0.45)',
+        lineWidth: 1,
+        lineStyle: LineStyle.Dashed,
+        axisLabelVisible: true,
+        title: '',
+      });
+
+      try {
+        kSeries.priceScale().applyOptions({
+          scaleMargins: { top: 0.12, bottom: 0.10 },
+        });
+        const panes = chart.panes();
+        if (panes[1]) panes[1].setHeight(stochPaneHeight);
+      } catch {
+        /* fallback */
       }
     }
 
     chart.timeScale().fitContent();
 
-    // Sinkronkan posisi Zona S/R & Label Anti-Tabrakan setelah render dan saat scroll/zoom
     const rafId = requestAnimationFrame(() => syncOverlays());
     const handleTimeRangeChange = () => syncOverlays();
     chart.timeScale().subscribeVisibleLogicalRangeChange(handleTimeRangeChange);
 
-    // Crosshair hover listener untuk OHLCV Legend Bar
+    // Crosshair hover listener untuk OHLCV & Stochastic Legend Bar
     chart.subscribeCrosshairMove((param) => {
-      syncOverlays();
       if (!param.time || !param.seriesData) {
         setHoverInfo(null);
+        setHoverStoch(null);
         return;
       }
       const c = param.seriesData.get(candleSeries);
@@ -650,6 +769,18 @@ const TradingViewChart = React.memo(function TradingViewChart({
           change,
           volume: v?.value || 0,
         });
+      }
+      if (stochKSeriesRef.current || stochDSeriesRef.current) {
+        const kPoint = stochKSeriesRef.current ? param.seriesData.get(stochKSeriesRef.current) : null;
+        const dPoint = stochDSeriesRef.current ? param.seriesData.get(stochDSeriesRef.current) : null;
+        if (kPoint || dPoint) {
+          setHoverStoch({
+            k: kPoint?.value ?? null,
+            d: dPoint?.value ?? null,
+          });
+        } else {
+          setHoverStoch(null);
+        }
       }
     });
 
@@ -674,6 +805,8 @@ const TradingViewChart = React.memo(function TradingViewChart({
         volumeSeriesRef.current = null;
         ema20SeriesRef.current = null;
         ema50SeriesRef.current = null;
+        stochKSeriesRef.current = null;
+        stochDSeriesRef.current = null;
       }
     };
   }, [
@@ -688,6 +821,9 @@ const TradingViewChart = React.memo(function TradingViewChart({
     showStoch,
     showEma20,
     showEma50,
+    stochData,
+    stochConfig,
+    stochPaneHeight,
     syncOverlays,
   ]);
 
@@ -727,6 +863,8 @@ const TradingViewChart = React.memo(function TradingViewChart({
     volume: candlesSource[candlesSource.length - 1]?.volume || 0,
   } : null);
 
+  const activeStochValues = hoverStoch || latestStoch;
+
   const formatPrice = (v) => {
     if (v === null || v === undefined) return '-';
     return Number(v).toLocaleString('en-US', {
@@ -735,8 +873,6 @@ const TradingViewChart = React.memo(function TradingViewChart({
     });
   };
 
-  // Maksimal 4 gaya latar untuk badge label sesuai Fase 1.4:
-  // 1. Merah (SL), 2. Hijau (TP), 3. Biru (Entry), 4. Abu-abu (Referensi)
   const getBadgeStyle = (category) => {
     switch (category) {
       case 'SL':
@@ -750,11 +886,31 @@ const TradingViewChart = React.memo(function TradingViewChart({
     }
   };
 
+  const openStochModal = () => {
+    setDraftStoch({ ...stochConfig });
+    setStochModalTab('inputs');
+    setShowStochModal(true);
+  };
+
+  const applyStochSettings = (e) => {
+    if (e) e.preventDefault();
+    setStochConfig({
+      ...draftStoch,
+      kLength: Math.max(1, Number(draftStoch.kLength) || 14),
+      kSmoothing: Math.max(1, Number(draftStoch.kSmoothing) || 3),
+      dSmoothing: Math.max(1, Number(draftStoch.dSmoothing) || 3),
+    });
+    setShowStochModal(false);
+  };
+
+  const resetStochDefaults = () => {
+    setDraftStoch({ ...DEFAULT_STOCH_CONFIG });
+  };
+
   return (
     <div className="w-full relative rounded-2xl overflow-hidden border border-slate-800/80 bg-[#090d16] shadow-2xl">
       {/* Top Toolbar: OHLCV + Volume dengan Konteks + Mode Simple/Detail & Toggle Layer */}
       <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 bg-slate-900/95 border-b border-slate-800/80 backdrop-blur-md">
-        {/* OHLCV Legend dengan keterangan Volume eksplisit (menggantikan kotak "2.02B" tanpa konteks) */}
         {displayOhlc ? (
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-mono">
             <span className="text-slate-400">
@@ -799,9 +955,8 @@ const TradingViewChart = React.memo(function TradingViewChart({
           <span className="text-xs text-slate-500">Arahkan kursor ke grafik untuk melihat OHLCV</span>
         )}
 
-        {/* Mode Simple/Detail & Layer Toggles (Fase 3) */}
+        {/* Mode Simple/Detail & Layer Toggles */}
         <div className="flex flex-wrap items-center gap-1.5 text-[11px] font-mono">
-          {/* Simple vs Detail Mode Switch */}
           <div className="flex items-center bg-slate-950 p-0.5 rounded-lg border border-slate-800 mr-1">
             <button
               type="button"
@@ -811,7 +966,7 @@ const TradingViewChart = React.memo(function TradingViewChart({
                   ? 'bg-blue-600 text-white shadow-sm'
                   : 'text-slate-400 hover:text-slate-200'
               }`}
-              title="Mode Simple: Hanya menampilkan Entry, SL, TP, EMA 20, dan Zona S/R utama"
+              title="Mode Simple: Menampilkan Entry, SL, TP, EMA 20, Zona S/R, dan Stoch (14, 3, 3)"
             >
               Simple
             </button>
@@ -823,13 +978,12 @@ const TradingViewChart = React.memo(function TradingViewChart({
                   ? 'bg-blue-600 text-white shadow-sm'
                   : 'text-slate-400 hover:text-slate-200'
               }`}
-              title="Mode Detail: Menampilkan konfluensi Trendline, Fibonacci, Target, dan Stochastic"
+              title="Mode Detail: Menampilkan seluruh layer konfluensi (Trendline, Fibonacci, Target, Stoch)"
             >
               Detail
             </button>
           </div>
 
-          {/* Toggle per Layer: EMA, TREND, FIBO, TARGET, STOCH */}
           <button
             type="button"
             onClick={() => setShowEma20((prev) => !prev)}
@@ -882,22 +1036,32 @@ const TradingViewChart = React.memo(function TradingViewChart({
             TARGET
           </button>
 
-          <button
-            type="button"
-            onClick={() => setShowStoch((prev) => !prev)}
-            className={`px-2 py-0.5 rounded font-medium transition-all cursor-pointer ${
-              showStoch
-                ? 'bg-blue-500/20 text-blue-300 border border-blue-500/40'
-                : 'bg-slate-800/60 text-slate-500 border border-transparent hover:text-slate-300'
-            }`}
-            title="Panel Stochastic Slow (14, 3, 3)"
-          >
-            STOCH
-          </button>
+          <div className="inline-flex items-center rounded overflow-hidden border border-blue-500/40 bg-blue-500/15">
+            <button
+              type="button"
+              onClick={() => setShowStoch((prev) => !prev)}
+              className={`px-2 py-0.5 font-medium transition-all cursor-pointer ${
+                showStoch
+                  ? 'text-blue-300'
+                  : 'bg-slate-800/80 text-slate-500 hover:text-slate-300'
+              }`}
+              title={`Toggle Stoch (${stochConfig.kLength}, ${stochConfig.kSmoothing}, ${stochConfig.dSmoothing})`}
+            >
+              STOCH ({stochConfig.kLength},{stochConfig.kSmoothing},{stochConfig.dSmoothing})
+            </button>
+            <button
+              type="button"
+              onClick={openStochModal}
+              className="px-1.5 py-0.5 text-blue-300 hover:text-white hover:bg-blue-500/30 border-l border-blue-500/30 transition-colors cursor-pointer"
+              title="Pengaturan Inputs Stoch (%K Length, %K Smoothing, %D Smoothing)"
+            >
+              <Settings className="w-3 h-3" />
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Sub-Bar Legenda Sistem Warna Konsisten (Satu Warna = Satu Makna, Fase 1.4) */}
+      {/* Sub-Bar Legenda Sistem Warna Konsisten (Satu Warna = Satu Makna) */}
       <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-1.5 bg-slate-950/90 border-b border-slate-800/60 text-[11px] font-mono text-slate-400">
         <div className="flex flex-wrap items-center gap-4">
           <span className="flex items-center gap-1.5">
@@ -926,7 +1090,7 @@ const TradingViewChart = React.memo(function TradingViewChart({
       <div className="relative w-full" style={{ height: `${activeHeight}px` }}>
         <div ref={chartContainerRef} className="w-full h-full" />
 
-        {/* 1. Overlay Kotak Zona Support / Resistance (Fase 1.3) */}
+        {/* 1. Overlay Kotak Zona Support / Resistance */}
         <div className="pointer-events-none absolute inset-0 overflow-hidden">
           {overlayRects.zones.map((z) => {
             const isRes = z.type === 'resistance';
@@ -960,19 +1124,36 @@ const TradingViewChart = React.memo(function TradingViewChart({
               </div>
             );
           })}
-
-          {/* Garis Pemisah Visual & Label Panel Stochastic saat STOCH aktif (Fase 1.6) */}
-          {showStoch && (
-            <div
-              style={{ top: `${Math.round(activeHeight * 0.76)}px` }}
-              className="absolute left-3 px-2 py-0.5 rounded bg-slate-900/90 border border-slate-800 text-[10px] font-mono text-slate-400"
-            >
-              Stochastic (14, 3, 3) • <span className="text-blue-400">%K</span> / <span className="text-slate-400">%D</span>
-            </div>
-          )}
         </div>
 
-        {/* 2. Label Sisi Kanan yang Ringkas, Seragam, Anti-Tabrakan + Tooltip Hover (Fase 1.5 & Fase 3) */}
+        {/* Header Bar Indikator Stoch (14, 3, 3) ala TradingView pada Pane Stochastic */}
+        {showStoch && (
+          <div
+            style={{ top: `${activeHeight - stochPaneHeight - 22}px` }}
+            className="absolute left-3 z-20 flex items-center gap-2.5 px-2.5 py-1 rounded-md bg-[#0e111a]/95 border border-slate-800/90 text-[11px] font-mono shadow-md"
+          >
+            <span className="font-bold text-slate-200">Stoch</span>
+            <span className="text-slate-400">
+              {stochConfig.kLength} {stochConfig.kSmoothing} {stochConfig.dSmoothing}
+            </span>
+            <span className="font-semibold" style={{ color: stochConfig.kColor }}>
+              %K {activeStochValues.k !== null && activeStochValues.k !== undefined ? activeStochValues.k.toFixed(2) : '-'}
+            </span>
+            <span className="font-semibold" style={{ color: stochConfig.dColor }}>
+              %D {activeStochValues.d !== null && activeStochValues.d !== undefined ? activeStochValues.d.toFixed(2) : '-'}
+            </span>
+            <button
+              type="button"
+              onClick={openStochModal}
+              className="p-0.5 rounded hover:bg-slate-800 text-slate-400 hover:text-white transition-colors cursor-pointer"
+              title="Buka Pengaturan Stoch (Inputs: %K Length 14, %K Smoothing 3, %D Smoothing 3)"
+            >
+              <Settings className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
+
+        {/* 2. Label Sisi Kanan yang Ringkas, Seragam, Anti-Tabrakan + Tooltip Hover */}
         <div className="pointer-events-none absolute inset-y-0 right-[72px] w-44 overflow-visible">
           {overlayRects.badges.map((b) => (
             <div
@@ -989,11 +1170,11 @@ const TradingViewChart = React.memo(function TradingViewChart({
           ))}
         </div>
 
-        {/* 3. Tooltip Interaktif Saat Hover pada Label Garis (Fase 3: nama level, harga, alasan) */}
+        {/* 3. Tooltip Interaktif Saat Hover pada Label Garis */}
         {hoveredLevel && (
           <div
             style={{
-              top: `${Math.min(Math.max(16, hoveredLevel.y - 24), activeHeight - 110)}px`,
+              top: `${Math.min(Math.max(16, hoveredLevel.y - 24), mainPaneMaxY - 90)}px`,
               right: '215px',
             }}
             className="pointer-events-none absolute z-30 w-72 p-3 rounded-xl bg-slate-950/95 border border-slate-700 shadow-2xl text-xs font-mono space-y-1 backdrop-blur-md"
@@ -1005,6 +1186,210 @@ const TradingViewChart = React.memo(function TradingViewChart({
             <p className="text-[11px] text-slate-300 font-sans leading-relaxed">
               {hoveredLevel.reason}
             </p>
+          </div>
+        )}
+
+        {/* 4. Modal Pengaturan Stoch (Persis Sesuai Gambar TradingView: Inputs / Style / Visibility) */}
+        {showStochModal && (
+          <div className="absolute inset-0 z-40 flex items-center justify-center bg-black/60 backdrop-blur-xs">
+            <div className="w-[360px] rounded-xl bg-[#131722] border border-[#2a2e39] shadow-2xl text-slate-200 font-sans overflow-hidden">
+              {/* Header Modal: "Stoch" */}
+              <div className="flex items-center justify-between px-5 pt-4 pb-2">
+                <h3 className="text-lg font-bold text-white tracking-tight">Stoch</h3>
+                <button
+                  type="button"
+                  onClick={() => setShowStochModal(false)}
+                  className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Tabs: Inputs | Style | Visibility */}
+              <div className="flex items-center gap-6 px-5 border-b border-[#2a2e39] text-sm font-semibold">
+                {[
+                  { id: 'inputs', label: 'Inputs' },
+                  { id: 'style', label: 'Style' },
+                  { id: 'visibility', label: 'Visibility' },
+                ].map((tab) => (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setStochModalTab(tab.id)}
+                    className={`py-2.5 border-b-2 transition-colors cursor-pointer ${
+                      stochModalTab === tab.id
+                        ? 'border-white text-white'
+                        : 'border-transparent text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Body Modal */}
+              <form onSubmit={applyStochSettings} className="p-5 space-y-4">
+                {stochModalTab === 'inputs' && (
+                  <div className="space-y-4 text-sm">
+                    <div className="flex items-center justify-between">
+                      <label className="text-slate-300 font-medium">%K Length</label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="200"
+                        value={draftStoch.kLength}
+                        onChange={(e) =>
+                          setDraftStoch((prev) => ({ ...prev, kLength: e.target.value }))
+                        }
+                        className="w-28 px-3 py-1.5 rounded-md bg-[#1e222d] border border-[#363a45] text-white font-mono text-sm focus:outline-none focus:border-blue-500"
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <label className="text-slate-300 font-medium">%K Smoothing</label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="100"
+                        value={draftStoch.kSmoothing}
+                        onChange={(e) =>
+                          setDraftStoch((prev) => ({ ...prev, kSmoothing: e.target.value }))
+                        }
+                        className="w-28 px-3 py-1.5 rounded-md bg-[#1e222d] border border-[#363a45] text-white font-mono text-sm focus:outline-none focus:border-blue-500"
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <label className="text-slate-300 font-medium">%D Smoothing</label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="100"
+                        value={draftStoch.dSmoothing}
+                        onChange={(e) =>
+                          setDraftStoch((prev) => ({ ...prev, dSmoothing: e.target.value }))
+                        }
+                        className="w-28 px-3 py-1.5 rounded-md bg-[#1e222d] border border-[#363a45] text-white font-mono text-sm focus:outline-none focus:border-blue-500"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {stochModalTab === 'style' && (
+                  <div className="space-y-3.5 text-sm">
+                    <div className="flex items-center justify-between">
+                      <label className="flex items-center gap-2 text-slate-300">
+                        <input
+                          type="checkbox"
+                          checked={draftStoch.showK}
+                          onChange={(e) =>
+                            setDraftStoch((prev) => ({ ...prev, showK: e.target.checked }))
+                          }
+                          className="rounded accent-blue-500"
+                        />
+                        <span>%K Line</span>
+                      </label>
+                      <input
+                        type="color"
+                        value={draftStoch.kColor}
+                        onChange={(e) =>
+                          setDraftStoch((prev) => ({ ...prev, kColor: e.target.value }))
+                        }
+                        className="w-8 h-7 rounded bg-transparent border border-[#363a45] cursor-pointer"
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <label className="flex items-center gap-2 text-slate-300">
+                        <input
+                          type="checkbox"
+                          checked={draftStoch.showD}
+                          onChange={(e) =>
+                            setDraftStoch((prev) => ({ ...prev, showD: e.target.checked }))
+                          }
+                          className="rounded accent-blue-500"
+                        />
+                        <span>%D Line</span>
+                      </label>
+                      <input
+                        type="color"
+                        value={draftStoch.dColor}
+                        onChange={(e) =>
+                          setDraftStoch((prev) => ({ ...prev, dColor: e.target.value }))
+                        }
+                        className="w-8 h-7 rounded bg-transparent border border-[#363a45] cursor-pointer"
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <label className="text-slate-300">Upper Band</label>
+                      <input
+                        type="number"
+                        value={draftStoch.upperBand}
+                        onChange={(e) =>
+                          setDraftStoch((prev) => ({ ...prev, upperBand: Number(e.target.value) || 80 }))
+                        }
+                        className="w-24 px-2.5 py-1 rounded bg-[#1e222d] border border-[#363a45] text-white font-mono text-xs"
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <label className="text-slate-300">Lower Band</label>
+                      <input
+                        type="number"
+                        value={draftStoch.lowerBand}
+                        onChange={(e) =>
+                          setDraftStoch((prev) => ({ ...prev, lowerBand: Number(e.target.value) || 20 }))
+                        }
+                        className="w-24 px-2.5 py-1 rounded bg-[#1e222d] border border-[#363a45] text-white font-mono text-xs"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {stochModalTab === 'visibility' && (
+                  <div className="space-y-2.5 text-xs text-slate-300">
+                    {['Seconds', 'Minutes', 'Hours', 'Days', 'Weeks', 'Months'].map((tf) => (
+                      <label key={tf} className="flex items-center justify-between py-1">
+                        <span className="flex items-center gap-2">
+                          <input type="checkbox" defaultChecked className="rounded accent-blue-500" />
+                          <span>{tf}</span>
+                        </span>
+                        <span className="text-slate-500 font-mono">Aktif</span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+
+                {/* Footer Actions */}
+                <div className="flex items-center justify-between pt-3 border-t border-[#2a2e39]">
+                  <button
+                    type="button"
+                    onClick={resetStochDefaults}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs text-slate-400 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    <span>Defaults (14, 3, 3)</span>
+                  </button>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowStochModal(false)}
+                      className="px-3 py-1.5 rounded-md text-xs font-medium text-slate-300 hover:bg-white/5 border border-[#363a45] cursor-pointer"
+                    >
+                      Batal
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-4 py-1.5 rounded-md text-xs font-semibold bg-blue-600 hover:bg-blue-500 text-white shadow cursor-pointer"
+                    >
+                      OK
+                    </button>
+                  </div>
+                </div>
+              </form>
+            </div>
           </div>
         )}
       </div>

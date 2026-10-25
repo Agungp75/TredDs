@@ -29,11 +29,13 @@ export default function AISummaryCard({
   aiOptions = {},
   symbol = '',
   currentPrice = 0,
+  executionPlan = null,
 }) {
   const { isConfigured, aiConfig, openSettings } = useAI();
 
   // Active Tab: 'overview' | 'scalping' | 'swing' | 'investing' | 'scenarios' | 'calculator' | 'chat'
   const [activeTab, setActiveTab] = useState('overview');
+  const [entryMode, setEntryMode] = useState('maker'); // 'maker' (0% Fee) | 'taker' (0.02% Fee)
 
   // Option-specific data states
   const [optionsData, setOptionsData] = useState({
@@ -330,44 +332,101 @@ export default function AISummaryCard({
                   </div>
                 )}
 
-                {/* Parameters */}
+                {/* MEXC Execution Plan & 0% Maker Fee Optimizer */}
                 {activeParams && (
-                  <div className="pt-2 border-t border-slate-800">
+                  <div className="pt-3 border-t border-slate-800 space-y-3">
+                    {/* Entry Mode Toggle & Trade Validity */}
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex items-center gap-1.5 bg-slate-900/90 p-1 rounded-lg border border-slate-800 text-xs font-mono">
+                        <button
+                          type="button"
+                          onClick={() => setEntryMode('maker')}
+                          className={`px-2.5 py-1 rounded-md font-bold transition-all cursor-pointer ${
+                            entryMode === 'maker'
+                              ? 'bg-cyan-500 text-slate-950 shadow'
+                              : 'text-slate-400 hover:text-white'
+                          }`}
+                        >
+                          Maker Limit (0.00% Fee)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setEntryMode('taker')}
+                          className={`px-2.5 py-1 rounded-md font-bold transition-all cursor-pointer ${
+                            entryMode === 'taker'
+                              ? 'bg-amber-500 text-slate-950 shadow'
+                              : 'text-slate-400 hover:text-white'
+                          }`}
+                        >
+                          Taker Breakout (0.02% Fee)
+                        </button>
+                      </div>
+
+                      {executionPlan && (
+                        <div className="flex flex-wrap items-center gap-2 text-xs font-mono">
+                          <span
+                            className={`px-2.5 py-1 rounded-md font-bold border ${
+                              executionPlan.trade_validity === 'EXECUTABLE_HIGH_EDGE'
+                                ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
+                                : 'bg-amber-500/15 text-amber-400 border-amber-500/30'
+                            }`}
+                          >
+                            {executionPlan.trade_validity || 'EXECUTABLE_HIGH_EDGE'} • Net EV:{' '}
+                            {Number(executionPlan.net_expected_value_pct || 0) >= 0 ? '+' : ''}
+                            {Number(executionPlan.net_expected_value_pct || 0).toFixed(2)}%
+                          </span>
+                          <span className="px-2.5 py-1 rounded-md bg-slate-900 border border-slate-800 text-cyan-400 font-bold">
+                            Safe Lev: {executionPlan.position_sizing?.safe_max_leverage || '5x'} • Half-Kelly:{' '}
+                            {executionPlan.position_sizing?.half_kelly_capital_fraction_pct ?? 10}%
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
-                      <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-800">
-                        <div className="text-[11px] text-slate-400">Entry Reference</div>
+                      <div className="p-3 rounded-xl bg-slate-900/80 border border-cyan-500/30">
+                        <div className="text-[11px] text-cyan-300 font-semibold">
+                          {entryMode === 'maker' ? 'Maker Limit (0% Fee)' : 'Taker Market (0.02%)'}
+                        </div>
                         <div className="text-sm font-bold font-mono text-slate-100 mt-1">
-                          {formatCurrency(activeParams.entry, 'stock', symbol)}
+                          {formatCurrency(
+                            entryMode === 'maker'
+                              ? executionPlan?.maker_limit_entry || activeParams.entry
+                              : executionPlan?.aggressive_market_entry || activeParams.entry,
+                            'crypto',
+                            symbol
+                          )}
                         </div>
                       </div>
 
                       <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30">
                         <div className="text-[11px] text-emerald-300 font-semibold flex items-center justify-center space-x-1">
                           <Target className="w-3.5 h-3.5" />
-                          <span>Target TP</span>
+                          <span>Split TP1 (50%) / TP2</span>
                         </div>
-                        <div className="text-sm font-black font-mono text-emerald-400 mt-1">
-                          {formatCurrency(activeParams.tp, 'stock', symbol)}
+                        <div className="text-xs font-black font-mono text-emerald-400 mt-1">
+                          {formatCurrency(executionPlan?.tp1 || activeParams.tp, 'crypto', symbol)} /{' '}
+                          {formatCurrency(executionPlan?.tp2 || activeParams.tp, 'crypto', symbol)}
                         </div>
                       </div>
 
                       <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30">
                         <div className="text-[11px] text-rose-300 font-semibold flex items-center justify-center space-x-1">
                           <ShieldCheck className="w-3.5 h-3.5" />
-                          <span>Stop Loss (SL)</span>
+                          <span>SL (MEXC Fair Price)</span>
                         </div>
                         <div className="text-sm font-black font-mono text-rose-400 mt-1">
-                          {formatCurrency(activeParams.sl, 'stock', symbol)}
+                          {formatCurrency(executionPlan?.sl || activeParams.sl, 'crypto', symbol)}
                         </div>
                       </div>
 
                       <div className="p-3 rounded-xl bg-cyan-500/10 border border-cyan-500/30">
                         <div className="text-[11px] text-cyan-300 font-semibold flex items-center justify-center space-x-1">
                           <Compass className="w-3.5 h-3.5" />
-                          <span>Risk / Reward</span>
+                          <span>Net R:R (After Fee)</span>
                         </div>
                         <div className="text-sm font-black font-mono text-cyan-300 mt-1">
-                          {activeParams.risk_reward || '1:2.0'}
+                          1:{executionPlan?.net_rr_after_mexc_fees || activeParams.risk_reward?.replace('1:', '') || '2.0'}
                         </div>
                       </div>
                     </div>
