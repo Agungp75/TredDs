@@ -6,6 +6,7 @@ import TradingViewChart from '../components/charts/TradingViewChart';
 import TradingViewEmbedWidget from '../components/charts/TradingViewEmbedWidget';
 import PatternMatchLargeChart from '../components/charts/PatternMatchLargeChart';
 import IndicatorsPanel from '../components/analysis/IndicatorsPanel';
+import SignalSummaryPanel from '../components/analysis/SignalSummaryPanel';
 import DevActivityChart from '../components/analysis/DevActivityChart';
 import AISummaryCard from '../components/analysis/AISummaryCard';
 import SimilarityPanel from '../components/analysis/SimilarityPanel';
@@ -527,6 +528,7 @@ export default function AssetDetail() {
                   tpSl={layer1?.tp_sl}
                   fibonacci={layer1?.fibonacci}
                   targets={layer1?.targets}
+                  priceZones={layer1?.price_zones}
                   levels={layer1?.levels}
                   liveTick={liveTick}
                   height={540}
@@ -542,6 +544,13 @@ export default function AssetDetail() {
                 />
               )}
             </div>
+
+            {/* Panel Ringkasan Analisa & Kredibilitas (Fase 2 & Fase 4 perbaikan analisa.md) */}
+            <SignalSummaryPanel
+              technicalData={layer1}
+              currentPrice={currentPrice}
+              timeframe={period}
+            />
 
             {/* Layer 1 Technical Indicators Panel */}
             <IndicatorsPanel technicalData={layer1} />

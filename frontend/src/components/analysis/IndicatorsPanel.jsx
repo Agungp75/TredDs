@@ -40,7 +40,7 @@ export default function IndicatorsPanel({ technicalData = {} }) {
     return n.toLocaleString('en-US', { minimumFractionDigits: dec, maximumFractionDigits: dec });
   };
   const isShort = tp_sl?.direction === 'SHORT';
-  const FIB_DOT = { '0': 'bg-slate-400', '0.5': 'bg-cyan-400', '0.618': 'bg-yellow-400', '1': 'bg-slate-400', '1.272': 'bg-pink-400', '1.618': 'bg-purple-400' };
+  const FIB_DOT = { '0': 'bg-slate-400', '0.5': 'bg-slate-300', '0.618': 'bg-slate-200', '1': 'bg-slate-400', '1.272': 'bg-slate-500', '1.618': 'bg-slate-500' };
 
   return (
     <div className="space-y-4 font-body">
@@ -159,7 +159,7 @@ export default function IndicatorsPanel({ technicalData = {} }) {
                 <div key={t.label} className="p-2.5 rounded-lg bg-surface-container-high border border-outline-variant/40 text-xs font-mono">
                   <div className="flex items-center justify-between">
                     <span className="flex items-center gap-2">
-                      <span className="px-1.5 py-0.5 rounded bg-sky-500/20 text-sky-300 font-bold">{t.label}</span>
+                      <span className="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-bold">{t.label}</span>
                       <strong className="text-on-surface">{fmt(t.price)}</strong>
                     </span>
                     <span className={t.distance_pct >= 0 ? 'text-tertiary' : 'text-error'}>
@@ -172,7 +172,7 @@ export default function IndicatorsPanel({ technicalData = {} }) {
                     <span className="text-[10px] text-secondary shrink-0">Kekuatan {t.strength}%</span>
                   </div>
                   <div className="mt-1 h-1 rounded bg-surface-container-highest overflow-hidden">
-                    <div className="h-full bg-sky-400" style={{ width: `${t.strength}%` }} />
+                    <div className="h-full bg-emerald-400" style={{ width: `${t.strength}%` }} />
                   </div>
                 </div>
               ))

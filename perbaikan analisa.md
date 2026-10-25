@@ -138,14 +138,14 @@ RR     = Reward / Risk
 
 ## 5. Checklist Penerimaan
 
-- [ ] Tidak ada label yang saling menimpa.
-- [ ] Garis horizontal yang tampil maksimal 6 pada tampilan default.
-- [ ] Setiap warna hanya punya satu makna.
-- [ ] Entry, SL, dan TP terlihat jelas dalam sekali pandang.
-- [ ] Panel ringkasan menampilkan arah, RR, alasan, dan invalidation.
-- [ ] Tidak ada elemen yang terpotong atau tanpa keterangan.
-- [ ] Toggle layer berfungsi dan default hanya layer inti.
-- [ ] Disclaimer tampil pada setiap hasil analisa.
+- [x] Tidak ada label yang saling menimpa.
+- [x] Garis horizontal yang tampil maksimal 6 pada tampilan default.
+- [x] Setiap warna hanya punya satu makna.
+- [x] Entry, SL, dan TP terlihat jelas dalam sekali pandang.
+- [x] Panel ringkasan menampilkan arah, RR, alasan, dan invalidation.
+- [x] Tidak ada elemen yang terpotong atau tanpa keterangan.
+- [x] Toggle layer berfungsi dan default hanya layer inti.
+- [x] Disclaimer tampil pada setiap hasil analisa.
 
 ---
 
