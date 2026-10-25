@@ -105,6 +105,7 @@ const TradingViewChart = React.memo(function TradingViewChart({
   const [hoverInfo, setHoverInfo] = useState(null);
   const [showEma20, setShowEma20] = useState(true);
   const [showEma50, setShowEma50] = useState(false);
+  const [showTrendlines, setShowTrendlines] = useState(true);
   const [showFib, setShowFib] = useState(true);
   const [showTargets, setShowTargets] = useState(true);
   const [showStoch, setShowStoch] = useState(true);
@@ -132,11 +133,19 @@ const TradingViewChart = React.memo(function TradingViewChart({
     }));
   }, [candlesSource]);
 
+  const formattedVolume = useMemo(() => {
+    return candlesSource.map((d) => ({
+      time: normalizeTime(d.time),
+      value: Number(d.volume) || 0,
+      color: Number(d.close) >= Number(d.open) ? 'rgba(8, 153, 129, 0.35)' : 'rgba(242, 54, 69, 0.35)',
+    }));
+  }, [candlesSource]);
+
   const lastCandle = formattedCandles.length > 0 ? formattedCandles[formattedCandles.length - 1] : null;
 
   // Render chart canvas
   useEffect(() => {
-    if (!chartContainerRef.current || !candlesSource || candlesSource.length === 0) return;
+    if (!chartContainerRef.current || formattedCandles.length === 0) return;
 
     if (chartInstanceRef.current) {
       chartInstanceRef.current.remove();
@@ -221,11 +230,6 @@ const TradingViewChart = React.memo(function TradingViewChart({
       },
     });
 
-    const formattedVolume = data.map((d) => ({
-      time: normalizeTime(d.time),
-      value: Number(d.volume) || 0,
-      color: Number(d.close) >= Number(d.open) ? 'rgba(8, 153, 129, 0.35)' : 'rgba(242, 54, 69, 0.35)',
-    }));
     volumeSeries.setData(formattedVolume);
 
     // EMA 20 Overlay
@@ -252,20 +256,58 @@ const TradingViewChart = React.memo(function TradingViewChart({
     ema50Series.setData(ema50Data);
     ema50SeriesRef.current = ema50Series;
 
-    // Dynamic TP / SL Price Lines
-    if (tpSl) {
-      const isShort = Boolean(
-        tpSl.is_bearish ||
-        tpSl.direction === 'SHORT' ||
-        (tpSl.tp && tpSl.breakout_price && Number(tpSl.tp) < Number(tpSl.breakout_price))
-      );
-      const entryLabel = isShort ? `Short Entry $${tpSl.breakout_price}` : `Long Entry $${tpSl.breakout_price}`;
-      const tpLabel = isShort ? `TP (Short) $${tpSl.tp}` : `TP (Long) $${tpSl.tp}`;
-      const slLabel = isShort ? `SL (Short) $${tpSl.sl}` : `SL (Long) $${tpSl.sl}`;
+    // Geometric Trendlines (Support & Resistance via SciPy / NumPy polyfit)
+    if (showTrendlines && trendlines) {
+      if (Array.isArray(trendlines.upper_line) && trendlines.upper_line.length >= 2) {
+        const uPts = trendlines.upper_line
+          .map((pt) => ({ time: normalizeTime(pt.time), value: Number(pt.price) }))
+          .filter((pt) => pt.time && !isNaN(pt.value));
+        if (uPts.length >= 2 && uPts[0].time !== uPts[uPts.length - 1].time) {
+          const upperSeries = chart.addSeries(LineSeries, {
+            color: '#f43f5e',
+            lineWidth: 2,
+            lineStyle: LineStyle.Dashed,
+            title: 'Resistance Trend',
+            lastValueVisible: true,
+            priceLineVisible: false,
+            crosshairMarkerVisible: false,
+          });
+          upperSeries.setData(uPts);
+        }
+      }
+      if (Array.isArray(trendlines.lower_line) && trendlines.lower_line.length >= 2) {
+        const lPts = trendlines.lower_line
+          .map((pt) => ({ time: normalizeTime(pt.time), value: Number(pt.price) }))
+          .filter((pt) => pt.time && !isNaN(pt.value));
+        if (lPts.length >= 2 && lPts[0].time !== lPts[lPts.length - 1].time) {
+          const lowerSeries = chart.addSeries(LineSeries, {
+            color: '#10b981',
+            lineWidth: 2,
+            lineStyle: LineStyle.Dashed,
+            title: 'Support Trend',
+            lastValueVisible: true,
+            priceLineVisible: false,
+            crosshairMarkerVisible: false,
+          });
+          lowerSeries.setData(lPts);
+        }
+      }
+    }
 
-      if (tpSl.tp) {
+    // Dynamic TP / SL Price Lines
+    if (activeTpSl) {
+      const isShort = Boolean(
+        activeTpSl.is_bearish ||
+        activeTpSl.direction === 'SHORT' ||
+        (activeTpSl.tp && activeTpSl.breakout_price && Number(activeTpSl.tp) < Number(activeTpSl.breakout_price))
+      );
+      const entryLabel = isShort ? `Short Entry $${activeTpSl.breakout_price}` : `Long Entry $${activeTpSl.breakout_price}`;
+      const tpLabel = isShort ? `TP (Short) $${activeTpSl.tp}` : `TP (Long) $${activeTpSl.tp}`;
+      const slLabel = isShort ? `SL (Short) $${activeTpSl.sl}` : `SL (Long) $${activeTpSl.sl}`;
+
+      if (activeTpSl.tp) {
         candleSeries.createPriceLine({
-          price: Number(tpSl.tp),
+          price: Number(activeTpSl.tp),
           color: '#10b981',
           lineWidth: 2,
           lineStyle: LineStyle.Dashed,
@@ -273,9 +315,9 @@ const TradingViewChart = React.memo(function TradingViewChart({
           title: tpLabel,
         });
       }
-      if (tpSl.sl) {
+      if (activeTpSl.sl) {
         candleSeries.createPriceLine({
-          price: Number(tpSl.sl),
+          price: Number(activeTpSl.sl),
           color: '#ef4444',
           lineWidth: 2,
           lineStyle: LineStyle.Dashed,
@@ -283,9 +325,9 @@ const TradingViewChart = React.memo(function TradingViewChart({
           title: slLabel,
         });
       }
-      if (tpSl.breakout_price) {
+      if (activeTpSl.breakout_price) {
         candleSeries.createPriceLine({
-          price: Number(tpSl.breakout_price),
+          price: Number(activeTpSl.breakout_price),
           color: '#3b82f6',
           lineWidth: 1,
           lineStyle: LineStyle.Dotted,
@@ -402,7 +444,7 @@ const TradingViewChart = React.memo(function TradingViewChart({
         try {
           const panes = chart.panes();
           if (panes[1]) panes[1].setHeight(Math.round(activeHeight * 0.22));
-        } catch (e) {
+        } catch {
           /* pane API tidak tersedia */
         }
       }
@@ -453,7 +495,7 @@ const TradingViewChart = React.memo(function TradingViewChart({
         ema50SeriesRef.current = null;
       }
     };
-  }, [formattedCandles, trendlines, tpSl, height, decimals, minMove, fibonacci, targets, showFib, showTargets, showStoch]);
+  }, [formattedCandles, formattedVolume, trendlines, activeTpSl, activeHeight, decimals, minMove, fibonacci, targets, showTrendlines, showFib, showTargets, showStoch]);
 
   // Update EMA visibility saat toggle berubah
   useEffect(() => {
@@ -501,7 +543,7 @@ const TradingViewChart = React.memo(function TradingViewChart({
     low: lastCandle.low,
     close: lastCandle.close,
     change: lastCandle.open ? ((lastCandle.close - lastCandle.open) / lastCandle.open) * 100 : 0,
-    volume: data[data.length - 1]?.volume || 0,
+    volume: candlesSource[candlesSource.length - 1]?.volume || 0,
   } : null);
 
   const formatPrice = (v) => {
@@ -579,6 +621,19 @@ const TradingViewChart = React.memo(function TradingViewChart({
             EMA 50
           </button>
 
+          {/* Trendlines Toggle */}
+          <button
+            onClick={() => setShowTrendlines((prev) => !prev)}
+            className={`px-2 py-0.5 rounded font-mono font-medium transition-all ${
+              showTrendlines
+                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-sm'
+                : 'bg-slate-800 text-slate-500 border border-transparent hover:text-slate-300'
+            }`}
+            title="Garis Trendline Support & Resistance (Regresi Polyfit SciPy)"
+          >
+            TREND
+          </button>
+
           {/* Fibonacci Toggle */}
           <button
             onClick={() => setShowFib((prev) => !prev)}
@@ -632,7 +687,7 @@ const TradingViewChart = React.memo(function TradingViewChart({
       </div>
 
       {/* Canvas */}
-      <div ref={chartContainerRef} className="w-full" style={{ height: `${height}px` }} />
+      <div ref={chartContainerRef} className="w-full" style={{ height: `${activeHeight}px` }} />
     </div>
   );
 });

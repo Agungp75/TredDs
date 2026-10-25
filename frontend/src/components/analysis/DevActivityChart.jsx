@@ -1,7 +1,9 @@
 import React from 'react';
-import { GitCommit, GitPullRequest, Users, ShieldAlert, Cpu, Lock } from 'lucide-react';
+import { GitCommit, GitPullRequest, Users, Cpu } from 'lucide-react';
 
-export default function DevActivityChart({ devData = {}, onChainData = {} }) {
+export default function DevActivityChart({ devData = null, devMetrics = null, onChainData = null, onChain = null }) {
+  const resolvedDev = (devData && Object.keys(devData).length > 0) ? devData : (devMetrics || {});
+  const resolvedOnChain = (onChainData && Object.keys(onChainData).length > 0) ? onChainData : onChain;
   const {
     repo = 'ecosystem/core',
     dev_score = 70,
@@ -9,7 +11,7 @@ export default function DevActivityChart({ devData = {}, onChainData = {} }) {
     active_contributors = 24,
     merged_prs = 18,
     monthly_trend = [],
-  } = devData;
+  } = resolvedDev;
 
   const maxCommits = Math.max(...monthly_trend.map((m) => m.commits), 100);
 
@@ -90,19 +92,19 @@ export default function DevActivityChart({ devData = {}, onChainData = {} }) {
       </div>
 
       {/* On-Chain Metrics */}
-      {onChainData && (
+      {resolvedOnChain && Object.keys(resolvedOnChain).length > 0 && (
         <div className="pt-3 border-t border-slate-800 grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
           <div className="p-2.5 rounded-lg bg-slate-800/30">
             <span className="text-slate-400 text-[11px]">Whale Concentration</span>
-            <div className="font-bold text-slate-200 mt-0.5">{onChainData.whale_concentration || '24.5%'}</div>
+            <div className="font-bold text-slate-200 mt-0.5">{resolvedOnChain.whale_concentration || '24.5%'}</div>
           </div>
           <div className="p-2.5 rounded-lg bg-slate-800/30">
             <span className="text-slate-400 text-[11px]">Liquidity Lock</span>
-            <div className="font-bold text-emerald-400 mt-0.5">{onChainData.liquidity_locked || 'Verified Lock'}</div>
+            <div className="font-bold text-emerald-400 mt-0.5">{resolvedOnChain.liquidity_locked || resolvedOnChain.liquidity_health || 'Verified Lock'}</div>
           </div>
           <div className="p-2.5 rounded-lg bg-slate-800/30 col-span-2 sm:col-span-1">
             <span className="text-slate-400 text-[11px]">Network Supply / Base</span>
-            <div className="font-bold text-slate-200 mt-0.5">{onChainData.circulating_supply || 'Distributed'}</div>
+            <div className="font-bold text-slate-200 mt-0.5">{resolvedOnChain.circulating_supply || resolvedOnChain.top_10_holders || 'Distributed'}</div>
           </div>
         </div>
       )}

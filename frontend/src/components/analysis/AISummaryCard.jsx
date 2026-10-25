@@ -30,7 +30,7 @@ export default function AISummaryCard({
   symbol = '',
   currentPrice = 0,
 }) {
-  const { isConfigured, aiConfig } = useAI();
+  const { isConfigured, aiConfig, openSettings } = useAI();
 
   // Active Tab: 'overview' | 'scalping' | 'swing' | 'investing' | 'scenarios' | 'calculator' | 'chat'
   const [activeTab, setActiveTab] = useState('overview');
@@ -208,29 +208,34 @@ export default function AISummaryCard({
           {/* Right AI Status Pill & Config Actions */}
           <div className="flex flex-wrap items-center gap-2">
             {isConfigured ? (
-              <div
-                className="flex items-center space-x-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 text-xs font-semibold"
-                title={`Model: ${aiConfig.model} (${aiConfig.provider.toUpperCase()})`}
+              <button
+                type="button"
+                onClick={openSettings}
+                className="flex items-center space-x-1.5 px-3 py-1 rounded-full bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/25 text-emerald-400 text-xs font-semibold transition-colors cursor-pointer"
+                title={`Model: ${aiConfig.model} (${aiConfig.provider.toUpperCase()}) — Klik untuk ubah`}
               >
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
                 <span>
                   {aiConfig.provider.toUpperCase()} ({aiConfig.model})
                 </span>
-              </div>
+              </button>
             ) : (
-              <div
-                className="flex items-center space-x-1.5 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/25 text-blue-300 text-xs font-semibold"
-                title="Menggunakan kalkulasi kuantitatif lokal."
+              <button
+                type="button"
+                onClick={openSettings}
+                className="flex items-center space-x-1.5 px-3 py-1 rounded-full bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/25 text-blue-300 text-xs font-semibold transition-colors cursor-pointer"
+                title="Klik untuk menghubungkan API Key AI (Gemini, OpenAI, DeepSeek, Groq)"
               >
                 <span className="w-2 h-2 rounded-full bg-blue-400"></span>
-                <span>Engine Kuantitatif Lokal</span>
-              </div>
+                <span>Engine Kuantitatif Lokal • Set AI Key</span>
+              </button>
             )}
 
             <button
+              type="button"
               onClick={handleRefreshCurrent}
               disabled={loadingMode}
-              className="p-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 transition-all disabled:opacity-50"
+              className="p-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 transition-all disabled:opacity-50 cursor-pointer"
               title="Perbarui Analisis"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${loadingMode ? 'animate-spin text-cyan-400' : ''}`} />

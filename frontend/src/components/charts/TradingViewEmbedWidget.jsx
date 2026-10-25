@@ -126,7 +126,7 @@ const TradingViewEmbedWidget = memo(function TradingViewEmbedWidget({ symbol = '
         container.innerHTML = '';
       }
     };
-  }, [tvSymbol, height]);
+  }, [tvSymbol, tvInterval, height]);
 
   return (
     <div className="w-full relative rounded-xl overflow-hidden border border-slate-800 bg-[#090d16] shadow-xl">

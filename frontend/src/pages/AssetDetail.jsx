@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, useSearchParams, useLocation, Link } from 'react-router-dom';
-import { ArrowLeft, ArrowUpRight, ArrowDownRight, Activity, Sparkles, BarChart2 } from 'lucide-react';
 import { api } from '../services/api';
 import { useMarket } from '../context/MarketContext';
 import TradingViewChart from '../components/charts/TradingViewChart';
@@ -78,7 +77,7 @@ export default function AssetDetail() {
     }
     return clean;
   }, [rawSymbol]);
-  const { liveTicks, wsConnected } = useMarket();
+  const { liveTicks } = useMarket();
 
   // Terapkan timeframe scalping (default 15m)
   const [period, setPeriod] = useState(queryTimeframe || patternResult?.timeframe || '15m');
@@ -104,7 +103,7 @@ export default function AssetDetail() {
     if (tf && tf !== period) {
       setPeriod(tf);
     }
-  }, [searchParams]);
+  }, [searchParams, period]);
 
   useEffect(() => {
     let isMounted = true;
@@ -116,7 +115,7 @@ export default function AssetDetail() {
         if (isMounted) {
           setData(res);
         }
-      } catch (err) {
+      } catch {
         if (isMounted) {
           setError('Gagal memuat analisis detail dari Python backend engine.');
         }
@@ -132,6 +131,7 @@ export default function AssetDetail() {
   }, [symbol, period]);
 
   const overview = data?.overview || {};
+  const dataStatus = data?.data_status || overview?.data_status || {};
   const layer1 = data?.layer_1_technical || {};
   const layer2 = data?.layer_2_dev_onchain || {};
   const macro = data?.layer_3_macro || {};
@@ -143,6 +143,8 @@ export default function AssetDetail() {
   const currentPrice = liveTick ? liveTick.price : (overview.price || 0);
   const currentChangePct = liveTick ? liveTick.change_pct : (overview.change_pct || 0);
   const isPos = (currentChangePct || 0) >= 0;
+  const dataSource = (liveTick?.data_source || dataStatus.data_source || overview.data_source || 'live').toLowerCase();
+  const rawVolume = overview.volume_24h ?? overview.volume ?? 0;
 
   // Pattern detection info
   const activePattern = queryPattern || patternResult?.pattern_name || layer1?.pattern;
@@ -173,18 +175,25 @@ export default function AssetDetail() {
                   {symbol}
                 </span>
                 <span
-                  className="material-symbols-outlined text-tertiary text-base"
-                  title="Verified Tier-1 Node Feed"
+                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase ${
+                    dataSource === 'live'
+                      ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
+                      : dataSource === 'delayed' || dataSource === 'cache'
+                      ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
+                      : 'bg-rose-500/15 text-rose-400 border border-rose-500/30'
+                  }`}
+                  title={`Sumber data pasar: ${dataSource.toUpperCase()}`}
                 >
-                  verified
+                  <span className={`w-1.5 h-1.5 rounded-full ${dataSource === 'live' ? 'bg-emerald-400 animate-pulse' : dataSource === 'synthetic' ? 'bg-rose-400' : 'bg-amber-400'}`} />
+                  {dataSource.toUpperCase()}
                 </span>
               </div>
               <div className="flex items-center gap-2 mt-0.5 text-xs font-mono text-on-surface-variant">
-                <span>{overview.type === 'crypto' ? 'Perpetual Contract' : (symbol === 'GC=F' || symbol.includes('XAU')) ? 'Spot Commodity / Gold' : 'Forex Pair'}</span>
+                <span>{overview.type === 'crypto' ? 'Spot / Perpetual Market' : (symbol === 'GC=F' || symbol.includes('XAU')) ? 'Spot Commodity / Gold' : 'Forex Spot Pair'}</span>
                 <span className="text-outline">/</span>
                 <span className="text-tertiary flex items-center gap-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-tertiary animate-pulse" />
-                  Live L2 Depth
+                  Feed: {dataSource === 'live' ? 'Yahoo Live Stream' : dataSource === 'delayed' ? 'Delayed Exchange Feed' : dataSource === 'cache' ? 'Cached Snapshot' : 'Synthetic Simulation'}
                 </span>
               </div>
             </div>
@@ -212,7 +221,11 @@ export default function AssetDetail() {
             <div>
               <div className="text-[10px] uppercase text-secondary font-semibold">24h Volume</div>
               <div className="text-on-surface font-medium mt-0.5">
-                {overview.volume_24h ? `$${(overview.volume_24h / 1e6).toFixed(1)}M` : '-'}
+                {dataStatus.is_volume_meaningless
+                  ? 'N/A (OTC Forex)'
+                  : rawVolume > 0
+                  ? `$${(rawVolume / 1e6).toFixed(1)}M`
+                  : '-'}
               </div>
             </div>
             <div>
@@ -223,15 +236,15 @@ export default function AssetDetail() {
               </div>
             </div>
             <div>
-              <div className="text-[10px] uppercase text-secondary font-semibold">Mark Price</div>
-              <div className="text-on-surface font-medium mt-0.5">
-                {formatCurrency(typeof currentPrice === 'number' ? currentPrice * 0.9998 : currentPrice, overview.type, symbol)}
+              <div className="text-[10px] uppercase text-secondary font-semibold">Data Status</div>
+              <div className="text-on-surface font-medium mt-0.5 uppercase">
+                {dataSource}
               </div>
             </div>
             <div>
-              <div className="text-[10px] uppercase text-secondary font-semibold">Funding 8h</div>
+              <div className="text-[10px] uppercase text-secondary font-semibold">ATR (14)</div>
               <div className="text-tertiary font-medium mt-0.5">
-                {overview.type === 'crypto' ? '+0.0102%' : 'N/A (Spot)'}
+                {layer1?.atr ?? '-'}
               </div>
             </div>
           </div>
@@ -256,6 +269,24 @@ export default function AssetDetail() {
           </Link>
         </div>
       </div>
+
+      {/* 1B. DATA HONESTY WARNING BANNER (Jika Timeframe 1s atau Synthetic Fallback) */}
+      {(dataSource === 'synthetic' || period === '1s') && (
+        <div className="w-full bg-amber-500/10 border border-amber-500/30 rounded-xl px-4 py-3 flex items-center justify-between gap-3 text-xs font-mono text-amber-300">
+          <div className="flex items-center gap-2.5">
+            <span className="material-symbols-outlined text-amber-400 text-[18px]">warning</span>
+            <span>
+              <strong>Peringatan Kejujuran Data (Data Honesty):</strong>{' '}
+              {period === '1s'
+                ? 'Timeframe 1 Detik (1s) menggunakan interpolasi mikro-tick sintetis dari candle 1 menit karena feed publik tidak menyediakan orderbook L2 sub-detik.'
+                : 'Data saat ini menggunakan generator fallback sintetis karena koneksi ke penyedia data eksternal sedang terbatas.'}
+            </span>
+          </div>
+          <span className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 font-bold uppercase shrink-0">
+            SYNTHETIC MODE
+          </span>
+        </div>
+      )}
 
       {/* 2. PATTERN CONFIRMATION BANNER (Jika Pola Terdeteksi / Dipilih) */}
       {activePattern && (
@@ -531,24 +562,14 @@ export default function AssetDetail() {
               aiSummary={aiSummary}
               aiOptions={aiOptions}
               macroData={macro}
+              currentPrice={currentPrice}
             />
 
             {/* Layer 2: Dev & On-Chain Metrics */}
-            <div className="bg-surface-container rounded-xl p-5 border border-outline-variant/60 shadow-md space-y-4">
-              <div className="flex items-center justify-between border-b border-outline-variant/40 pb-3">
-                <div className="flex items-center gap-2">
-                  <span className="material-symbols-outlined text-primary text-[18px]">developer_board</span>
-                  <h3 className="text-sm font-headline font-bold text-on-surface">
-                    Layer 2: Developer & On-Chain
-                  </h3>
-                </div>
-                <span className="text-[10px] font-mono text-tertiary bg-tertiary-container/20 px-2 py-0.5 rounded">
-                  Score: {layer2?.dev_metrics?.dev_score ?? 88}/100
-                </span>
-              </div>
-
-              <DevActivityChart devMetrics={layer2?.dev_metrics} />
-            </div>
+            <DevActivityChart
+              devData={layer2?.dev_metrics}
+              onChainData={layer2?.on_chain}
+            />
 
             {/* Popular Asset Fast Switcher */}
             <div className="bg-surface-container rounded-xl p-4 border border-outline-variant/60 shadow-sm space-y-2.5">

@@ -33,9 +33,8 @@ _last_known_prices = {}
 
 def get_current_real_tick(symbol: str) -> dict:
     """
-    Mengambil data tick pasar riil terkini.
-    Harga selalu terikat langsung (anchored) ke harga pasar riil dari fetch_live_quote
-    sehingga tidak pernah drifting (melenceng) dari harga TradingView.
+    Mengambil data tick pasar riil terkini apa adanya dari fetch_live_quote
+    tanpa micro-tick buatan (+/-0.03%), sesuai aturan Kejujuran Data (Fase 0).
     """
     quote = fetch_live_quote(symbol)
     base_price = quote["price"]
@@ -44,16 +43,10 @@ def get_current_real_tick(symbol: str) -> dict:
     is_forex = quote.get("type") == "forex" or base_price < 10.0
     decimals = 4 if is_forex else 2
 
-    # Micro-tick realistis yang berpusat pada harga riil aktual (maks +/- 0.03%)
-    jitter_pct = random.uniform(-0.0003, 0.0003)
-    new_price = round(base_price * (1 + jitter_pct), decimals)
+    new_price = round(float(base_price), decimals)
     _last_known_prices[symbol] = new_price
 
     direction = "up" if new_price > prev_known else ("down" if new_price < prev_known else "neutral")
-
-    prev_close = (quote["price"] - quote["change"]) if quote.get("change") is not None else base_price
-    change = round(new_price - prev_close, decimals)
-    change_pct = round((change / prev_close * 100), 2) if prev_close else quote.get("change_pct", 0.0)
 
     return {
         "type": "TICK",
@@ -61,21 +54,22 @@ def get_current_real_tick(symbol: str) -> dict:
         "name": quote["name"],
         "asset_type": quote["type"],
         "price": new_price,
-        "change": change,
-        "change_pct": change_pct,
+        "change": quote.get("change", 0.0),
+        "change_pct": quote.get("change_pct", 0.0),
         "direction": direction,
-        "high_24h": max(quote["high_24h"], new_price),
-        "low_24h": min(quote["low_24h"], new_price),
+        "high_24h": quote["high_24h"],
+        "low_24h": quote["low_24h"],
         "volume": quote["volume"],
         "timestamp": time.time(),
+        "last_updated": quote.get("last_updated"),
         "data_source": quote.get("data_source", "live")
     }
 
 @router.websocket("/ticks")
 async def websocket_ticks(websocket: WebSocket):
     """
-    WebSocket endpoint untuk real-time price tick streaming & breakout alerts
-    berbasis data pasar asli Yahoo Finance & On-Chain.
+    WebSocket endpoint untuk real-time price tick streaming
+    berbasis data pasar asli Yahoo Finance.
     """
     await manager.connect(websocket)
     try:
@@ -87,7 +81,13 @@ async def websocket_ticks(websocket: WebSocket):
                 q = fetch_live_quote(s)
                 initial_snapshot[s] = {
                     "price": q["price"],
+                    "change": q.get("change", 0.0),
                     "change_pct": q["change_pct"],
+                    "high_24h": q.get("high_24h"),
+                    "low_24h": q.get("low_24h"),
+                    "volume": q.get("volume"),
+                    "last_updated": q.get("last_updated"),
+                    "data_source": q.get("data_source", "live"),
                     "timestamp": time.time()
                 }
             except Exception:
@@ -99,15 +99,13 @@ async def websocket_ticks(websocket: WebSocket):
             "snapshot": initial_snapshot
         })
 
-        # Loop pengiriman tick real-time untuk scalping
+        # Loop pengiriman tick real-time
         index = 0
+        alerted_symbols = {}
         while True:
-            # Prioritaskan instrumen scalping populer (Kripto & Forex + Gold)
             priority_symbols = ["BTC-USD", "ETH-USD", "SOL-USD", "GC=F", "EURUSD=X", "GBPUSD=X", "USDJPY=X"]
-            # Campur dengan seluruh aset lainnya
             all_syms = list(DEFAULT_ASSETS.keys())
             
-            # Pilih simbol untuk dikirim
             if random.random() < 0.6:
                 symbol = random.choice(priority_symbols)
             else:
@@ -117,25 +115,29 @@ async def websocket_ticks(websocket: WebSocket):
             tick_payload = get_current_real_tick(symbol)
             await websocket.send_json(tick_payload)
 
-            # Sesekali kirim alert breakout kuantitatif
-            if random.random() < 0.10:
-                pola = random.choice([
-                    "Bullish Pennant Scalp Breakout",
-                    "Ascending Triangle Scalp Breakout",
-                    "Double Bottom Confirmation",
-                    "Volume Spike > 1.8x SMA20"
-                ])
+            # Kirim alert HANYA jika terjadi pergerakan harian nyata yang signifikan (>= 3%)
+            # dan data berasal dari sumber live/delayed (bukan synthetic)
+            now_ts = time.time()
+            chg_pct = abs(float(tick_payload.get("change_pct") or 0.0))
+            if (
+                tick_payload.get("data_source") in ("live", "delayed")
+                and chg_pct >= 3.0
+                and now_ts - alerted_symbols.get(symbol, 0) > 120
+            ):
+                alerted_symbols[symbol] = now_ts
+                arah = "Bullish Surge" if tick_payload.get("change_pct", 0) > 0 else "Bearish Drop"
                 await websocket.send_json({
                     "type": "ALERT",
                     "symbol": symbol,
-                    "event": "POTENTIAL_BREAKOUT",
-                    "message": f"{pola} terkonfirmasi pada {symbol} @ {tick_payload['price']}",
-                    "score": random.randint(80, 95),
+                    "event": "VOLATILITY_MOVE",
+                    "message": f"{arah} ({tick_payload['change_pct']:+.2f}% 24h) pada {symbol} @ {tick_payload['price']}",
+                    "score": min(95, int(70 + chg_pct * 3)),
                     "price": tick_payload["price"],
-                    "timestamp": time.time()
+                    "data_source": tick_payload.get("data_source"),
+                    "timestamp": now_ts
                 })
 
-            await asyncio.sleep(0.8)
+            await asyncio.sleep(1.0)
 
     except WebSocketDisconnect:
         manager.disconnect(websocket)

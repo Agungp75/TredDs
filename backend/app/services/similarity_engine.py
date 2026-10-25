@@ -76,13 +76,11 @@ def _extract_features(df: pd.DataFrame):
     rsi_norm = (rsi_s - 50.0) / 50.0
 
     macd_l, _, macd_h = calculate_macd(pd.Series(closes))
-    macd_hist = macd_h.to_numpy(dtype=float)
-    # skip warm-up NaN
-    macd_base = macd_hist[~np.isnan(macd_hist)]
-    macd_std = macd_base.std() if len(macd_base) else 1.0
-    if macd_std == 0:
-        macd_std = 1.0
-    macd_norm = (macd_hist - (macd_base.mean() if len(macd_base) else 0.0)) / macd_std
+    macd_s = macd_h.fillna(0.0)
+    # Normalisasi kausal (expanding window) untuk mencegah look-ahead leakage
+    macd_exp_mean = macd_s.expanding(min_periods=10).mean().bfill().fillna(0.0)
+    macd_exp_std = macd_s.expanding(min_periods=10).std().bfill().replace(0, 1.0).fillna(1.0)
+    macd_norm = ((macd_s - macd_exp_mean) / macd_exp_std).to_numpy(dtype=float)
     macd_norm = np.nan_to_num(macd_norm)
 
     df_t = df[['High', 'Low', 'Close']].copy()
@@ -92,9 +90,10 @@ def _extract_features(df: pd.DataFrame):
     tr3 = (df_t['Low'] - df_t['Close_prev']).abs()
     tr = pd.concat([tr1, tr2, tr3], axis=1).max(axis=1)
     atr_s = tr.rolling(14).mean().bfill().fillna(0.0).to_numpy(dtype=float)
-    atr_pct = atr_s / np.where(closes == 0, 1.0, closes)
-    atr_std = atr_pct.std()
-    atr_norm = atr_pct / (atr_std if atr_std != 0 else 1.0)
+    atr_pct_s = pd.Series(atr_s / np.where(closes == 0, 1.0, closes))
+    atr_exp_std = atr_pct_s.expanding(min_periods=10).std().bfill().replace(0, 1.0).fillna(1.0)
+    atr_norm = (atr_pct_s / atr_exp_std).to_numpy(dtype=float)
+    atr_norm = np.nan_to_num(atr_norm)
 
     return closes, vol_feat, rsi_norm, macd_norm, atr_norm
 

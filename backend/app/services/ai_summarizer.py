@@ -9,16 +9,10 @@ from app.core.config import settings
 AI_PROVIDERS = {
     "gemini": {
         "name": "Google Gemini",
-        "default_model": "gemini-3.8-flash",
+        "default_model": "gemini-2.5-flash",
         "models": [
-            {"id": "gemini-3.8-flash", "label": "Gemini 3.8 Flash (Generasi Terbaru - Super Cepat & Cerdas)", "category": "terkini"},
-            {"id": "gemini-3.8-pro", "label": "Gemini 3.8 Pro (Generasi Terbaru - Flagship Reasoning & Analisis)", "category": "terkini"},
-            {"id": "gemini-3.6-flash", "label": "Gemini 3.6 Flash (Generasi 3 - Kecepatan & Akurasi Tinggi)", "category": "terkini"},
-            {"id": "gemini-3.6-pro", "label": "Gemini 3.6 Pro (Generasi 3 - Penalaran Kuantitatif Kompleks)", "category": "terkini"},
-            {"id": "gemini-3.0-flash", "label": "Gemini 3.0 Flash (Generasi 3)", "category": "terkini"},
-            {"id": "gemini-3.0-pro", "label": "Gemini 3.0 Pro (Generasi 3)", "category": "terkini"},
-            {"id": "gemini-2.5-flash", "label": "Gemini 2.5 Flash (Generasi 2.5 - Multimodal)", "category": "stabil"},
-            {"id": "gemini-2.5-pro", "label": "Gemini 2.5 Pro (Generasi 2.5)", "category": "stabil"},
+            {"id": "gemini-2.5-flash", "label": "Gemini 2.5 Flash (Rekomendasi - Cepat, Akurat & Multimodal)", "category": "terkini"},
+            {"id": "gemini-2.5-pro", "label": "Gemini 2.5 Pro (Flagship Reasoning & Analisis Kuantitatif)", "category": "terkini"},
             {"id": "gemini-2.0-flash", "label": "Gemini 2.0 Flash (Stabil & Cepat)", "category": "stabil"},
             {"id": "gemini-2.0-flash-lite", "label": "Gemini 2.0 Flash Lite (Ultra Ringan)", "category": "cepat"},
             {"id": "gemini-2.0-flash-thinking-exp-01-21", "label": "Gemini 2.0 Flash Thinking Exp (Deep Reasoning)", "category": "reasoning"},

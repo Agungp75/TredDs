@@ -1,14 +1,19 @@
 from fastapi import APIRouter, HTTPException, Query, Body
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
+import asyncio
 import numpy as np
 from app.core.config import settings
-from app.services.market_data import fetch_ohlcv, get_asset_overview, DEFAULT_ASSETS, resolve_symbol
+from app.services.market_data import (
+    fetch_ohlcv, get_asset_overview, DEFAULT_ASSETS,
+    resolve_symbol, df_data_status, is_volume_meaningless
+)
 from app.core.quantitative import (
     calculate_rsi, calculate_atr, calculate_macd,
     calculate_bollinger_bands, check_volume_anomaly,
     calculate_dynamic_tp_sl, analyze_stochastic, calculate_fibonacci,
-    calculate_target_zones, build_confluence, determine_comprehensive_signal
+    calculate_target_zones, build_confluence, determine_comprehensive_signal,
+    calculate_signal_summary_and_backtest
 )
 from app.services.pattern_engine import detect_chart_patterns
 from app.services.dev_analytics import get_github_metrics
@@ -104,18 +109,20 @@ async def query_ai_analysis(symbol: str, req: AIQueryRequest):
     sesuai mode (scalping, swing, investing, scenarios, chat).
     """
     resolved_sym = resolve_symbol(symbol)
-    df = fetch_ohlcv(resolved_sym, period=req.period or "3mo")
+    eff_period = req.period or "15m"
+    df = fetch_ohlcv(resolved_sym, period=eff_period)
     if df.empty or len(df) < 15:
         raise HTTPException(status_code=404, detail="Data time-series tidak ditemukan untuk simbol ini.")
 
     overview = get_asset_overview(resolved_sym)
+    data_status = df_data_status(df, resolved_sym, eff_period)
     latest_close = float(df['Close'].iloc[-1])
 
     rsi_s = calculate_rsi(df['Close'])
     atr_s = calculate_atr(df)
     macd_line, sig_line, hist = calculate_macd(df['Close'])
     bb_upper, bb_mid, bb_lower = calculate_bollinger_bands(df['Close'])
-    vol_anomaly = check_volume_anomaly(df)
+    vol_anomaly = False if is_volume_meaningless(resolved_sym) else check_volume_anomaly(df)
     pattern_res = detect_chart_patterns(df)
 
     swing_low = float(df['Low'].tail(15).min())
@@ -171,7 +178,8 @@ async def query_ai_analysis(symbol: str, req: AIQueryRequest):
         "volume_anomaly": vol_anomaly,
         "tp_sl": tp_sl,
         "swing_high": swing_high,
-        "swing_low": swing_low
+        "swing_low": swing_low,
+        "data_status": data_status,
     }
 
     repos = {
@@ -180,8 +188,13 @@ async def query_ai_analysis(symbol: str, req: AIQueryRequest):
         "SOL-USD": "solana-labs/solana",
         "AVAX-USD": "ava-labs/avalanchego",
         "BNB-USD": "bnb-chain/bsc",
+        "XRP-USD": "XRPLF/rippled",
+        "ADA-USD": "IntersectMBO/cardano-node",
+        "DOGE-USD": "dogecoin/dogecoin",
+        "NEAR-USD": "near/nearcore",
+        "LINK-USD": "smartcontractkit/chainlink",
     }
-    repo_target = repos.get(symbol, "bitcoin/bitcoin")
+    repo_target = repos.get(resolved_sym, "bitcoin/bitcoin")
     dev_data = await get_github_metrics(repo_target)
 
     macro_data = {
@@ -189,7 +202,9 @@ async def query_ai_analysis(symbol: str, req: AIQueryRequest):
         "cpi_yoy": "3.1%",
         "unemployment_rate": "4.1%",
         "dxy_index": 104.25,
-        "market_sentiment": "Greed (64/100)"
+        "market_sentiment": "Greed (64/100)",
+        "is_static_reference": True,
+        "reference_note": "Data makro adalah nilai referensi baseline."
     }
 
     result = await generate_ai_analysis(
@@ -224,6 +239,7 @@ async def get_deep_analysis(
         raise HTTPException(status_code=404, detail="Data time-series tidak ditemukan untuk simbol ini.")
         
     overview = get_asset_overview(resolved_sym)
+    data_status = df_data_status(df, resolved_sym, period)
     latest_close = float(df['Close'].iloc[-1])
     
     # 1. LAYER 1: Technical Indicators & Pattern Recognition
@@ -234,7 +250,7 @@ async def get_deep_analysis(
     
     latest_rsi = round(float(rsi_s.iloc[-1]), 2)
     latest_atr = round(float(atr_s.iloc[-1]), 4)
-    vol_anomaly = check_volume_anomaly(df)
+    vol_anomaly = False if is_volume_meaningless(resolved_sym) else check_volume_anomaly(df)
     pattern_res = detect_chart_patterns(df)
     
     swing_low = float(df['Low'].tail(15).min())
@@ -272,6 +288,16 @@ async def get_deep_analysis(
     confluence = build_confluence(
         df, latest_rsi, float(hist.iloc[-1]), stoch_data, fib_data,
         signal_type, trade_direction
+    )
+    signal_summary = calculate_signal_summary_and_backtest(
+        df=df,
+        direction=trade_direction,
+        tp_sl=tp_sl,
+        stoch_data=stoch_data,
+        fib_data=fib_data,
+        pattern_res=pattern_res,
+        atr_val=latest_atr,
+        timeframe=period,
     )
     
     def _format_time_value(t):
@@ -330,6 +356,9 @@ async def get_deep_analysis(
         "fibonacci": fib_data,
         "targets": target_zones,
         "confluence": confluence,
+        "signal_summary": signal_summary,
+        "price_zones": signal_summary.get("price_zones", []),
+        "backtest": signal_summary.get("backtest", {}),
         "pattern": pattern_res["pattern"],
         "type": signal_type,
         "direction": trade_direction,
@@ -341,7 +370,8 @@ async def get_deep_analysis(
         "tp_sl": tp_sl,
         "trendlines": trendlines_data,
         "swing_high": swing_high,
-        "swing_low": swing_low
+        "swing_low": swing_low,
+        "data_status": data_status,
     }
 
     # 2. LAYER 2: Developer & On-Chain Analytics
@@ -351,6 +381,11 @@ async def get_deep_analysis(
         "SOL-USD": "solana-labs/solana",
         "AVAX-USD": "ava-labs/avalanchego",
         "BNB-USD": "bnb-chain/bsc",
+        "XRP-USD": "XRPLF/rippled",
+        "ADA-USD": "IntersectMBO/cardano-node",
+        "DOGE-USD": "dogecoin/dogecoin",
+        "NEAR-USD": "near/nearcore",
+        "LINK-USD": "smartcontractkit/chainlink",
         "AAPL": "apple/swift",
         "MSFT": "microsoft/vscode",
         "NVDA": "NVIDIA/cuda-samples"
@@ -361,9 +396,12 @@ async def get_deep_analysis(
     layer_2 = {
         "dev_metrics": dev_data,
         "on_chain": {
-            "whale_concentration": "24.5%",
+            "whale_concentration": "24.5% (Est.)",
             "liquidity_health": "Healthy (>80% locked)",
-            "top_10_holders": "31.2%"
+            "liquidity_locked": "Healthy (>80% locked)",
+            "circulating_supply": "Distributed",
+            "top_10_holders": "31.2% (Est.)",
+            "is_estimated": True
         }
     }
 
@@ -373,53 +411,23 @@ async def get_deep_analysis(
         "cpi_yoy": "3.1%",
         "unemployment_rate": "4.1%",
         "dxy_index": 104.25,
-        "market_sentiment": "Greed (64/100)"
+        "market_sentiment": "Greed (64/100)",
+        "is_static_reference": True,
+        "reference_note": "Indikator makro adalah referensi baseline."
     }
     
-    # Generate overview narrative
-    ai_summary = await generate_ai_analysis(
-        mode="overview",
-        asset_data=overview,
-        technical_data=layer_1,
-        dev_data=dev_data,
-        macro_data=macro_data
-    )
-
-    # Pre-generate options data for instant frontend tab display
-    scalping_analysis = await generate_ai_analysis(
-        mode="scalping",
-        asset_data=overview,
-        technical_data=layer_1,
-        dev_data=dev_data,
-        macro_data=macro_data
-    )
-
-    swing_analysis = await generate_ai_analysis(
-        mode="swing",
-        asset_data=overview,
-        technical_data=layer_1,
-        dev_data=dev_data,
-        macro_data=macro_data
-    )
-
-    investing_analysis = await generate_ai_analysis(
-        mode="investing",
-        asset_data=overview,
-        technical_data=layer_1,
-        dev_data=dev_data,
-        macro_data=macro_data
-    )
-
-    scenarios_analysis = await generate_ai_analysis(
-        mode="scenarios",
-        asset_data=overview,
-        technical_data=layer_1,
-        dev_data=dev_data,
-        macro_data=macro_data
+    # Jalankan 5 analisis mode secara paralel dengan asyncio.gather untuk respons instan
+    ai_summary, scalping_analysis, swing_analysis, investing_analysis, scenarios_analysis = await asyncio.gather(
+        generate_ai_analysis(mode="overview", asset_data=overview, technical_data=layer_1, dev_data=dev_data, macro_data=macro_data),
+        generate_ai_analysis(mode="scalping", asset_data=overview, technical_data=layer_1, dev_data=dev_data, macro_data=macro_data),
+        generate_ai_analysis(mode="swing", asset_data=overview, technical_data=layer_1, dev_data=dev_data, macro_data=macro_data),
+        generate_ai_analysis(mode="investing", asset_data=overview, technical_data=layer_1, dev_data=dev_data, macro_data=macro_data),
+        generate_ai_analysis(mode="scenarios", asset_data=overview, technical_data=layer_1, dev_data=dev_data, macro_data=macro_data),
     )
 
     return {
         "overview": overview,
+        "data_status": data_status,
         "ohlcv": ohlcv_chart_data,
         "layer_1_technical": layer_1,
         "layer_2_dev_onchain": layer_2,

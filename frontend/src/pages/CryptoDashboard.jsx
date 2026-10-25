@@ -77,10 +77,10 @@ export default function CryptoDashboard() {
   // Filter token list by category
   const filteredTokens = tokens.filter((t) => {
     if (selectedCategory === 'all') return true;
-    if (selectedCategory === 'l1') return ['BTC-USD', 'ETH-USD', 'SOL-USD', 'BNB-USD', 'AVAX-USD'].includes(t.symbol);
-    if (selectedCategory === 'defi') return ['UNI-USD', 'AAVE-USD', 'LINK-USD', 'MKR-USD'].includes(t.symbol);
-    if (selectedCategory === 'ai') return ['NEAR-USD', 'RENDER-USD', 'FET-USD', 'TAO-USD'].includes(t.symbol);
-    if (selectedCategory === 'whale') return (t.price * (t.volume_24h || 1)) > 10000000;
+    if (selectedCategory === 'l1') return t.category === 'l1' || ['BTC-USD', 'ETH-USD', 'SOL-USD', 'BNB-USD', 'AVAX-USD'].includes(t.symbol);
+    if (selectedCategory === 'defi') return t.category === 'defi' || ['UNI-USD', 'AAVE-USD', 'LINK-USD', 'MKR-USD'].includes(t.symbol);
+    if (selectedCategory === 'ai') return t.category === 'ai' || ['NEAR-USD', 'RENDER-USD', 'FET-USD', 'TAO-USD'].includes(t.symbol);
+    if (selectedCategory === 'whale') return (t.volume_24h || t.volume || 0) > 10000000;
     return true;
   });
 
@@ -114,7 +114,7 @@ export default function CryptoDashboard() {
                 24h Vol Agregat
               </span>
               <span className="text-sm font-mono font-bold text-on-surface">
-                {tokens.length > 0 ? `$${(tokens.reduce((acc, t) => acc + (t.volume_24h || 0), 0) / 1e9).toFixed(1)}B` : '$84.2B'}{' '}
+                {tokens.length > 0 ? `$${(tokens.reduce((acc, t) => acc + (t.volume_24h || t.volume || 0), 0) / 1e9).toFixed(1)}B` : '$84.2B'}{' '}
                 <span className="text-tertiary text-xs font-normal">+11.4%</span>
               </span>
             </div>
@@ -168,15 +168,16 @@ export default function CryptoDashboard() {
           </div>
         </div>
 
-        {/* Top 5 Whale & On-Chain Token Cards */}
+        {/* Filtered Whale & On-Chain Token Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
-          {tokens.slice(0, 5).map((tok, idx) => {
+          {filteredTokens.slice(0, 10).map((tok, idx) => {
             const isSelected = selectedToken && selectedToken.symbol === tok.symbol;
             const tick = liveTicks[tok.symbol];
             const displayPrice = tick ? tick.price : tok.price;
             const displayChangePct = tick ? tick.change_pct : tok.change_pct;
             const isPos = (displayChangePct || 0) >= 0;
             const cleanSym = tok.symbol.replace('-USD', '');
+            const tokVol = tok.volume_24h || tok.volume || 0;
 
             return (
               <div
@@ -219,7 +220,7 @@ export default function CryptoDashboard() {
                       <span>Whale: {tok.on_chain?.whale_concentration || '18.4%'}</span>
                     </span>
                     <span className="text-secondary text-[10px]">
-                      Vol: ${(tok.volume_24h ? (tok.volume_24h / 1e6).toFixed(1) : '120.0')}M
+                      Vol: ${(tokVol ? (tokVol / 1e6).toFixed(1) : '120.0')}M
                     </span>
                   </div>
                 </div>

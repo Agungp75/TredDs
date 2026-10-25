@@ -1,7 +1,7 @@
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from fastapi import APIRouter, Query
-from app.services.market_data import DEFAULT_ASSETS, fetch_ohlcv
+from app.services.market_data import DEFAULT_ASSETS, fetch_ohlcv, is_volume_meaningless, df_data_status
 from app.core.quantitative import (
     calculate_rsi, calculate_atr, check_volume_anomaly, calculate_dynamic_tp_sl,
     calculate_macd, analyze_stochastic, calculate_fibonacci, determine_comprehensive_signal
@@ -24,6 +24,9 @@ def _process_asset(item, timeframe: str = "15m"):
     if df is None or df.empty or len(df) < 15:
         return None
 
+    data_status = df_data_status(df, symbol, timeframe)
+    data_source = data_status.get("data_source", "live")
+
     latest_close = float(df['Close'].iloc[-1])
     prev_close = float(df['Close'].iloc[-2]) if len(df) > 1 else latest_close
     change_pct = round(((latest_close - prev_close) / prev_close) * 100, 2) if prev_close else 0.0
@@ -37,7 +40,7 @@ def _process_asset(item, timeframe: str = "15m"):
     _, _, hist_series = calculate_macd(df['Close'])
     macd_hist = float(hist_series.iloc[-1]) if not hist_series.empty else 0.0
 
-    vol_anomaly = check_volume_anomaly(df)
+    vol_anomaly = False if is_volume_meaningless(symbol) else check_volume_anomaly(df)
     pattern_res = detect_chart_patterns(df)
 
     swing_low = float(df['Low'].tail(15).min())
@@ -82,14 +85,14 @@ def _process_asset(item, timeframe: str = "15m"):
         score -= 10
 
     # Historical Similarity (summary_only)
-    hist_signal = {"verdict": "NEUTRAL", "confidence": 0.0, "data_source": "synthetic"}
+    hist_signal = {"verdict": "NEUTRAL", "confidence": 0.0, "data_source": data_source}
     try:
         summ = compute_similarity(
             df,
             timeframe=timeframe,
             probe_lengths=[15, 30],
             top_k=5,
-            data_source=getattr(df, "attrs", {}).get("data_source", "live"),
+            data_source=data_source,
             summary_only=True,
         )
         if summ:
@@ -97,7 +100,7 @@ def _process_asset(item, timeframe: str = "15m"):
                 "verdict": summ["consensus_verdict"],
                 "confidence": summ["confidence"],
                 "probability_up": summ["probability_up"],
-                "data_source": getattr(df, "attrs", {}).get("data_source", "live"),
+                "data_source": data_source,
             }
             score += summ["score_bonus"]
     except Exception:
@@ -127,6 +130,8 @@ def _process_asset(item, timeframe: str = "15m"):
         "confidence": comp_sig["confidence"],
         "historical_signal": hist_signal,
         "timeframe": timeframe,
+        "data_source": data_source,
+        "data_status": data_status,
     }
 
 

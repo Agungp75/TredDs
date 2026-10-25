@@ -1,13 +1,16 @@
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useMarket } from '../../context/MarketContext';
+import { useAI } from '../../context/AIContext';
 import { formatCurrency, formatPercent } from '../../utils/formatters';
 import AtredLogo from './AtredLogo';
+
 export default function Navbar() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { wsConnected, liveTicks } = useMarket();
-  const [searchOpen, setSearchOpen] = useState(false);
+  const { wsConnected, liveTicks, alerts } = useMarket();
+  const { openSettings, isConfigured, aiConfig } = useAI();
+  const [notifOpen, setNotifOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
   const navLinks = [
@@ -43,7 +46,6 @@ export default function Navbar() {
       }
       navigate(`/analysis/${encodeURIComponent(q)}`);
       setSearchQuery('');
-      setSearchOpen(false);
     }
   };
 
@@ -141,7 +143,7 @@ export default function Navbar() {
         </div>
 
         {/* Status Telemetry & Controls */}
-        <div className="flex items-center gap-3.5">
+        <div className="flex items-center gap-3">
           {/* Live Status indicator */}
           <div className="hidden md:flex items-center gap-2 px-2.5 py-1 rounded bg-surface-container border border-outline-variant/60 text-[11px] font-mono">
             <span
@@ -154,13 +156,6 @@ export default function Navbar() {
             </span>
           </div>
 
-          {/* Engine throughput */}
-          <div className="hidden lg:flex items-center gap-1 px-2.5 py-1 rounded bg-surface-container border border-outline-variant/60 text-[11px] font-mono text-on-surface-variant">
-            <span className="text-primary">⚡</span>
-            <span className="text-on-surface font-semibold">142</span>
-            <span>ops/sec</span>
-          </div>
-
           {/* Quick Search */}
           <form onSubmit={handleSearchSubmit} className="relative hidden sm:flex items-center">
             <span className="material-symbols-outlined absolute left-2.5 text-[18px] text-on-surface-variant pointer-events-none">
@@ -171,19 +166,78 @@ export default function Navbar() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="⌘K Search symbol..."
-              className="w-52 lg:w-64 pl-8 pr-3 py-1.5 text-xs font-mono rounded-lg bg-surface-container text-on-surface border border-outline-variant focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary placeholder:text-secondary transition-all"
+              className="w-44 lg:w-56 pl-8 pr-3 py-1.5 text-xs font-mono rounded-lg bg-surface-container text-on-surface border border-outline-variant focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary placeholder:text-secondary transition-all"
             />
           </form>
 
-
-          {/* Quick Notifications */}
+          {/* AI Engine Configuration Button */}
           <button
-            aria-label="Notifications"
-            className="relative p-2 rounded-lg bg-surface-container border border-outline-variant/60 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors"
+            type="button"
+            onClick={openSettings}
+            className={`px-2.5 py-1.5 rounded-lg border text-xs font-mono font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+              isConfigured
+                ? 'bg-tertiary-container/25 border-tertiary/40 text-tertiary hover:bg-tertiary-container/40'
+                : 'bg-surface-container border-outline-variant/60 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high'
+            }`}
+            title="Konfigurasi AI Provider & API Key (Gemini, OpenAI, DeepSeek, Groq)"
           >
-            <span className="material-symbols-outlined text-[20px]">notifications</span>
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-primary"></span>
+            <span className="material-symbols-outlined text-[17px] text-primary">auto_awesome</span>
+            <span className="hidden md:inline">
+              {isConfigured ? aiConfig.provider.toUpperCase() : 'AI Setup'}
+            </span>
           </button>
+
+          {/* Quick Notifications Dropdown */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setNotifOpen((prev) => !prev)}
+              aria-label="Notifications"
+              className="relative p-2 rounded-lg bg-surface-container border border-outline-variant/60 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors cursor-pointer"
+            >
+              <span className="material-symbols-outlined text-[20px]">notifications</span>
+              {alerts.length > 0 && (
+                <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-primary animate-pulse"></span>
+              )}
+            </button>
+
+            {notifOpen && (
+              <div className="absolute right-0 mt-2 w-80 rounded-xl bg-surface-container-high border border-outline-variant/80 shadow-2xl p-3 z-50 font-mono text-xs space-y-2">
+                <div className="flex items-center justify-between border-b border-outline-variant/40 pb-2">
+                  <span className="font-bold text-on-surface">Market Volatility Alerts</span>
+                  <button
+                    type="button"
+                    onClick={() => setNotifOpen(false)}
+                    className="text-on-surface-variant hover:text-on-surface text-[11px]"
+                  >
+                    Tutup
+                  </button>
+                </div>
+                {alerts.length === 0 ? (
+                  <div className="py-4 text-center text-on-surface-variant text-[11px]">
+                    Belum ada lonjakan volatilitas ekstrem (&ge; 3% 24h) pada sesi ini.
+                  </div>
+                ) : (
+                  <div className="max-h-60 overflow-y-auto space-y-1.5">
+                    {alerts.map((al, i) => (
+                      <Link
+                        key={i}
+                        to={`/analysis/${encodeURIComponent(al.symbol)}`}
+                        onClick={() => setNotifOpen(false)}
+                        className="block p-2 rounded-lg bg-surface-container hover:bg-surface-bright border border-outline-variant/40 transition-colors"
+                      >
+                        <div className="flex items-center justify-between text-[11px]">
+                          <strong className="text-primary">{al.symbol}</strong>
+                          <span className="text-tertiary">Score {al.score}</span>
+                        </div>
+                        <div className="text-[11px] text-on-surface mt-0.5">{al.message}</div>
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
 
           {/* User / 1-Click Deep Analysis */}
           <Link

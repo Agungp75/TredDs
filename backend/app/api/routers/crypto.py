@@ -10,8 +10,11 @@ from app.services.similarity_engine import match_current_market_pattern, classif
 
 router = APIRouter(prefix="/crypto", tags=["Crypto"])
 
-# Token untuk dashboard atas (dengan on-chain data & GitHub activity)
-DASHBOARD_TOKENS = ["BTC-USD", "ETH-USD", "SOL-USD", "AVAX-USD", "BNB-USD"]
+# Token untuk dashboard atas (dengan on-chain data, kategori, & GitHub activity)
+DASHBOARD_TOKENS = [
+    "BTC-USD", "ETH-USD", "SOL-USD", "AVAX-USD", "BNB-USD",
+    "XRP-USD", "ADA-USD", "DOGE-USD", "NEAR-USD", "LINK-USD"
+]
 
 # Seluruh koin crypto yang dipindai saat user mencari pola terkini (masa sekarang)
 SEARCH_CRYPTO_SYMBOLS = [
@@ -39,30 +42,53 @@ async def get_crypto_tokens():
         "ETH-USD": "ethereum/go-ethereum",
         "SOL-USD": "solana-labs/solana",
         "AVAX-USD": "ava-labs/avalanchego",
-        "BNB-USD": "bnb-chain/bsc"
+        "BNB-USD": "bnb-chain/bsc",
+        "XRP-USD": "XRPLF/rippled",
+        "ADA-USD": "IntersectMBO/cardano-node",
+        "DOGE-USD": "dogecoin/dogecoin",
+        "NEAR-USD": "near/nearcore",
+        "LINK-USD": "smartcontractkit/chainlink",
+    }
+
+    categories = {
+        "BTC-USD": "l1",
+        "ETH-USD": "l1",
+        "SOL-USD": "l1",
+        "AVAX-USD": "l1",
+        "BNB-USD": "l1",
+        "XRP-USD": "l1",
+        "ADA-USD": "l1",
+        "DOGE-USD": "l1",
+        "NEAR-USD": "ai",
+        "LINK-USD": "defi",
     }
 
     on_chain_data = {
-        "BTC-USD": {"whale_concentration": "11.2%", "liquidity_locked": "N/A (PoW)", "circulating_supply": "19.7M BTC", "holders_count": "54.2M"},
-        "ETH-USD": {"whale_concentration": "28.4%", "liquidity_locked": "32.8M ETH (Staked)", "circulating_supply": "120.2M ETH", "holders_count": "118M"},
-        "SOL-USD": {"whale_concentration": "34.1%", "liquidity_locked": "68.5% (Staked)", "circulating_supply": "468M SOL", "holders_count": "8.9M"},
-        "AVAX-USD": {"whale_concentration": "39.5%", "liquidity_locked": "58.2% (Staked)", "circulating_supply": "395M AVAX", "holders_count": "2.4M"},
-        "BNB-USD": {"whale_concentration": "48.6%", "liquidity_locked": "42.0% Locked", "circulating_supply": "153M BNB", "holders_count": "3.8M"}
+        "BTC-USD": {"whale_concentration": "11.2%", "liquidity_locked": "N/A (PoW)", "circulating_supply": "19.7M BTC", "holders_count": "54.2M", "is_estimated": True},
+        "ETH-USD": {"whale_concentration": "28.4%", "liquidity_locked": "32.8M ETH (Staked)", "circulating_supply": "120.2M ETH", "holders_count": "118M", "is_estimated": True},
+        "SOL-USD": {"whale_concentration": "34.1%", "liquidity_locked": "68.5% (Staked)", "circulating_supply": "468M SOL", "holders_count": "8.9M", "is_estimated": True},
+        "AVAX-USD": {"whale_concentration": "39.5%", "liquidity_locked": "58.2% (Staked)", "circulating_supply": "395M AVAX", "holders_count": "2.4M", "is_estimated": True},
+        "BNB-USD": {"whale_concentration": "48.6%", "liquidity_locked": "42.0% Locked", "circulating_supply": "153M BNB", "holders_count": "3.8M", "is_estimated": True},
+        "XRP-USD": {"whale_concentration": "41.0%", "liquidity_locked": "Escrow Ledger", "circulating_supply": "56.1B XRP", "holders_count": "5.2M", "is_estimated": True},
+        "ADA-USD": {"whale_concentration": "22.8%", "liquidity_locked": "62.4% (Staked)", "circulating_supply": "35.9B ADA", "holders_count": "4.5M", "is_estimated": True},
+        "DOGE-USD": {"whale_concentration": "44.2%", "liquidity_locked": "N/A (PoW)", "circulating_supply": "146B DOGE", "holders_count": "6.8M", "is_estimated": True},
+        "NEAR-USD": {"whale_concentration": "31.5%", "liquidity_locked": "54.0% (Staked)", "circulating_supply": "1.12B NEAR", "holders_count": "12.4M", "is_estimated": True},
+        "LINK-USD": {"whale_concentration": "36.2%", "liquidity_locked": "Staking v0.2", "circulating_supply": "608M LINK", "holders_count": "720K", "is_estimated": True},
     }
 
-    results = []
-    for sym in tokens:
-        overview = get_asset_overview(sym)
+    async def _build_token(sym: str):
+        overview = await asyncio.to_thread(get_asset_overview, sym)
         repo = repos.get(sym, "bitcoin/bitcoin")
         dev_metrics = await get_github_metrics(repo)
-
         overview.update({
+            "category": categories.get(sym, "l1"),
             "on_chain": on_chain_data.get(sym, {}),
             "dev_metrics": dev_metrics
         })
-        results.append(overview)
+        return overview
 
-    return results
+    results = await asyncio.gather(*[_build_token(sym) for sym in tokens])
+    return list(results)
 
 
 # ---------------------------------------------------------------------------

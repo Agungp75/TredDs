@@ -4,6 +4,7 @@ import { MarketProvider } from './context/MarketContext';
 import { AIProvider } from './context/AIContext';
 import Navbar from './components/common/Navbar';
 import DisclaimerFooter from './components/common/DisclaimerFooter';
+import AISettingsModal from './components/common/AISettingsModal';
 import HomeDashboard from './pages/HomeDashboard';
 import CryptoDashboard from './pages/CryptoDashboard';
 import ForexDashboard from './pages/ForexDashboard';
@@ -16,6 +17,7 @@ export default function App() {
         <BrowserRouter>
           <div className="min-h-screen flex flex-col bg-background font-body text-on-surface antialiased selection:bg-primary-container selection:text-on-primary-container">
             <Navbar />
+            <AISettingsModal />
             <main className="w-full pt-28 pb-16 bg-background flex-1 px-4 sm:px-6 xl:px-10">
               <Routes>
                 <Route path="/" element={<HomeDashboard />} />

@@ -9,6 +9,8 @@ from concurrent.futures import ThreadPoolExecutor
 # Cache memory sederhana
 _cache = {}
 _live_cache = {}
+_last_good_quote = {}
+_QUOTE_TTL = 5.0  # Durasi cache live quote (detik)
 
 # ---------------------------------------------------------------------------
 # FASE 0 - Kejujuran Data
@@ -499,7 +501,8 @@ def fetch_ohlcv(symbol: str, period: str = "5m", interval: str = None, force_liv
             "Close": np.round(closes, decimals),
             "Volume": np.round(volumes, 0)
         })
-        df.attrs["data_source"] = "live_tick_1s"
+        df.attrs["data_source"] = DATA_SOURCE_SYNTHETIC
+        df.attrs["last_updated"] = now_ts
         _cache[cache_key] = (df, now_ts)
         return df
 
@@ -512,6 +515,7 @@ def fetch_ohlcv(symbol: str, period: str = "5m", interval: str = None, force_liv
             if chart_res and "timestamp" in chart_res and "indicators" in chart_res:
                 timestamps = chart_res["timestamp"]
                 quote = chart_res["indicators"]["quote"][0]
+                market_time = chart_res.get("meta", {}).get("regularMarketTime") or (timestamps[-1] if timestamps else now_ts)
                 
                 opens = quote.get("open", [])
                 highs = quote.get("high", [])
@@ -547,7 +551,8 @@ def fetch_ohlcv(symbol: str, period: str = "5m", interval: str = None, force_liv
                     df["Close"] = df["Close"].round(dec)
                     df["Volume"] = df["Volume"].fillna(0).round(0)
                     
-                    df.attrs["data_source"] = "live"
+                    df.attrs["data_source"] = _classify_live_source(resolved_sym, asset_meta.get("type"), market_time)
+                    df.attrs["last_updated"] = float(market_time) if market_time else now_ts
                     _cache[cache_key] = (df, now_ts)
                     return df
         except Exception:
@@ -557,14 +562,15 @@ def fetch_ohlcv(symbol: str, period: str = "5m", interval: str = None, force_liv
     base_p = asset_meta.get("base_price", 100.0)
     try:
         live_q = fetch_live_quote(resolved_sym)
-        if live_q and live_q.get("price") and live_q.get("data_source") == "live":
+        if live_q and live_q.get("price") and is_tradeable_source(live_q.get("data_source")):
             base_p = float(live_q["price"])
     except Exception:
         pass
     count = tf_info.get("count", 150)
     step = tf_info.get("step", 300)
     df = generate_synthetic_ohlcv(resolved_sym, count=count, base_price=base_p, is_intraday=is_intraday, step_seconds=step)
-    df.attrs["data_source"] = "synthetic"
+    df.attrs["data_source"] = DATA_SOURCE_SYNTHETIC
+    df.attrs["last_updated"] = None
     _cache[cache_key] = (df, now_ts)
     return df
 
@@ -574,6 +580,8 @@ def get_asset_overview(symbol: str):
     Mendapatkan ringkasan pasar real-time terbaru untuk instrumen.
     """
     quote = fetch_live_quote(symbol)
+    src = quote.get("data_source", DATA_SOURCE_LIVE)
+    last_upd = quote.get("last_updated")
     return {
         "symbol": symbol,
         "name": quote["name"],
@@ -584,5 +592,8 @@ def get_asset_overview(symbol: str):
         "high_24h": quote["high_24h"],
         "low_24h": quote["low_24h"],
         "volume": quote["volume"],
-        "data_source": quote.get("data_source", "live")
+        "volume_24h": quote["volume"],
+        "last_updated": last_upd,
+        "data_source": src,
+        "data_status": build_data_status(src, last_upd, symbol),
     }

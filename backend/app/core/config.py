@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     DEEPSEEK_API_KEY: str = os.getenv("DEEPSEEK_API_KEY", "")
     GROQ_API_KEY: str = os.getenv("GROQ_API_KEY", "")
     DEFAULT_AI_PROVIDER: str = os.getenv("DEFAULT_AI_PROVIDER", "gemini")
-    DEFAULT_AI_MODEL: str = os.getenv("DEFAULT_AI_MODEL", "gemini-3.8-flash")
+    DEFAULT_AI_MODEL: str = os.getenv("DEFAULT_AI_MODEL", "gemini-2.5-flash")
     GITHUB_TOKEN: str = os.getenv("GITHUB_TOKEN", "")
     FRED_API_KEY: str = os.getenv("FRED_API_KEY", "")
     

@@ -8,7 +8,7 @@ const STORAGE_KEY = 'atred_ai_config';
 const DEFAULT_CONFIG = {
   provider: 'gemini', // default to gemini or openai
   apiKey: '',
-  model: 'gemini-3.8-flash',
+  model: 'gemini-2.5-flash',
   baseUrl: '',
 };
 
@@ -17,7 +17,11 @@ export function AIProvider({ children }) {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
-        return { ...DEFAULT_CONFIG, ...JSON.parse(saved) };
+        const parsed = JSON.parse(saved);
+        if (parsed.model && parsed.model.startsWith('gemini-3.')) {
+          parsed.model = 'gemini-2.5-flash';
+        }
+        return { ...DEFAULT_CONFIG, ...parsed };
       }
     } catch (e) {
       console.warn('Failed to read AI config from localStorage', e);
