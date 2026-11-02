@@ -151,6 +151,7 @@ const TradingViewChart = React.memo(function TradingViewChart({
   fibonacci = null,
   targets = [],
   priceZones = [],
+  forecast = null,
 }) {
   const chartContainerRef = useRef(null);
   const chartInstanceRef = useRef(null);
@@ -289,6 +290,12 @@ const TradingViewChart = React.memo(function TradingViewChart({
 
       if (!isNaN(entryVal) && entryVal > 0) {
         const isMaker = Boolean(activeTpSl.maker_limit_entry);
+        const momentSt = activeTpSl?.pivot_context?.moment_status || activeTpSl?.signal_circles?.active?.status || '';
+        const atrRef = Number(activeTpSl?.atr) || Math.abs(entryVal - (slVal || entryVal)) * 0.6 || entryVal * 0.004;
+        const isActiveNow = momentSt === 'ACTIVE_NOW' || Math.abs(entryVal - currentClose) <= 0.32 * atrRef;
+        const statusPrefix = isActiveNow
+          ? `🟢 Pasang ${isShort ? 'Short' : 'Long'}`
+          : `🟡 Baru Masuk (${isShort ? 'Short' : 'Long'})`;
         coreLevels.push({
           id: 'entry',
           tier: 1,
@@ -297,9 +304,11 @@ const TradingViewChart = React.memo(function TradingViewChart({
           color: COLOR_SEMANTICS.ENTRY,
           lineWidth: 2,
           lineStyle: isMaker ? LineStyle.Dashed : LineStyle.Solid,
-          label: `${isMaker ? 'Maker 0%' : 'Entry'} ${entryVal.toFixed(decimals)}`,
-          shortTag: isMaker ? 'Maker 0%' : 'Entry',
-          reason: `Titik eksekusi ${isShort ? 'Short' : 'Long'} menggunakan Limit Order MEXC (0% Maker Fee) pada pullback ATR.`,
+          label: `${statusPrefix} ${entryVal.toFixed(decimals)}`,
+          shortTag: statusPrefix,
+          reason: isActiveNow
+            ? `SINYAL AKTIF SEKARANG (BELUM LEWAT): Harga tepat berada di lingkaran sinyal ${isShort ? 'Short' : 'Long'} (${entryVal.toFixed(decimals)}). Pasang posisi sekarang (0% Maker Fee).`
+            : `SINYAL BARU MEMASUKI (BELUM LEWAT): Titik pasang order Limit ${isShort ? 'Short' : 'Long'} berada di depan (${entryVal.toFixed(decimals)}), menunggu harga masuk ke lingkaran kuning.`,
         });
       }
       if (!isNaN(slVal) && slVal > 0) {
@@ -407,60 +416,47 @@ const TradingViewChart = React.memo(function TradingViewChart({
     return selected;
   }, [formattedCandles, activeTpSl, showTargets, targets, showFib, fibonacci, currentClose, decimals, isForex]);
 
-  // Zona Konfluensi S/R (Fase 1.3)
+  // Zona Konfluensi S/R Klasik (Hanya aktif jika di mode Detail dan toggle aktif)
   const computedZones = useMemo(() => {
-    if (!showZones || !formattedCandles.length) return [];
+    if (!showZones || viewMode !== 'detail' || !formattedCandles.length) return [];
+    const list = [];
+    const maxZones = 2;
+
     if (Array.isArray(priceZones) && priceZones.length > 0) {
-      return priceZones;
+      priceZones.forEach((pz) => {
+        if (pz.type !== 'entry_zone' && list.length < maxZones) {
+          list.push(pz);
+        }
+      });
+      return list.slice(0, maxZones);
     }
-    if (fibonacci?.golden_pocket) {
+
+    if (fibonacci?.golden_pocket && list.length < maxZones) {
       const low = Number(fibonacci.golden_pocket.bottom);
       const high = Number(fibonacci.golden_pocket.top);
       if (!isNaN(low) && !isNaN(high) && high > low) {
         const isRes = (low + high) / 2 >= currentClose;
-        return [
-          {
-            title: isRes ? 'Zona Resistance' : 'Zona Support',
-            type: isRes ? 'resistance' : 'support',
-            low,
-            high,
-            components: ['Fib 0.5', 'Fib 0.618'],
-          },
-        ];
+        list.push({
+          title: isRes ? 'Zona Resistance' : 'Zona Support',
+          type: isRes ? 'resistance' : 'support',
+          low,
+          high,
+          components: ['Fib 0.5', 'Fib 0.618'],
+        });
       }
     }
-    return [];
-  }, [showZones, priceZones, fibonacci, formattedCandles.length, currentClose]);
+    return list.slice(0, maxZones);
+  }, [showZones, viewMode, priceZones, fibonacci, formattedCandles.length, currentClose]);
 
   const stochPaneHeight = Math.round(activeHeight * 0.24);
   const mainPaneMaxY = showStoch ? activeHeight - stochPaneHeight - 28 : activeHeight - 28;
 
-  // Sinkronisasi koordinat Y untuk menggambar Zona Kotak & Label Anti-Tabrakan di sisi kanan
+  // Sinkronisasi koordinat Y untuk Label Harga Garis Horizontal Klasik (SL, Entry, TP1, TP2) di sisi kanan chart
   const syncOverlays = useCallback(() => {
     const series = candleSeriesRef.current;
+    const chart = chartInstanceRef.current;
     const container = chartContainerRef.current;
-    if (!series || !container) return;
-
-    const zoneBoxes = [];
-    computedZones.forEach((z, idx) => {
-      const yTopRaw = series.priceToCoordinate(Number(z.high));
-      const yBotRaw = series.priceToCoordinate(Number(z.low));
-      if (yTopRaw === null || yBotRaw === null) return;
-      const top = Math.max(8, Math.min(yTopRaw, yBotRaw));
-      const bottom = Math.min(mainPaneMaxY - 4, Math.max(yTopRaw, yBotRaw));
-      if (bottom <= 8 || top >= mainPaneMaxY - 8) return;
-      const boxHeight = Math.max(18, bottom - top);
-      zoneBoxes.push({
-        id: `zone-${idx}`,
-        title: z.title || (z.type === 'resistance' ? 'Zona Resistance' : 'Zona Support'),
-        type: z.type || 'resistance',
-        low: Number(z.low),
-        high: Number(z.high),
-        components: z.components || [],
-        top,
-        height: boxHeight,
-      });
-    });
+    if (!series || !chart || !container || !formattedCandles.length) return;
 
     const rawBadges = [];
     curatedHorizontalLevels.forEach((lv) => {
@@ -489,8 +485,78 @@ const TradingViewChart = React.memo(function TradingViewChart({
       }
     }
 
-    setOverlayRects({ zones: zoneBoxes, badges: rawBadges });
-  }, [computedZones, curatedHorizontalLevels, mainPaneMaxY]);
+    // Hitung koordinat Lingkaran Kuning Sinyal (Active Signal Circle vs Sinyal Lalu yang Sudah Lewat)
+    const signalCircles = [];
+    const timeScale = chart.timeScale();
+    const maxW = container.clientWidth - 80;
+    const lastIdx = formattedCandles.length - 1;
+
+    if (activeTpSl) {
+      const entryVal = Number(activeTpSl.maker_limit_entry || activeTpSl.breakout_price);
+      const slVal = Number(activeTpSl.sl);
+      if (!isNaN(entryVal) && entryVal > 0) {
+        const yEntry = series.priceToCoordinate(entryVal);
+        const momentSt = activeTpSl?.pivot_context?.moment_status || activeTpSl?.signal_circles?.active?.status || '';
+        const atrRef = Number(activeTpSl?.atr) || Math.abs(entryVal - (slVal || entryVal)) * 0.6 || entryVal * 0.004;
+        const isActiveNow = momentSt === 'ACTIVE_NOW' || Math.abs(entryVal - currentClose) <= 0.32 * atrRef;
+        const barsOffset = isActiveNow ? 0 : 1.8;
+        const xEntry = timeScale.logicalToCoordinate(lastIdx + barsOffset);
+
+        if (
+          xEntry !== null &&
+          yEntry !== null &&
+          xEntry >= 28 &&
+          xEntry <= maxW &&
+          yEntry >= 18 &&
+          yEntry <= mainPaneMaxY - 18
+        ) {
+          signalCircles.push({
+            id: 'active-signal-circle',
+            type: 'active',
+            x: xEntry,
+            y: yEntry,
+            isActiveNow,
+            price: entryVal,
+            tag: isActiveNow ? '🎯 Pasang Disini (Aktif)' : '🎯 Titik Order (Baru Masuk)',
+          });
+        }
+
+        const passedInfo = activeTpSl?.signal_circles?.passed;
+        if (passedInfo && passedInfo.bars_ago >= 3) {
+          const passedLogical = Math.max(0, lastIdx - Number(passedInfo.bars_ago));
+          const xPassed = timeScale.logicalToCoordinate(passedLogical);
+          const yPassed = series.priceToCoordinate(Number(passedInfo.price));
+          if (
+            xPassed !== null &&
+            yPassed !== null &&
+            xPassed >= 28 &&
+            xPassed <= maxW - 40 &&
+            yPassed >= 18 &&
+            yPassed <= mainPaneMaxY - 18 &&
+            (xEntry === null || Math.hypot(xEntry - xPassed, yEntry - yPassed) >= 52)
+          ) {
+            signalCircles.push({
+              id: 'passed-signal-circle',
+              type: 'passed',
+              x: xPassed,
+              y: yPassed,
+              price: Number(passedInfo.price),
+              barsAgo: Number(passedInfo.bars_ago),
+              tag: 'Sudah Lewat',
+            });
+          }
+        }
+      }
+    }
+
+    setOverlayRects({
+      zones: [],
+      badges: rawBadges,
+      positionBox: null,
+      pivotMarkers: signalCircles,
+      trajectory: null,
+    });
+  }, [curatedHorizontalLevels, mainPaneMaxY, formattedCandles.length, activeTpSl, currentClose]);
 
   // Render chart canvas
   useEffect(() => {
@@ -531,7 +597,7 @@ const TradingViewChart = React.memo(function TradingViewChart({
         borderColor: '#27272a',
         timeVisible: true,
         secondsVisible: false,
-        rightOffset: 6,
+        rightOffset: 16,
       },
       rightPriceScale: {
         borderColor: '#27272a',
@@ -545,7 +611,16 @@ const TradingViewChart = React.memo(function TradingViewChart({
 
     chartInstanceRef.current = chart;
 
-    // 1. Series Candlestick
+    // 1. Series Candlestick (Dilengkapi autoscaleInfoProvider agar Garis SL, Entry Zone, dan TP selalu masuk di dalam layar!)
+    const scaleAnchorPrices = curatedHorizontalLevels
+      .filter((lv) => lv.tier === 1)
+      .map((lv) => Number(lv.price))
+      .filter((p) => !isNaN(p) && p > 0);
+    computedZones.forEach((z) => {
+      if (!isNaN(Number(z.low)) && Number(z.low) > 0) scaleAnchorPrices.push(Number(z.low));
+      if (!isNaN(Number(z.high)) && Number(z.high) > 0) scaleAnchorPrices.push(Number(z.high));
+    });
+
     const candleSeries = chart.addSeries(CandlestickSeries, {
       upColor: '#10b981',
       downColor: '#ef4444',
@@ -560,6 +635,21 @@ const TradingViewChart = React.memo(function TradingViewChart({
         type: 'price',
         precision: decimals,
         minMove: minMove,
+      },
+      autoscaleInfoProvider: (original) => {
+        const res = original();
+        if (res && res.priceRange && scaleAnchorPrices.length > 0) {
+          const minVal = Math.min(res.priceRange.minValue, ...scaleAnchorPrices);
+          const maxVal = Math.max(res.priceRange.maxValue, ...scaleAnchorPrices);
+          const pad = (maxVal - minVal) * 0.04;
+          return {
+            priceRange: {
+              minValue: minVal - pad,
+              maxValue: maxVal + pad,
+            },
+          };
+        }
+        return res;
       },
     });
     candleSeriesRef.current = candleSeries;
@@ -1080,51 +1170,35 @@ const TradingViewChart = React.memo(function TradingViewChart({
             <span className="w-2.5 h-0.5 bg-slate-400 inline-block rounded border-b border-dashed" />
             <span className="text-slate-300 font-semibold">Abu-abu:</span> Referensi (EMA 20, Fib, Tren)
           </span>
+          {forecast?.available && (
+            <span className="flex items-center gap-1.5">
+              <span className="w-2.5 h-0.5 bg-purple-500 inline-block rounded" />
+              <span className="text-purple-300 font-semibold">Ungu:</span> Proyeksi Masa Depan
+            </span>
+          )}
         </div>
         <span className="text-[10px] text-slate-500 hidden md:inline">
           Arahkan kursor pada label di kanan chart untuk melihat alasan level
         </span>
       </div>
 
-      {/* Area Chart Utama + Overlay Zona S/R & Label Anti-Tabrakan */}
+      {/* Area Chart Utama + Label Garis Horizontal Klasik Anti-Tabrakan */}
       <div className="relative w-full" style={{ height: `${activeHeight}px` }}>
         <div ref={chartContainerRef} className="w-full h-full" />
 
-        {/* 1. Overlay Kotak Zona Support / Resistance */}
-        <div className="pointer-events-none absolute inset-0 overflow-hidden">
-          {overlayRects.zones.map((z) => {
-            const isRes = z.type === 'resistance';
-            return (
-              <div
-                key={z.id}
-                style={{
-                  top: `${z.top}px`,
-                  height: `${z.height}px`,
-                  left: '12px',
-                  right: '76px',
-                }}
-                className={`absolute rounded border transition-all ${
-                  isRes
-                    ? 'bg-red-500/10 border-red-500/30'
-                    : 'bg-emerald-500/10 border-emerald-500/30'
-                }`}
-              >
-                <div
-                  className={`inline-flex items-center gap-1.5 px-2 py-0.5 text-[10px] font-mono font-semibold rounded-br ${
-                    isRes
-                      ? 'bg-red-950/80 text-red-300'
-                      : 'bg-emerald-950/80 text-emerald-300'
-                  }`}
-                >
-                  <span>{z.title}</span>
-                  <span className="opacity-80">
-                    ({formatPrice(z.low)} – {formatPrice(z.high)})
-                  </span>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+        {/* Forward Forecast / Purple Area Indicator */}
+        {forecast?.available && (
+          <div className="absolute top-2.5 right-[225px] z-10 hidden sm:flex items-center gap-2 px-2.5 py-1 rounded-lg bg-purple-950/85 border border-purple-500/40 text-[11px] font-mono text-purple-200 backdrop-blur-sm shadow-md">
+            <span className="w-2 h-2 rounded-full bg-purple-400 animate-pulse" />
+            <span className="font-semibold text-purple-300">Area Masa Depan:</span>
+            <span className="font-bold">
+              {forecast.primary?.bias === 'UP' ? '▲ NAIK' : forecast.primary?.bias === 'DOWN' ? '▼ TURUN' : '► SIDEWAYS'} ({forecast.primary?.probability}%)
+            </span>
+            <span className="text-purple-300/80 border-l border-purple-500/30 pl-2">
+              Target: {formatPrice(forecast.primary?.target_low)} – {formatPrice(forecast.primary?.target_high)}
+            </span>
+          </div>
+        )}
 
         {/* Header Bar Indikator Stoch (14, 3, 3) ala TradingView pada Pane Stochastic */}
         {showStoch && (
@@ -1153,8 +1227,43 @@ const TradingViewChart = React.memo(function TradingViewChart({
           </div>
         )}
 
-        {/* 2. Label Sisi Kanan yang Ringkas, Seragam, Anti-Tabrakan + Tooltip Hover */}
-        <div className="pointer-events-none absolute inset-y-0 right-[72px] w-44 overflow-visible">
+        {/* 1B. Penanda Lingkaran Kuning (Area Pasang Posisi Aktif vs Sinyal Lalu yang Sudah Lewat) */}
+        <div className="pointer-events-none absolute inset-0 z-15 overflow-hidden">
+          {(overlayRects.pivotMarkers || []).map((m) => {
+            if (m.type === 'active') {
+              return (
+                <div
+                  key={m.id}
+                  style={{ left: `${m.x}px`, top: `${m.y}px` }}
+                  className="absolute -translate-x-1/2 -translate-y-1/2 flex flex-col items-center"
+                >
+                  {/* Lingkaran Kuning seperti contoh gambar user */}
+                  <div className="w-11 h-11 rounded-full border-[2.5px] border-yellow-400 bg-yellow-400/10 shadow-[0_0_14px_rgba(250,204,21,0.5)] flex items-center justify-center">
+                    <span className="w-2 h-2 rounded-full bg-yellow-300 animate-ping" />
+                  </div>
+                  <span className="mt-1 px-1.5 py-0.5 rounded bg-yellow-500/95 text-slate-950 font-mono font-bold text-[10px] whitespace-nowrap shadow">
+                    {m.tag}
+                  </span>
+                </div>
+              );
+            }
+            return (
+              <div
+                key={m.id}
+                style={{ left: `${m.x}px`, top: `${m.y}px` }}
+                className="absolute -translate-x-1/2 -translate-y-1/2 flex flex-col items-center opacity-75"
+              >
+                <div className="w-8 h-8 rounded-full border-[1.5px] border-dashed border-slate-400/80 bg-slate-900/35" />
+                <span className="mt-0.5 px-1.5 py-0.2 rounded bg-slate-900/90 border border-slate-600/70 text-slate-300 font-mono text-[9px] whitespace-nowrap">
+                  {m.tag}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* 2. Label Sisi Kanan yang Ringkas, Seragam, Anti-Tabrakan + Tooltip Hover (z-20 di atas canvas!) */}
+        <div className="pointer-events-none absolute inset-y-0 right-[72px] z-20 w-44 overflow-visible">
           {overlayRects.badges.map((b) => (
             <div
               key={b.id}

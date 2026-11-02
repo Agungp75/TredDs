@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 from typing import Optional
 import asyncio
+import time
 from app.core.config import settings
 from app.services.market_data import (
     fetch_ohlcv,
@@ -24,6 +25,10 @@ from app.core.quantitative import (
     determine_comprehensive_signal,
     calculate_signal_summary_and_backtest,
     _dec,
+)
+from app.core.forecast import (
+    forecast_next_move,
+    apply_forward_plan,
 )
 from app.services.pattern_engine import detect_chart_patterns
 from app.services.mexc_orderflow import analyze_mexc_derivatives
@@ -79,6 +84,9 @@ class AIQueryRequest(BaseModel):
     model: Optional[str] = None
     base_url: Optional[str] = None
     period: Optional[str] = "15m"
+
+
+_signal_persistence_cache: dict = {}
 
 
 @router.get("/ai/providers")
@@ -149,8 +157,8 @@ async def query_ai_analysis(symbol: str, req: AIQueryRequest):
     vol_anomaly = False if is_volume_meaningless(resolved_sym) else check_volume_anomaly(df)
     pattern_res = detect_chart_patterns(df)
 
-    swing_low = float(df['Low'].tail(15).min())
-    swing_high = float(df['High'].tail(15).max())
+    swing_low = float(df['Low'].tail(40).min())
+    swing_high = float(df['High'].tail(40).max())
     latest_atr = round(float(atr_s.iloc[-1]), dec)
     latest_rsi = round(float(rsi_s.iloc[-1]), 2)
 
@@ -185,6 +193,8 @@ async def query_ai_analysis(symbol: str, req: AIQueryRequest):
         spread_pct=float(overview.get("spread_pct", 0.01)),
         funding_rate_pct=float(mexc_derivatives.get("funding_rate_pct", 0.01)),
         max_zero_slippage_usdt=float(mexc_derivatives.get("max_zero_slippage_position_usdt", 25000.0)),
+        df=df,
+        fib_data=fib_data,
     )
 
     layer_1 = {
@@ -257,27 +267,39 @@ async def get_deep_analysis(
     latest_close = float(df['Close'].iloc[-1])
     dec = _dec(latest_close)
 
-    # LAYER 1: Technical Indicators, RANSAC Pattern & SFP Detection
-    rsi_s = calculate_rsi(df['Close'])
-    atr_s = calculate_atr(df)
-    macd_line, sig_line, hist = calculate_macd(df['Close'])
-    bb_upper, bb_mid, bb_lower = calculate_bollinger_bands(df['Close'])
+    # ANTI-REPAINT & ANTI-FLIP-FLOP:
+    # Untuk timeframe multi-menit (5m, 15m, 30m, 1h, 4h, 1d), perhitungan indikator teknikal,
+    # pola chart, level Fibonacci, dan arah sinyal kuantitatif WAJIB berbasis candle yang SUDAH
+    # CONFIRMED CLOSE (df.iloc[:-1]). Candle berjalan (df.iloc[-1]) hanya digunakan untuk live ticker
+    # harga, deteksi sentuhan Entry Zone, invalidasi Stop Loss, atau Take Profit!
+    if period in ["5m", "15m", "30m", "1h", "4h", "1d"] and len(df) >= 20:
+        df_struct = df.iloc[:-1].copy()
+        struct_close = float(df_struct['Close'].iloc[-1])
+    else:
+        df_struct = df
+        struct_close = latest_close
+
+    # LAYER 1: Technical Indicators, RANSAC Pattern & SFP Detection (Confirmed Closed Structure)
+    rsi_s = calculate_rsi(df_struct['Close'])
+    atr_s = calculate_atr(df_struct)
+    macd_line, sig_line, hist = calculate_macd(df_struct['Close'])
+    bb_upper, bb_mid, bb_lower = calculate_bollinger_bands(df_struct['Close'])
 
     latest_rsi = round(float(rsi_s.iloc[-1]), 2)
     latest_atr = round(float(atr_s.iloc[-1]), dec)
-    vol_anomaly = False if is_volume_meaningless(resolved_sym) else check_volume_anomaly(df)
-    pattern_res = detect_chart_patterns(df)
+    vol_anomaly = False if is_volume_meaningless(resolved_sym) else check_volume_anomaly(df_struct)
+    pattern_res = detect_chart_patterns(df_struct)
 
-    swing_low = float(df['Low'].tail(15).min())
-    swing_high = float(df['High'].tail(15).max())
+    swing_low = float(df_struct['Low'].tail(40).min())
+    swing_high = float(df_struct['High'].tail(40).max())
 
     # Stochastic 14 3 3 & Fibonacci
-    stoch_data = analyze_stochastic(df, 14, 3, 3)
-    fib_data = calculate_fibonacci(df, latest_atr)
+    stoch_data = analyze_stochastic(df_struct, 14, 3, 3)
+    fib_data = calculate_fibonacci(df_struct, latest_atr)
 
     # Regime-Adaptive & BTC-Gated Comprehensive Signal
     comp_signal = determine_comprehensive_signal(
-        df=df,
+        df=df_struct,
         pattern_res=pattern_res,
         rsi_val=latest_rsi,
         macd_hist=float(hist.iloc[-1]),
@@ -286,13 +308,64 @@ async def get_deep_analysis(
         symbol=resolved_sym,
         orderflow_data=mexc_derivatives,
     )
-    trade_direction = comp_signal["direction"]
-    signal_type = comp_signal["signal_type"]
+    raw_direction = comp_signal["direction"]
+    raw_score = comp_signal["score"]
+
+    # HYSTERESIS & ACTIVE SETUP PERSISTENCE:
+    # Mencegah sinyal berganti-ganti (flip-flop) antara menit 1 ke menit 5 saat harga berfluktuasi tipis intra-bar.
+    # Setup aktif hanya dibatalkan jika:
+    # 1. Stop Loss tersentuh oleh live tick (Invalidated)
+    # 2. Target TP2 tercapai (Completed)
+    # 3. Terjadi Reversal struktural ekstrem dengan keyakinan tinggi (|score| >= 30 berlawanan)
+    cache_key = (resolved_sym, period)
+    cached_setup = _signal_persistence_cache.get(cache_key)
+    live_high = float(df['High'].iloc[-1])
+    live_low = float(df['Low'].iloc[-1])
+
+    if cached_setup:
+        cached_dir = cached_setup["direction"]
+        cached_sl = float(cached_setup.get("sl", 0.0))
+        cached_tp1 = float(cached_setup.get("tp1", 0.0))
+        cached_tp2 = float(cached_setup.get("tp2", 0.0))
+        cached_entry = float(cached_setup.get("maker_limit_entry", latest_close))
+
+        is_sl_hit = (live_low <= cached_sl) if cached_dir == "LONG" else (live_high >= cached_sl)
+        is_tp1_hit = (
+            (live_high >= cached_tp1 or latest_close >= cached_tp1 - 0.15 * latest_atr)
+            if (cached_dir == "LONG" and cached_tp1 > 0)
+            else (
+                (live_low <= cached_tp1 or latest_close <= cached_tp1 + 0.15 * latest_atr)
+                if (cached_dir == "SHORT" and cached_tp1 > 0)
+                else False
+            )
+        )
+        is_tp2_hit = (live_high >= cached_tp2) if (cached_dir == "LONG" and cached_tp2 > 0) else ((live_low <= cached_tp2) if (cached_dir == "SHORT" and cached_tp2 > 0) else False)
+        is_entry_far_behind = abs(latest_close - cached_entry) >= 0.85 * max(latest_atr, latest_close * 0.002)
+
+        is_strong_reversal = (
+            (cached_dir == "LONG" and raw_score <= -25) or
+            (cached_dir == "SHORT" and raw_score >= 25)
+        )
+
+        # Jika target TP1/TP2 sudah tersentuh atau harga sudah lari jauh dari entry lama, perbarui sinyal!
+        if not is_sl_hit and not is_tp1_hit and not is_tp2_hit and not is_entry_far_behind and not is_strong_reversal:
+            trade_direction = cached_dir
+            signal_type = cached_setup.get("signal_type", comp_signal["signal_type"])
+            comp_signal["direction"] = cached_dir
+            comp_signal["is_bearish"] = (cached_dir == "SHORT")
+            comp_signal["signal_type"] = signal_type
+        else:
+            trade_direction = raw_direction
+            signal_type = comp_signal["signal_type"]
+    else:
+        trade_direction = raw_direction
+        signal_type = comp_signal["signal_type"]
+
     regime_info = comp_signal.get("regime_context", {})
     btc_gate = comp_signal.get("btc_gate", {})
     sfp_info = comp_signal.get("sfp_info", pattern_res.get("sfp_info", {}))
 
-    # Execution & Risk Plan (0% Maker Fee, Split TP1/TP2, FAIR_PRICE SL, Net EV, Half-Kelly)
+    # Execution & Risk Plan (Anti-Telat & Anti-Stop-Hunt, mengacu pada df penuh termasuk candle berjalan)
     tp_sl = calculate_dynamic_tp_sl(
         breakout_price=latest_close,
         pattern_height=pattern_res.get("pattern_height", latest_atr * 2),
@@ -307,7 +380,47 @@ async def get_deep_analysis(
         spread_pct=float(overview.get("spread_pct", 0.01)),
         funding_rate_pct=float(mexc_derivatives.get("funding_rate_pct", 0.01)),
         max_zero_slippage_usdt=float(mexc_derivatives.get("max_zero_slippage_position_usdt", 25000.0)),
+        df=df,
+        fib_data=fib_data,
+        current_price=latest_close,
     )
+
+    # -------------------------------------------------------------------------
+    # Forward Forecast Engine (Prediksi Fase Berikutnya / Area Ungu)
+    # Menggunakan df lengkap (termasuk candle live) agar ekstrem terbaru ikut terbaca.
+    # -------------------------------------------------------------------------
+    forecast = forecast_next_move(
+        df=df,
+        base_direction=trade_direction,
+        base_plan=tp_sl,
+        base_confidence=float(comp_signal.get("confidence", 58)),
+        timeframe=period,
+        horizon_bars=12,
+    )
+
+    # Jika setup lama terdeteksi stale (target sudah lewat) atau pasar berada di fase impulse/exhaustion baru,
+    # ganti rencana trading dengan forward plan yang selalu berada di masa depan.
+    if forecast.get("override_plan"):
+        tp_sl = apply_forward_plan(tp_sl, forecast, win_rate_pct=float(comp_signal.get("confidence", 58)))
+        trade_direction = tp_sl.get("direction", trade_direction)
+        signal_type = f"{trade_direction} ({forecast.get('phase_label')})"
+        comp_signal["direction"] = trade_direction
+        comp_signal["is_bearish"] = (trade_direction == "SHORT")
+        comp_signal["signal_type"] = signal_type
+
+    # Simpan/perbarui setup aktif ke persistence cache
+    _signal_persistence_cache[cache_key] = {
+        "direction": trade_direction,
+        "signal_type": signal_type,
+        "sl": float(tp_sl.get("sl", 0.0)),
+        "tp1": float(tp_sl.get("tp1", 0.0)),
+        "tp2": float(tp_sl.get("tp2", 0.0)),
+        "entry_zone": tp_sl.get("entry_zone", {}),
+        "maker_limit_entry": float(tp_sl.get("maker_limit_entry", 0.0)),
+        "last_closed_candle_time": str(df_struct['Time'].iloc[-1]),
+        "updated_at": time.time(),
+        "phase": forecast.get("phase"),
+    }
 
     # Circuit Breaker Enforcement: Jika data stale atau BTC Gate memblokir sinyal
     if not data_status.get("is_tradable", True):
@@ -316,14 +429,14 @@ async def get_deep_analysis(
         tp_sl["trade_validity"] = "BLOCKED_BY_BTC_DUMP"
 
     target_zones = calculate_target_zones(
-        df, latest_atr, trade_direction, latest_close, fib=fib_data
+        df_struct, latest_atr, trade_direction, struct_close, fib=fib_data
     )
     confluence = build_confluence(
-        df, latest_rsi, float(hist.iloc[-1]), stoch_data, fib_data,
+        df_struct, latest_rsi, float(hist.iloc[-1]), stoch_data, fib_data,
         signal_type, trade_direction
     )
     signal_summary = calculate_signal_summary_and_backtest(
-        df=df,
+        df=df_struct,
         direction=trade_direction,
         tp_sl=tp_sl,
         stoch_data=stoch_data,
@@ -332,6 +445,7 @@ async def get_deep_analysis(
         atr_val=latest_atr,
         timeframe=period,
     )
+    signal_summary["forecast"] = forecast
 
     def _format_time_value(t):
         try:
@@ -431,6 +545,7 @@ async def get_deep_analysis(
         "swing_high": swing_high,
         "swing_low": swing_low,
         "regime_context": regime_context,
+        "forecast": forecast,
         "data_status": data_status,
     }
 
@@ -473,6 +588,7 @@ async def get_deep_analysis(
         "layer1_technical": layer_1,
         "layer2_mexc_derivatives": mexc_derivatives,
         "execution_plan": tp_sl,
+        "forecast": forecast,
         # Backward-compatible keys for Frontend components
         "overview": overview,
         "data_status": data_status,

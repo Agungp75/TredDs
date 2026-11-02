@@ -9,6 +9,9 @@ import {
   Activity,
   Award,
   AlertTriangle,
+  Sparkles,
+  ArrowRight,
+  HelpCircle,
 } from 'lucide-react';
 
 export default function SignalSummaryPanel({
@@ -20,6 +23,7 @@ export default function SignalSummaryPanel({
   const tpSl = technicalData?.tp_sl || {};
   const stoch = technicalData?.stochastic || {};
   const backtest = summary.backtest || technicalData?.backtest || {};
+  const forecast = technicalData?.forecast || summary.forecast || {};
 
   const isShort = Boolean(
     summary.direction === 'SHORT' ||
@@ -28,9 +32,12 @@ export default function SignalSummaryPanel({
     technicalData?.is_bearish
   );
 
-  const entry = Number(summary.entry ?? tpSl.breakout_price ?? currentPrice ?? 0);
+  const entry = Number(summary.entry ?? tpSl.maker_limit_entry ?? tpSl.breakout_price ?? currentPrice ?? 0);
   const sl = Number(summary.sl ?? tpSl.sl ?? (isShort ? entry * 1.02 : entry * 0.98));
   const tp = Number(summary.tp ?? tpSl.tp ?? (isShort ? entry * 0.96 : entry * 1.04));
+  const entryZone = summary.entry_zone || tpSl.entry_zone || null;
+  const pivotCtx = summary.pivot_context || tpSl.pivot_context || {};
+  const entryWarning = summary.entry_warning || tpSl.entry_warning || null;
 
   // Rumus Risk:Reward otomatis sesuai perbaikan analisa.md (Bagian Fase 2):
   // Untuk Short: Risk = SL - Entry, Reward = Entry - TP, RR = Reward / Risk
@@ -39,7 +46,7 @@ export default function SignalSummaryPanel({
   const reward = isShort ? Math.max(entry - tp, 0) : Math.max(tp - entry, 0);
   const rr = risk > 0 ? (reward / risk).toFixed(2) : (tpSl.risk_reward || 2.0).toFixed(2);
 
-  const decimals = entry > 0 && entry < 10 ? 4 : 2;
+  const decimals = entry > 0 && entry < 0.0001 ? 8 : entry > 0 && entry < 0.01 ? 6 : entry > 0 && entry < 10 ? 4 : 2;
   const fmt = (v) => {
     const n = Number(v);
     if (!isFinite(n) || n === 0) return '-';
@@ -104,6 +111,137 @@ export default function SignalSummaryPanel({
       </div>
 
       <div className="p-5 space-y-4">
+        {/* FORWARD FORECAST / PROYEKSI AREA MASA DEPAN (AREA UNGU CHART) */}
+        {forecast?.available && (
+          <div className="rounded-xl border border-purple-500/40 bg-gradient-to-br from-purple-950/40 via-slate-900/90 to-purple-900/20 p-4 space-y-3 shadow-lg">
+            {/* Header: Area Masa Depan + Fase Saat Ini */}
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-purple-500/20 pb-2.5">
+              <div className="flex items-center gap-2">
+                <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-purple-500/20 text-purple-300 border border-purple-500/40">
+                  <Sparkles className="w-3.5 h-3.5 text-purple-300" />
+                </span>
+                <div>
+                  <h3 className="text-xs font-bold font-headline text-purple-200 uppercase tracking-wider flex items-center gap-2">
+                    Prediksi Area Masa Depan (Purple Zone Projection)
+                  </h3>
+                  <span className="text-[10px] font-mono text-purple-400">
+                    Proyeksi {forecast.horizon_bars || 12} candle ke depan • Fase: <strong className="text-purple-200">{forecast.phase_label}</strong>
+                  </span>
+                </div>
+              </div>
+              <span className="px-2.5 py-0.5 rounded-full bg-purple-500/20 border border-purple-500/40 text-[10px] font-mono font-bold text-purple-300">
+                FORWARD ENGINE ACTIVE
+              </span>
+            </div>
+
+            {/* Jika fase impulse lalu terdeteksi SUDAH SELESAI */}
+            {forecast.base_plan_stale && (
+              <div className="p-2.5 rounded-lg bg-amber-500/15 border border-amber-500/35 flex items-start gap-2.5 text-xs font-mono text-amber-200">
+                <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                <div>
+                  <strong className="text-amber-300">Target Fase Sebelumnya Sudah Selesai:</strong>{' '}
+                  {forecast.stale_reason || 'Harga telah mencapai/melewati level target. Rencana di bawah adalah skenario ke depan.'}
+                </div>
+              </div>
+            )}
+
+            {/* Dua Skenario: Utama vs Alternatif dengan Probabilitas */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+              {/* Skenario Utama */}
+              {forecast.primary && (
+                <div className="p-3 rounded-lg bg-slate-950/70 border border-purple-500/30 space-y-2">
+                  <div className="flex items-center justify-between text-xs font-mono">
+                    <span className="flex items-center gap-1.5 font-bold text-purple-300">
+                      {forecast.primary.bias === 'UP' ? (
+                        <TrendingUp className="w-4 h-4 text-emerald-400" />
+                      ) : forecast.primary.bias === 'DOWN' ? (
+                        <TrendingDown className="w-4 h-4 text-rose-400" />
+                      ) : (
+                        <ArrowRight className="w-4 h-4 text-sky-400" />
+                      )}
+                      <span>Skenario Utama</span>
+                    </span>
+                    <span className="px-2 py-0.5 rounded bg-purple-500/30 text-purple-200 font-black text-[11px]">
+                      {forecast.primary.probability}% Probabilitas
+                    </span>
+                  </div>
+                  <div className="text-xs text-slate-200 font-sans font-medium">
+                    {forecast.primary.title}
+                  </div>
+                  <div className="text-[11px] font-mono text-slate-400 flex items-center justify-between pt-1 border-t border-slate-800">
+                    <span>Target Area:</span>
+                    <span className="text-purple-300 font-bold">
+                      {fmt(forecast.primary.target_low)} – {fmt(forecast.primary.target_high)}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* Skenario Alternatif */}
+              {forecast.alternate && (
+                <div className="p-3 rounded-lg bg-slate-950/70 border border-slate-800 space-y-2">
+                  <div className="flex items-center justify-between text-xs font-mono">
+                    <span className="flex items-center gap-1.5 font-bold text-slate-300">
+                      {forecast.alternate.bias === 'UP' ? (
+                        <TrendingUp className="w-4 h-4 text-emerald-400" />
+                      ) : forecast.alternate.bias === 'DOWN' ? (
+                        <TrendingDown className="w-4 h-4 text-rose-400" />
+                      ) : (
+                        <ArrowRight className="w-4 h-4 text-sky-400" />
+                      )}
+                      <span>Skenario Alternatif</span>
+                    </span>
+                    <span className="px-2 py-0.5 rounded bg-slate-800 text-slate-300 font-bold text-[11px]">
+                      {forecast.alternate.probability}% Probabilitas
+                    </span>
+                  </div>
+                  <div className="text-xs text-slate-300 font-sans">
+                    {forecast.alternate.title}
+                  </div>
+                  <div className="text-[11px] font-mono text-slate-400 flex items-center justify-between pt-1 border-t border-slate-800">
+                    <span>Target Area:</span>
+                    <span className="text-slate-300 font-semibold">
+                      {fmt(forecast.alternate.target_low)} – {fmt(forecast.alternate.target_high)}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Indikator Kuantitatif Pembentuk Prediksi & Trigger Action */}
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-purple-500/20 text-[11px] font-mono">
+              <div className="flex flex-wrap items-center gap-2 text-slate-300">
+                <span className="text-purple-400 font-semibold">Faktor Nyata:</span>
+                {forecast.indicators?.rsi !== undefined && (
+                  <span className="px-1.5 py-0.5 rounded bg-slate-900 border border-slate-800 text-slate-300">
+                    RSI: <strong>{forecast.indicators.rsi}</strong>
+                  </span>
+                )}
+                {forecast.indicators?.stoch_k !== undefined && (
+                  <span className="px-1.5 py-0.5 rounded bg-slate-900 border border-slate-800 text-slate-300">
+                    Stoch %K: <strong>{forecast.indicators.stoch_k}</strong>
+                  </span>
+                )}
+                {forecast.indicators?.ext_atr_from_ema20 !== undefined && (
+                  <span className="px-1.5 py-0.5 rounded bg-slate-900 border border-slate-800 text-slate-300">
+                    Jarak EMA20: <strong>{forecast.indicators.ext_atr_from_ema20}x ATR</strong>
+                  </span>
+                )}
+                {forecast.indicators?.rejection_wick_pct !== undefined && forecast.indicators.rejection_wick_pct > 0 && (
+                  <span className="px-1.5 py-0.5 rounded bg-slate-900 border border-slate-800 text-amber-300">
+                    Sumbu Penolakan: <strong>{forecast.indicators.rejection_wick_pct}%</strong>
+                  </span>
+                )}
+              </div>
+              {forecast.trade_plan?.trigger && (
+                <div className="text-purple-300 font-sans italic text-[11px] max-w-full">
+                  💡 <strong>Instruksi Eksekusi:</strong> {forecast.trade_plan.trigger}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Baris 1: Arah, Entry / SL / TP, dan Risk:Reward (Terbaca < 5 detik) */}
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5 font-mono">
           {/* Arah */}
@@ -125,16 +263,24 @@ export default function SignalSummaryPanel({
             </div>
           </div>
 
-          {/* Entry (Biru) */}
+          {/* Entry (Biru - Zona Anti-Stop-Hunt) */}
           <div className="p-3 rounded-xl bg-blue-500/10 border border-blue-500/30 flex flex-col justify-between">
-            <span className="text-[10px] uppercase text-blue-300 font-semibold">Entry</span>
+            <span className="text-[10px] uppercase text-blue-300 font-semibold">Limit Entry (Aman)</span>
             <div className="text-base font-black text-blue-400 mt-1">{fmt(entry)}</div>
+            {entryZone?.low && entryZone?.high && (
+              <span className="text-[10px] text-amber-300 truncate" title="Zona Entry Limit Anti-Stop-Hunt">
+                Zona: {fmt(entryZone.low)}–{fmt(entryZone.high)}
+              </span>
+            )}
           </div>
 
-          {/* Stop Loss (Merah) */}
+          {/* Stop Loss (Merah - Protected di Balik Swing) */}
           <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/30 flex flex-col justify-between">
-            <span className="text-[10px] uppercase text-red-300 font-semibold">Stop Loss (SL)</span>
+            <span className="text-[10px] uppercase text-red-300 font-semibold">Protected SL (Fair)</span>
             <div className="text-base font-black text-red-400 mt-1">{fmt(sl)}</div>
+            <span className="text-[10px] text-slate-400 truncate">
+              Di {isShort ? 'atas Swing High' : 'bawah Swing Low'}
+            </span>
           </div>
 
           {/* Take Profit (Hijau) */}
@@ -152,6 +298,43 @@ export default function SignalSummaryPanel({
             </span>
           </div>
         </div>
+
+        {/* Baris 1B: Status Momen Pivot Baru vs Pivot Lama & Golden Area Fibonacci */}
+        {entryWarning && (
+          <div
+            className={`p-3.5 rounded-xl border flex items-start gap-3 ${
+              pivotCtx.moment_status === 'ALREADY_PASSED'
+                ? 'bg-rose-500/10 border-rose-500/40'
+                : pivotCtx.moment_status === 'ACTIVE_NOW'
+                ? 'bg-emerald-500/10 border-emerald-500/40'
+                : 'bg-amber-500/10 border-amber-500/35'
+            }`}
+          >
+            <AlertTriangle
+              className={`w-5 h-5 shrink-0 mt-0.5 ${
+                pivotCtx.moment_status === 'ALREADY_PASSED'
+                  ? 'text-rose-400'
+                  : pivotCtx.moment_status === 'ACTIVE_NOW'
+                  ? 'text-emerald-400'
+                  : 'text-amber-400'
+              }`}
+            />
+            <div className="space-y-1 text-xs">
+              <div className="font-mono font-bold text-white uppercase flex flex-wrap items-center gap-2">
+                <span>
+                  {pivotCtx.moment_label ||
+                    `🎯 SINYAL ${isShort ? 'TOP' : 'BOTTOM'} TERBARU (Golden Area Fibonacci)`}
+                </span>
+                {pivotCtx.prev_pivot_price && (
+                  <span className="px-2 py-0.5 rounded bg-slate-900/80 text-slate-400 border border-slate-700 text-[10px]">
+                    Abaikan {isShort ? 'Top' : 'Bottom'} Lama: {fmt(pivotCtx.prev_pivot_price)} ({pivotCtx.prev_pivot_bars_ago} bar lalu • Sudah Lewat)
+                  </span>
+                )}
+              </div>
+              <p className="text-slate-200 leading-relaxed">{entryWarning}</p>
+            </div>
+          </div>
+        )}
 
         {/* Baris 2: Tingkat Keyakinan & Konfirmasi Indikator */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">

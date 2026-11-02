@@ -872,9 +872,13 @@ def calculate_signal_summary_and_backtest(
     ema50 = float(ema50_series.iloc[-1])
 
     is_short = str(direction).upper() == "SHORT"
-    entry = float(tp_sl.get("breakout_price") or close)
+    entry = float(tp_sl.get("maker_limit_entry") or tp_sl.get("breakout_price") or close)
     sl = float(tp_sl.get("sl") or (entry * 1.02 if is_short else entry * 0.98))
     tp = float(tp_sl.get("tp") or (entry * 0.96 if is_short else entry * 1.04))
+    tp1 = float(tp_sl.get("tp1") or tp)
+    entry_zone = tp_sl.get("entry_zone") or {}
+    liq_sweep_lvl = tp_sl.get("liquidity_sweep_level")
+    entry_warning = tp_sl.get("entry_warning")
 
     if is_short:
         risk = max(abs(sl - entry), 1e-9)
@@ -980,6 +984,19 @@ def calculate_signal_summary_and_backtest(
             merged_clusters.append({"prices": [pval], "labels": [lbl]})
 
     price_zones = []
+    # 0. Masukkan Zona Entry Limit (Anti-Stop-Hunt / OTE Sweep Zone) sebagai kotak zona utama di chart
+    if entry_zone and entry_zone.get("low") and entry_zone.get("high"):
+        ez_low = float(entry_zone["low"])
+        ez_high = float(entry_zone["high"])
+        if ez_high > ez_low:
+            price_zones.append({
+                "title": f"Zona Entry {'Short' if is_short else 'Long'} (Anti-Stop-Hunt)",
+                "type": "entry_zone",
+                "low": round(ez_low, _dec(close)),
+                "high": round(ez_high, _dec(close)),
+                "components": ["OTE Fib 0.618-0.786", "Liquidity Sweep Area", "Limit 0% Fee"],
+            })
+
     for cl in merged_clusters:
         if len(cl["prices"]) >= 2:
             z_low = min(cl["prices"])
@@ -1105,7 +1122,14 @@ def calculate_signal_summary_and_backtest(
         "direction_label": "Short (Bias Bearish)" if is_short else "Long (Bias Bullish)",
         "direction": "SHORT" if is_short else "LONG",
         "entry": round(entry, dec),
+        "market_price": round(close, dec),
+        "entry_zone": entry_zone,
+        "pivot_context": tp_sl.get("pivot_context", {}),
+        "liquidity_sweep_level": liq_sweep_lvl,
+        "entry_warning": entry_warning,
+        "is_chasing_dangerous": bool(tp_sl.get("is_chasing_dangerous", False)),
         "sl": round(sl, dec),
+        "tp1": round(tp1, dec),
         "tp": round(tp, dec),
         "risk": round(risk, dec),
         "reward": round(reward, dec),
@@ -1338,14 +1362,20 @@ def determine_comprehensive_signal(
         is_bearish = False
         signal_type = "Strong Bullish" if score >= 40 else "Bullish"
     else:
-        if close < ema20 or (len(df) >= 5 and float(df['Close'].iloc[-1]) < float(df['Close'].iloc[-5])):
+        # Zona Netral (-11 .. +11): Cegah flip-flop liar tiap menit!
+        # Gunakan tren struktural EMA 20 vs EMA 50 (makro), bukan micro-tick harga ke EMA 20
+        if ema20 < ema50:
             direction = "SHORT"
             is_bearish = True
-            signal_type = "Bearish"
-        else:
+            signal_type = "Bearish (Struktur EMA20 < EMA50)"
+        elif ema20 > ema50:
             direction = "LONG"
             is_bearish = False
-            signal_type = "Bullish"
+            signal_type = "Bullish (Struktur EMA20 > EMA50)"
+        else:
+            direction = "SHORT" if close < ema20 else "LONG"
+            is_bearish = (direction == "SHORT")
+            signal_type = "Bearish" if is_bearish else "Bullish"
 
     # 6. Evaluasi BTC Gatekeeper (Blokir LONG Altcoin saat BTC Dump keras kecuali RS > +2%)
     btc_blocked = False
@@ -1374,6 +1404,111 @@ def determine_comprehensive_signal(
     }
 
 
+def _detect_signal_circles(
+    df: Optional[pd.DataFrame],
+    is_bearish: bool,
+    curr_p: float,
+    maker_limit_entry: float,
+    tp1_price: float,
+    sl_price: float,
+    safe_atr: float,
+    moment_status: str,
+    dec: int,
+) -> dict:
+    """
+    Mendeteksi titik visual Lingkaran Sinyal (Signal Circle) pada chart:
+      1. `active`: Lingkaran kuning utama pada area pasang posisi saat ini / yang baru akan dimasuki
+         (di candle terakhir jika ACTIVE_NOW, atau 1-2 bar di depan jika WAITING_RETEST).
+      2. `passed`: Jika impuls saat ini berasal dari area pullback/konsolidasi 3-12 candle lalu
+         yang SUDAH terlewat (harga sudah bergerak >= 1.0x ATR dari area tersebut), tandai candle tersebut
+         sebagai sinyal yang 'Sudah Lewat' agar pengguna tidak bingung apakah sinyal sudah lewat atau baru masuk.
+    """
+    last_time = str(df['Time'].iloc[-1]) if (df is not None and len(df) > 0 and 'Time' in df.columns) else ""
+    dist_atr = abs(maker_limit_entry - curr_p) / max(safe_atr, 1e-12)
+    is_active_now = (moment_status == "ACTIVE_NOW") or (dist_atr <= 0.35)
+
+    active_time = last_time
+    if is_active_now and df is not None and len(df) >= 2 and 'Time' in df.columns:
+        active_time = str(df['Time'].iloc[-1])
+
+    direction_str = "SHORT" if is_bearish else "LONG"
+    active_circle = {
+        "time": active_time,
+        "price": round(float(maker_limit_entry), dec),
+        "bars_offset": 0 if is_active_now else 2,
+        "status": "ACTIVE_NOW" if is_active_now else "UPCOMING",
+        "status_label": "PASANG SEKARANG (AKTIF)" if is_active_now else "BARU MEMASUKI (DI DEPAN)",
+        "badge_tag": f"🟢 Pasang {direction_str}" if is_active_now else f"🟡 Order {direction_str} Baru",
+        "direction": direction_str,
+    }
+
+    passed_circle = None
+    if df is not None and len(df) >= 12 and 'Time' in df.columns:
+        n_bars = len(df)
+        highs = df['High'].astype(float).values
+        lows = df['Low'].astype(float).values
+        opens = df['Open'].astype(float).values
+        closes = df['Close'].astype(float).values
+        times = df['Time'].values
+
+        best_idx = None
+        start_scan = max(1, n_bars - 12)
+        end_scan = max(start_scan, n_bars - 3)
+        if is_bearish:
+            for idx in range(end_scan - 1, start_scan - 1, -1):
+                move_since = closes[idx] - curr_p
+                is_pause_or_pullback = (closes[idx] >= opens[idx]) or (highs[idx] >= highs[idx - 1] and closes[idx + 1] < closes[idx])
+                if move_since >= 1.0 * safe_atr and is_pause_or_pullback:
+                    best_idx = idx
+                    break
+            if best_idx is None:
+                win_slice = highs[start_scan:end_scan]
+                if len(win_slice) > 0:
+                    cand_idx = start_scan + int(np.argmax(win_slice))
+                    if highs[cand_idx] - curr_p >= 1.25 * safe_atr:
+                        best_idx = cand_idx
+            if best_idx is not None:
+                p_val = round(float((highs[best_idx] + closes[best_idx]) * 0.5), dec)
+                if abs(p_val - maker_limit_entry) >= 0.45 * safe_atr:
+                    passed_circle = {
+                        "time": str(times[best_idx]),
+                        "price": p_val,
+                        "bars_ago": int(n_bars - 1 - best_idx),
+                        "status": "ALREADY_PASSED",
+                        "status_label": "Sinyal Lalu (Sudah Lewat)",
+                        "direction": "SHORT",
+                    }
+        else:
+            for idx in range(end_scan - 1, start_scan - 1, -1):
+                move_since = curr_p - closes[idx]
+                is_pause_or_pullback = (closes[idx] <= opens[idx]) or (lows[idx] <= lows[idx - 1] and closes[idx + 1] > closes[idx])
+                if move_since >= 1.0 * safe_atr and is_pause_or_pullback:
+                    best_idx = idx
+                    break
+            if best_idx is None:
+                win_slice = lows[start_scan:end_scan]
+                if len(win_slice) > 0:
+                    cand_idx = start_scan + int(np.argmin(win_slice))
+                    if curr_p - lows[cand_idx] >= 1.25 * safe_atr:
+                        best_idx = cand_idx
+            if best_idx is not None:
+                p_val = round(float((lows[best_idx] + closes[best_idx]) * 0.5), dec)
+                if abs(p_val - maker_limit_entry) >= 0.45 * safe_atr:
+                    passed_circle = {
+                        "time": str(times[best_idx]),
+                        "price": p_val,
+                        "bars_ago": int(n_bars - 1 - best_idx),
+                        "status": "ALREADY_PASSED",
+                        "status_label": "Sinyal Lalu (Sudah Lewat)",
+                        "direction": "LONG",
+                    }
+
+    return {
+        "active": active_circle,
+        "passed": passed_circle,
+    }
+
+
 def calculate_dynamic_tp_sl(
     breakout_price: float,
     pattern_height: float,
@@ -1388,16 +1523,17 @@ def calculate_dynamic_tp_sl(
     spread_pct: float = 0.01,
     funding_rate_pct: float = 0.01,
     max_zero_slippage_usdt: float = 25000.0,
+    df: Optional[pd.DataFrame] = None,
+    fib_data: Optional[dict] = None,
+    current_price: Optional[float] = None,
 ):
     """
-    ATRED v3.0 - Mesin Eksekusi & Manajemen Risiko Khusus Struktur Biaya MEXC (0% Maker Fee):
-      - Dual Entry Strategy:
-          * Primary Entry (`maker_limit_entry` - 0% Fee): Close -/+ 0.35 * ATR_14
-          * Secondary Entry (`aggressive_market_entry` - 0.02% Taker Fee): Breakout entry
-      - Split Take-Profit (TP1 50% posisi @ 1.5*ATR + Move SL to Breakeven, TP2 50% runner @ 3.0*ATR / Target Struktur)
-      - Stop-Loss berbasis MEXC FAIR_PRICE (anti-scam wick)
-      - Net Expected Value (EV_net%) setelah biaya & Gatekeeper (SKIP_LOW_EV jika EV_net <= 0.15% atau Net RR < 1.5)
-      - Half-Kelly Position Sizing & Safe Max Leverage
+    ATRED v3.1 - Mesin Eksekusi Anti-Telat & Anti-Stop-Hunt (0% Maker Fee):
+      - Selalu mengacu pada harga aktif terbaru (`curr_p`) dan struktur mikro 3-6 candle terakhir
+        agar sinyal TIDAK PERNAH telat (tidak tertinggal di pullback 8-15 candle lalu setelah harga sudah sampai TP1).
+      - Saat harga sedang berkonsolidasi / retest mikro (seperti area lingkaran sinyal), entry langsung
+        ditempatkan pada area aktif (`ACTIVE_NOW` - Pasang Posisi Sekarang).
+      - Target `TP1` dan `TP2` dijamin matematis SELALU berada di depan `curr_p` dan `maker_limit_entry`.
     """
     sig_str = str(signal_type or "").upper()
     if direction:
@@ -1405,63 +1541,124 @@ def calculate_dynamic_tp_sl(
     else:
         is_bearish = any(w in sig_str for w in ["BEAR", "SHORT", "SELL", "DROP", "DOWN"])
 
-    dec = _dec(breakout_price)
-    safe_atr = max(float(atr_14 or 0.0), breakout_price * 0.004)
+    curr_p = float(current_price if (current_price is not None and current_price > 0) else breakout_price)
+    dec = _dec(curr_p)
+    safe_atr = max(float(atr_14 or 0.0), curr_p * 0.0025)
 
-    # Rasionalisasi target height (TP2 / Major Target)
-    target_height = max(float(pattern_height or 0.0), safe_atr * 3.0)
-    max_height = max(safe_atr * 4.5, breakout_price * 0.06)
-    if target_height > max_height:
-        target_height = max_height
+    # Ekstraksi Struktur Mikro (3-6 bar untuk titik entry aktif) & Struktur Mayor (45 bar untuk konteks)
+    if df is not None and len(df) >= 6:
+        lookback_major = min(len(df), 45)
+        major_high = float(df['High'].tail(lookback_major).max())
+        major_low = float(df['Low'].tail(lookback_major).min())
+        recent_3_high = float(df['High'].tail(3).max())
+        recent_3_low = float(df['Low'].tail(3).min())
+        recent_6_high = float(df['High'].tail(6).max())
+        recent_6_low = float(df['Low'].tail(6).min())
+        minor_high = recent_6_high
+        minor_low = recent_6_low
+    else:
+        major_high = float(swing_high) if (swing_high is not None and swing_high > 0) else (curr_p + 1.5 * safe_atr)
+        major_low = float(swing_low) if (swing_low is not None and swing_low > 0) else max(curr_p * 0.85, curr_p - 1.5 * safe_atr)
+        recent_3_high = curr_p + 0.35 * safe_atr
+        recent_3_low = max(curr_p * 0.85, curr_p - 0.35 * safe_atr)
+        recent_6_high = curr_p + 0.65 * safe_atr
+        recent_6_low = max(curr_p * 0.85, curr_p - 0.65 * safe_atr)
+        minor_high = recent_6_high
+        minor_low = recent_6_low
 
-    # Pilih tipe entry optimal: Maker Limit (0% Fee) kecuali momentum ekstrem (ADX > 30 & |OBI| > 0.30)
-    is_extreme_momentum = (adx_val > 30.0) and ((obi_val < -0.30) if is_bearish else (obi_val > 0.30))
+    major_high = max(major_high, minor_high, curr_p + 0.3 * safe_atr)
+    major_low = min(major_low, minor_low, curr_p - 0.3 * safe_atr)
+    struct_range = max(major_high - major_low, safe_atr * 2.0)
+
+    # Pilih tipe entry optimal: Maker Limit (0% Fee)
+    is_extreme_momentum = (adx_val > 32.0) and ((obi_val < -0.35) if is_bearish else (obi_val > 0.35))
     recommended_entry_type = "TAKER_BREAKOUT_002_FEE" if is_extreme_momentum else "MAKER_LIMIT_0_FEE"
+
+    # Cek apakah 3 candle terakhir sedang dalam fase jeda/pullback mikro (Area Lingkaran Sinyal Aktif)
+    is_compact_pause = (recent_3_high - recent_3_low) <= 1.65 * safe_atr
 
     if is_bearish:
         direction = "SHORT"
-        maker_limit_entry = breakout_price + (0.35 * safe_atr)
-        aggressive_entry = breakout_price
-
-        tp1_price = breakout_price - (1.5 * safe_atr)
-        tp2_price = breakout_price - target_height
-        if tp2_price <= 0 or tp2_price >= tp1_price:
-            tp2_price = breakout_price - (3.0 * safe_atr)
-            if tp2_price <= 0:
-                tp2_price = breakout_price * 0.94
-        if tp1_price <= 0 or tp1_price >= breakout_price:
-            tp1_price = breakout_price * 0.97
-
-        if swing_high is not None and swing_high > breakout_price:
-            sl = min(swing_high + (1.2 * safe_atr), breakout_price + (1.8 * safe_atr))
+        is_in_pullback_now = is_compact_pause or ((recent_3_high - curr_p) <= 0.50 * safe_atr)
+        if is_in_pullback_now:
+            # Harga sedang berada di titik sinyal (lingkaran kuning aktif) -> Pasang posisi sekarang!
+            maker_limit_entry = curr_p + 0.06 * safe_atr
+            entry_zone_low = max(recent_3_low, curr_p - 0.12 * safe_atr)
+            entry_zone_high = min(recent_3_high + 0.12 * safe_atr, curr_p + 0.32 * safe_atr)
         else:
-            sl = breakout_price + (1.5 * safe_atr)
-        if sl <= maker_limit_entry:
-            sl = maker_limit_entry + (1.2 * safe_atr)
+            # Baru saja terjadi candle impuls besar -> tempatkan order limit di retest mikro terdekat (bukan di swing lama!)
+            maker_limit_entry = curr_p + 0.28 * safe_atr
+            entry_zone_low = curr_p + 0.08 * safe_atr
+            entry_zone_high = curr_p + 0.45 * safe_atr
+
+        if entry_zone_high <= entry_zone_low:
+            entry_zone_high = entry_zone_low + 0.25 * safe_atr
+
+        aggressive_entry = curr_p
+        liquidity_sweep_level = recent_6_high
+
+        # Protected Stop Loss di atas swing mikro terbaru (dibatasi agar proporsional 1.15x - 1.95x ATR)
+        sl = max(
+            recent_6_high + 0.30 * safe_atr,
+            entry_zone_high + 0.65 * safe_atr,
+            maker_limit_entry + 1.15 * safe_atr,
+        )
+        if (sl - maker_limit_entry) > 1.95 * safe_atr:
+            sl = max(entry_zone_high + 0.65 * safe_atr, maker_limit_entry + 1.60 * safe_atr)
 
         ref_entry = aggressive_entry if is_extreme_momentum else maker_limit_entry
-        risk = max(sl - ref_entry, breakout_price * 0.002)
+        risk = max(sl - ref_entry, safe_atr * 0.85)
+
+        # Target Profit WAJIB di bawah min(curr_p, ref_entry) agar TP1 tidak pernah berada di harga sekarang!
+        base_low = min(curr_p, ref_entry)
+        tp1_price = base_low - max(1.25 * safe_atr, 1.05 * risk)
+        tp2_price = min(tp1_price - 1.05 * safe_atr, base_low - max(2.35 * safe_atr, 1.95 * risk))
+
+        if tp2_price <= 0:
+            tp2_price = curr_p * 0.94
+        if tp1_price <= 0 or tp1_price >= base_low:
+            tp1_price = base_low - 1.2 * safe_atr
+
         reward_tp1 = max(ref_entry - tp1_price, 0.0)
         reward_tp2 = max(ref_entry - tp2_price, 0.0)
     else:
         direction = "LONG"
-        maker_limit_entry = max(breakout_price * 0.5, breakout_price - (0.35 * safe_atr))
-        aggressive_entry = breakout_price
-
-        tp1_price = breakout_price + (1.5 * safe_atr)
-        tp2_price = breakout_price + target_height
-        if tp2_price <= tp1_price:
-            tp2_price = breakout_price + (3.0 * safe_atr)
-
-        if swing_low is not None and 0 < swing_low < breakout_price:
-            sl = max(swing_low - (1.2 * safe_atr), breakout_price - (1.8 * safe_atr))
+        is_in_pullback_now = is_compact_pause or ((curr_p - recent_3_low) <= 0.50 * safe_atr)
+        if is_in_pullback_now:
+            # Harga sedang berada di titik sinyal (lingkaran kuning aktif) -> Pasang posisi sekarang!
+            maker_limit_entry = curr_p - 0.06 * safe_atr
+            entry_zone_low = max(recent_3_low - 0.12 * safe_atr, curr_p - 0.32 * safe_atr)
+            entry_zone_high = min(recent_3_high, curr_p + 0.12 * safe_atr)
         else:
-            sl = breakout_price - (1.5 * safe_atr)
-        if sl <= 0 or sl >= maker_limit_entry:
-            sl = max(breakout_price * 0.90, maker_limit_entry - (1.2 * safe_atr))
+            # Baru saja terjadi candle impuls besar -> tempatkan order limit di retest mikro terdekat
+            maker_limit_entry = curr_p - 0.28 * safe_atr
+            entry_zone_low = curr_p - 0.45 * safe_atr
+            entry_zone_high = curr_p - 0.08 * safe_atr
+
+        if entry_zone_low <= 0 or entry_zone_high <= entry_zone_low:
+            entry_zone_low = max(curr_p * 0.5, curr_p - 0.35 * safe_atr)
+            entry_zone_high = curr_p + 0.10 * safe_atr
+
+        aggressive_entry = curr_p
+        liquidity_sweep_level = recent_6_low
+
+        # Protected Stop Loss di bawah swing mikro terbaru (dibatasi agar proporsional 1.15x - 1.95x ATR)
+        sl = min(
+            recent_6_low - 0.30 * safe_atr,
+            entry_zone_low - 0.65 * safe_atr,
+            maker_limit_entry - 1.15 * safe_atr,
+        )
+        if (maker_limit_entry - sl) > 1.95 * safe_atr or sl <= 0:
+            sl = max(curr_p * 0.85, min(entry_zone_low - 0.65 * safe_atr, maker_limit_entry - 1.60 * safe_atr))
 
         ref_entry = aggressive_entry if is_extreme_momentum else maker_limit_entry
-        risk = max(ref_entry - sl, breakout_price * 0.002)
+        risk = max(ref_entry - sl, safe_atr * 0.85)
+
+        # Target Profit WAJIB di atas max(curr_p, ref_entry) agar TP1 tidak pernah berada di harga sekarang!
+        base_high = max(curr_p, ref_entry)
+        tp1_price = base_high + max(1.25 * safe_atr, 1.05 * risk)
+        tp2_price = max(tp1_price + 1.05 * safe_atr, base_high + max(2.35 * safe_atr, 1.95 * risk))
+
         reward_tp1 = max(tp1_price - ref_entry, 0.0)
         reward_tp2 = max(tp2_price - ref_entry, 0.0)
 
@@ -1470,7 +1667,6 @@ def calculate_dynamic_tp_sl(
     gross_rr = round(reward_tp2 / risk, 2) if risk > 0 else 2.0
 
     # Kalkulasi Biaya Round-Trip MEXC:
-    # Maker 0% (0.00%) vs Taker 0.02% x 2 (0.04%) + Spread% + Estimasi Funding
     fee_entry_exit_pct = (settings.MEXC_TAKER_FEE_PCT * 2.0) if is_extreme_momentum else (settings.MEXC_MAKER_FEE_PCT + settings.MEXC_TAKER_FEE_PCT)
     fee_rt_pct = fee_entry_exit_pct + max(0.005, float(spread_pct or 0.01) * 0.5) + abs(float(funding_rate_pct or 0.0)) * 0.5
 
@@ -1501,17 +1697,79 @@ def calculate_dynamic_tp_sl(
     account_risk_per_trade_pct = 1.0
     safe_max_lev = int(np.clip(np.floor(account_risk_per_trade_pct / max(risk_pct + 0.15, 0.05)), 1, 20))
 
+    dist_to_entry_atr = abs(maker_limit_entry - curr_p) / safe_atr if safe_atr > 0 else 0.0
+    is_chasing_dangerous = bool(dist_to_entry_atr >= 0.35)
+    ez_low_r = round(float(entry_zone_low), dec)
+    ez_high_r = round(float(entry_zone_high), dec)
+    sweep_r = round(float(liquidity_sweep_level), dec)
+    sl_r = round(float(sl), dec)
+
+    active_pivot_bars_ago = 1
+    active_pivot_price = round(float(recent_3_high if is_bearish else recent_3_low), dec)
+    prev_pivot_bars_ago = None
+    prev_pivot_price = None
+
+    if dist_to_entry_atr <= 0.25 or (ez_low_r <= curr_p <= ez_high_r):
+        moment_status = "ACTIVE_NOW"
+        moment_label = f"🟢 PASANG POSISI SEKARANG (Area Sinyal Aktif @ {round(float(maker_limit_entry), dec)})"
+        entry_warning = (
+            f"SINYAL AKTIF SEKARANG (BELUM LEWAT): Harga saat ini ({round(curr_p, dec)}) tepat berada di titik pasang posisi "
+            f"({ez_low_r} - {ez_high_r}). Target TP1 {round(float(tp1_price), dec)} & TP2 {round(float(tp2_price), dec)} berada di depan harga."
+        )
+    else:
+        moment_status = "WAITING_RETEST"
+        moment_label = f"🟡 BARU MEMASUKI: TUNGGU RETEST KE {round(float(maker_limit_entry), dec)}"
+        entry_warning = (
+            f"SINYAL BARU (BELUM LEWAT): Pasang Limit {direction} di {round(float(maker_limit_entry), dec)} "
+            f"(zona {ez_low_r} - {ez_high_r}) dengan target ke depan TP1 {round(float(tp1_price), dec)} & TP2 {round(float(tp2_price), dec)}."
+        )
+
+    signal_circles = _detect_signal_circles(
+        df=df,
+        is_bearish=is_bearish,
+        curr_p=curr_p,
+        maker_limit_entry=maker_limit_entry,
+        tp1_price=tp1_price,
+        sl_price=sl,
+        safe_atr=safe_atr,
+        moment_status=moment_status,
+        dec=dec,
+    )
+    if signal_circles.get("passed"):
+        prev_pivot_bars_ago = signal_circles["passed"]["bars_ago"]
+        prev_pivot_price = signal_circles["passed"]["price"]
+
     return {
         "tp": round(float(tp2_price), dec),
         "tp1": round(float(tp1_price), dec),
         "tp2": round(float(tp2_price), dec),
-        "sl": round(float(sl), dec),
-        "stop_loss": round(float(sl), dec),
+        "sl": sl_r,
+        "stop_loss": sl_r,
         "sl_trigger_type": "FAIR_PRICE",
-        "breakout_price": round(float(breakout_price), dec),
+        "breakout_price": round(float(curr_p), dec),
         "maker_limit_entry": round(float(maker_limit_entry), dec),
         "aggressive_market_entry": round(float(aggressive_entry), dec),
         "recommended_entry_type": recommended_entry_type,
+        "entry_zone": {
+            "low": ez_low_r,
+            "high": ez_high_r,
+            "optimal": round(float(maker_limit_entry), dec),
+            "label": "area pasang posisi aktif" if moment_status == "ACTIVE_NOW" else "area order baru (di depan)",
+        },
+        "signal_circles": signal_circles,
+        "pivot_context": {
+            "active_pivot_bars_ago": int(active_pivot_bars_ago),
+            "active_pivot_price": active_pivot_price,
+            "prev_pivot_bars_ago": int(prev_pivot_bars_ago) if prev_pivot_bars_ago is not None else None,
+            "prev_pivot_price": prev_pivot_price,
+            "moment_status": moment_status,
+            "moment_label": moment_label,
+            "progress_to_tp1_pct": 0,
+        },
+        "liquidity_sweep_level": sweep_r,
+        "major_structure_level": round(float(major_high if is_bearish else major_low), dec),
+        "is_chasing_dangerous": is_chasing_dangerous,
+        "entry_warning": entry_warning,
         "take_profit_1": {
             "price": round(float(tp1_price), dec),
             "size_pct": 50,

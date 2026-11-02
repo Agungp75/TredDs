@@ -95,7 +95,7 @@ export default function Navbar() {
             </div>
           </Link>
 
-          <nav className="hidden xl:flex items-center gap-1 h-16">
+          <nav className="hidden xl:flex items-center gap-2.5 h-16">
             {navLinks.map((link) => {
               const isActive = link.matchPrefix
                 ? location.pathname.startsWith(link.matchPrefix)
@@ -104,10 +104,10 @@ export default function Navbar() {
                 <Link
                   key={link.path}
                   to={link.path}
-                  className={`px-3.5 py-2 rounded text-sm transition-all flex items-center ${
+                  className={`px-3.5 py-1.5 rounded-[6px] text-sm font-medium bg-transparent border transition-all duration-150 flex items-center ${
                     isActive
-                      ? 'bg-surface-container-high text-primary font-semibold border-b-2 border-primary'
-                      : 'font-medium text-on-surface-variant hover:text-on-surface hover:bg-surface-container'
+                      ? 'border-[#0d6efd] text-[#3b82f6] hover:bg-[#0d6efd]/15'
+                      : 'border-[#6c757d]/80 text-[#9ca3af] hover:border-[#adb5bd] hover:text-white hover:bg-white/5'
                   }`}
                 >
                   {link.label}

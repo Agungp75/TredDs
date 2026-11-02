@@ -146,7 +146,12 @@ export default function AssetDetail() {
   const currentPrice = liveTick ? liveTick.price : (overview.price || 0);
   const currentChangePct = liveTick ? liveTick.change_pct : (overview.change_pct || 0);
   const isPos = (currentChangePct || 0) >= 0;
-  const feedStatus = dataIntegrity?.data_status || liveTick?.data_status || 'LIVE_OK';
+  const rawFeedStatus = dataIntegrity?.status || dataIntegrity?.data_status || liveTick?.status || liveTick?.data_status;
+  const feedStatus = typeof rawFeedStatus === 'string'
+    ? rawFeedStatus
+    : (typeof rawFeedStatus?.status === 'string'
+        ? rawFeedStatus.status
+        : (typeof rawFeedStatus?.data_status === 'string' ? rawFeedStatus.data_status : 'LIVE_OK'));
   const isTradable = dataIntegrity?.is_tradable !== false;
   const dataAgeMs = dataIntegrity?.data_age_ms ?? 120;
   const dataSource = (liveTick?.data_source || dataStatus.data_source || overview.data_source || 'live').toLowerCase();
@@ -532,6 +537,7 @@ export default function AssetDetail() {
                   targets={layer1?.targets}
                   priceZones={layer1?.price_zones}
                   levels={layer1?.levels}
+                  forecast={layer1?.forecast}
                   liveTick={liveTick}
                   height={540}
                   chartHeight={540}
