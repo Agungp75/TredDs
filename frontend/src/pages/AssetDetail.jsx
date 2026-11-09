@@ -76,7 +76,15 @@ export default function AssetDetail() {
     }
     return clean;
   }, [rawSymbol]);
-  const { liveTicks } = useMarket();
+  const { liveTicks, setActiveAsset, marketType } = useMarket();
+  const isSpot = marketType === 'spot';
+
+  // Beritahu WebSocket simbol mana yang sedang dilihat user agar dikirim tick real-time setiap <1 detik
+  useEffect(() => {
+    if (symbol && setActiveAsset) {
+      setActiveAsset(symbol);
+    }
+  }, [symbol, setActiveAsset]);
 
   // Terapkan timeframe scalping (default 15m)
   const [period, setPeriod] = useState(queryTimeframe || patternResult?.timeframe || '15m');
@@ -110,7 +118,7 @@ export default function AssetDetail() {
       setLoading(true);
       setError(null);
       try {
-        const res = await api.getDeepAnalysis(symbol, period);
+        const res = await api.getDeepAnalysis(symbol, period, false, marketType);
         if (isMounted) {
           setData(res);
         }
@@ -127,7 +135,55 @@ export default function AssetDetail() {
     return () => {
       isMounted = false;
     };
-  }, [symbol, period]);
+  }, [symbol, period, marketType]);
+
+  // Sinkronisasi Real-Time di Latar Belakang (Background Polling OHLCV & Sinyal Tanpa Reload Halaman)
+  useEffect(() => {
+    let isMounted = true;
+    let isFetching = false;
+    const pollIntervalMs = ['1s', '1m', '5m'].includes(period) ? 2500 : 4000;
+
+    const timer = setInterval(async () => {
+      if (!isMounted || isFetching || document.hidden) return;
+      isFetching = true;
+      try {
+        const fresh = await api.getDeepAnalysis(symbol, period, true, marketType);
+        if (isMounted && fresh && Array.isArray(fresh.ohlcv) && fresh.ohlcv.length > 0) {
+          setData((prev) => {
+            if (!prev) return fresh;
+            return {
+              ...prev,
+              ohlcv: fresh.ohlcv,
+              overview: fresh.overview || prev.overview,
+              data_integrity: fresh.data_integrity || prev.data_integrity,
+              data_status: fresh.data_status || prev.data_status,
+              regime_context: fresh.regime_context || prev.regime_context,
+              layer1_technical: fresh.layer1_technical || prev.layer1_technical,
+              layer_1_technical: fresh.layer_1_technical || prev.layer_1_technical,
+              layer2_mexc_derivatives: fresh.layer2_mexc_derivatives || prev.layer2_mexc_derivatives,
+              layer_3_macro: fresh.layer_3_macro || prev.layer_3_macro,
+              execution_plan: fresh.execution_plan || prev.execution_plan,
+              forecast: fresh.forecast || prev.forecast,
+              layer_2_dev_onchain: {
+                ...(prev.layer_2_dev_onchain || {}),
+                ...(fresh.layer_2_dev_onchain || {}),
+                dev_metrics: prev.layer_2_dev_onchain?.dev_metrics || fresh.layer_2_dev_onchain?.dev_metrics,
+              },
+            };
+          });
+        }
+      } catch {
+        // Abaikan error sesaat pada polling latar belakang agar UI tetap mulus
+      } finally {
+        isFetching = false;
+      }
+    }, pollIntervalMs);
+
+    return () => {
+      isMounted = false;
+      clearInterval(timer);
+    };
+  }, [symbol, period, marketType]);
 
   const overview = data?.overview || {};
   const dataIntegrity = data?.data_integrity || data?.data_status || overview?.data_status || {};
@@ -201,11 +257,11 @@ export default function AssetDetail() {
                 </span>
               </div>
               <div className="flex items-center gap-2 mt-0.5 text-xs font-mono text-on-surface-variant">
-                <span>MEXC USDT-M Perpetual & Spot</span>
+                <span>{isSpot ? 'MEXC Spot Market (USDT)' : 'MEXC USDT-M Perpetual Futures'}</span>
                 <span className="text-outline">/</span>
                 <span className="text-tertiary flex items-center gap-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-tertiary animate-pulse" />
-                  0% Maker Fee • Fair Price SL Guard ({dataAgeMs}ms)
+                  {isSpot ? `0% Maker Fee • Spot Orderbook (${dataAgeMs}ms)` : `0% Maker Fee • Fair Price SL Guard (${dataAgeMs}ms)`}
                 </span>
               </div>
             </div>

@@ -21,7 +21,7 @@ const TIMEFRAMES = [
 ];
 
 export default function CryptoDashboard() {
-  const { liveTicks } = useMarket();
+  const { liveTicks, marketType } = useMarket();
   const [tokens, setTokens] = useState([]);
   const [screenerItems, setScreenerItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -38,14 +38,15 @@ export default function CryptoDashboard() {
 
   useEffect(() => {
     async function loadData() {
+      setLoading(true);
       try {
         const [tokRes, screenRes] = await Promise.all([
-          api.getCryptoTokens(),
-          api.getScreener('crypto'),
+          api.getCryptoTokens(marketType),
+          api.getScreener('crypto', 0, '15m', 'all', marketType),
         ]);
         setTokens(tokRes || []);
         if (tokRes && tokRes.length > 0) {
-          setSelectedToken(tokRes[0]);
+          setSelectedToken((prev) => tokRes.find((t) => t.symbol === prev?.symbol) || tokRes[0]);
         }
         setScreenerItems(screenRes?.items || []);
       } catch (err) {
@@ -55,14 +56,14 @@ export default function CryptoDashboard() {
       }
     }
     loadData();
-  }, []);
+  }, [marketType]);
 
   const handlePatternSearch = async (points) => {
     setIsSearching(true);
     setSearchResults([]);
     setSearchError(null);
     try {
-      const data = await api.searchDrawnPattern(points, 6, selectedTimeframe);
+      const data = await api.searchDrawnPattern(points, 6, selectedTimeframe, marketType);
       setSearchResults(data.results || []);
       setProbeValues(data.probe_values || []);
       setProbePatternName(data.probe_pattern_name || '');

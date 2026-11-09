@@ -139,7 +139,20 @@ const DEFAULT_STOCH_CONFIG = {
   lowerBand: 20,
 };
 
+const PERIOD_SECONDS_MAP = {
+  '1s': 1,
+  '1m': 60,
+  '5m': 300,
+  '15m': 900,
+  '30m': 1800,
+  '1h': 3600,
+  '4h': 14400,
+  '1d': 86400,
+};
+
 const TradingViewChart = React.memo(function TradingViewChart({
+  symbol = '',
+  period = '15m',
   data = [],
   ohlcvData = null,
   trendlines = {},
@@ -159,13 +172,21 @@ const TradingViewChart = React.memo(function TradingViewChart({
   const volumeSeriesRef = useRef(null);
   const ema20SeriesRef = useRef(null);
   const ema50SeriesRef = useRef(null);
+  const upperTrendSeriesRef = useRef(null);
+  const lowerTrendSeriesRef = useRef(null);
   const stochKSeriesRef = useRef(null);
   const stochDSeriesRef = useRef(null);
+  const priceLinesRef = useRef([]);
+  const scaleAnchorPricesRef = useRef([]);
+  const syncOverlaysRef = useRef(() => {});
   const lastCandleRef = useRef(null);
+  const candleCountRef = useRef(0);
+  const hasFittedKeyRef = useRef('');
 
   const [hoverInfo, setHoverInfo] = useState(null);
   const [hoverStoch, setHoverStoch] = useState(null);
   const [hoveredLevel, setHoveredLevel] = useState(null);
+  const [liveCandleState, setLiveCandleState] = useState(null);
   const [overlayRects, setOverlayRects] = useState({ zones: [], badges: [] });
 
   // Konfigurasi Stochastic sesuai gambar TradingView:
@@ -261,7 +282,10 @@ const TradingViewChart = React.memo(function TradingViewChart({
   }, [stochData]);
 
   const lastCandle = formattedCandles.length > 0 ? formattedCandles[formattedCandles.length - 1] : null;
-  const currentClose = lastCandle ? lastCandle.close : 0;
+  const activeLastCandle = liveCandleState && lastCandle && Number(liveCandleState.time) >= Number(lastCandle.time)
+    ? liveCandleState
+    : lastCandle;
+  const currentClose = activeLastCandle ? activeLastCandle.close : 0;
 
   // Hitung daftar level horizontal dengan aturan Fase 1:
   // - Hierarki 3 tingkat (Utama: Entry/SL/TP, Pendukung: EMA/Trend, Opsional: Fib/Targets)
@@ -489,7 +513,7 @@ const TradingViewChart = React.memo(function TradingViewChart({
     const signalCircles = [];
     const timeScale = chart.timeScale();
     const maxW = container.clientWidth - 80;
-    const lastIdx = formattedCandles.length - 1;
+    const lastIdx = Math.max(0, Math.max(formattedCandles.length, candleCountRef.current) - 1);
 
     if (activeTpSl) {
       const entryVal = Number(activeTpSl.maker_limit_entry || activeTpSl.breakout_price);
@@ -558,9 +582,13 @@ const TradingViewChart = React.memo(function TradingViewChart({
     });
   }, [curatedHorizontalLevels, mainPaneMaxY, formattedCandles.length, activeTpSl, currentClose]);
 
-  // Render chart canvas
   useEffect(() => {
-    if (!chartContainerRef.current || formattedCandles.length === 0) return;
+    syncOverlaysRef.current = syncOverlays;
+  }, [syncOverlays]);
+
+  // 1. Inisialisasi Canvas Grafik (Hanya dibuat ulang jika simbol/timeframe/ukuran berubah, BUKAN setiap kali data poll masuk!)
+  useEffect(() => {
+    if (!chartContainerRef.current) return;
 
     if (chartInstanceRef.current) {
       chartInstanceRef.current.remove();
@@ -596,7 +624,7 @@ const TradingViewChart = React.memo(function TradingViewChart({
       timeScale: {
         borderColor: '#27272a',
         timeVisible: true,
-        secondsVisible: false,
+        secondsVisible: period === '1s' || period === '1m',
         rightOffset: 16,
       },
       rightPriceScale: {
@@ -610,17 +638,9 @@ const TradingViewChart = React.memo(function TradingViewChart({
     });
 
     chartInstanceRef.current = chart;
+    priceLinesRef.current = [];
 
     // 1. Series Candlestick (Dilengkapi autoscaleInfoProvider agar Garis SL, Entry Zone, dan TP selalu masuk di dalam layar!)
-    const scaleAnchorPrices = curatedHorizontalLevels
-      .filter((lv) => lv.tier === 1)
-      .map((lv) => Number(lv.price))
-      .filter((p) => !isNaN(p) && p > 0);
-    computedZones.forEach((z) => {
-      if (!isNaN(Number(z.low)) && Number(z.low) > 0) scaleAnchorPrices.push(Number(z.low));
-      if (!isNaN(Number(z.high)) && Number(z.high) > 0) scaleAnchorPrices.push(Number(z.high));
-    });
-
     const candleSeries = chart.addSeries(CandlestickSeries, {
       upColor: '#10b981',
       downColor: '#ef4444',
@@ -638,9 +658,10 @@ const TradingViewChart = React.memo(function TradingViewChart({
       },
       autoscaleInfoProvider: (original) => {
         const res = original();
-        if (res && res.priceRange && scaleAnchorPrices.length > 0) {
-          const minVal = Math.min(res.priceRange.minValue, ...scaleAnchorPrices);
-          const maxVal = Math.max(res.priceRange.maxValue, ...scaleAnchorPrices);
+        const anchors = scaleAnchorPricesRef.current || [];
+        if (res && res.priceRange && anchors.length > 0) {
+          const minVal = Math.min(res.priceRange.minValue, ...anchors);
+          const maxVal = Math.max(res.priceRange.maxValue, ...anchors);
           const pad = (maxVal - minVal) * 0.04;
           return {
             priceRange: {
@@ -653,13 +674,8 @@ const TradingViewChart = React.memo(function TradingViewChart({
       },
     });
     candleSeriesRef.current = candleSeries;
-    candleSeries.setData(formattedCandles);
 
-    if (formattedCandles.length > 0) {
-      lastCandleRef.current = { ...formattedCandles[formattedCandles.length - 1] };
-    }
-
-    // 2. Series Volume (Matikan lastValueVisible & priceLineVisible agar tidak muncul kotak "2.02B" tanpa konteks)
+    // 2. Series Volume
     const volumeSeries = chart.addSeries(HistogramSeries, {
       color: '#64748b',
       lastValueVisible: false,
@@ -678,10 +694,7 @@ const TradingViewChart = React.memo(function TradingViewChart({
       },
     });
 
-    volumeSeries.setData(formattedVolume);
-
     // 3. EMA 20 Overlay
-    const ema20Data = calculateEMA(formattedCandles, 20);
     const ema20Series = chart.addSeries(LineSeries, {
       color: COLOR_SEMANTICS.REF,
       lineWidth: 1.5,
@@ -692,11 +705,9 @@ const TradingViewChart = React.memo(function TradingViewChart({
       crosshairMarkerVisible: false,
       visible: showEma20,
     });
-    ema20Series.setData(ema20Data);
     ema20SeriesRef.current = ema20Series;
 
     // 4. EMA 50 Overlay
-    const ema50Data = calculateEMA(formattedCandles, 50);
     const ema50Series = chart.addSeries(LineSeries, {
       color: COLOR_SEMANTICS.REF_DIM,
       lineWidth: 1,
@@ -707,63 +718,36 @@ const TradingViewChart = React.memo(function TradingViewChart({
       crosshairMarkerVisible: false,
       visible: showEma50,
     });
-    ema50Series.setData(ema50Data);
     ema50SeriesRef.current = ema50Series;
 
-    // 5. Geometric Trendlines
-    if (showTrendlines && trendlines) {
-      if (Array.isArray(trendlines.upper_line) && trendlines.upper_line.length >= 2) {
-        const uPts = trendlines.upper_line
-          .map((pt) => ({ time: normalizeTime(pt.time), value: Number(pt.price) }))
-          .filter((pt) => pt.time && !isNaN(pt.value));
-        if (uPts.length >= 2 && uPts[0].time !== uPts[uPts.length - 1].time) {
-          const upperSeries = chart.addSeries(LineSeries, {
-            color: COLOR_SEMANTICS.REF,
-            lineWidth: 1,
-            lineStyle: LineStyle.Dashed,
-            title: '',
-            lastValueVisible: false,
-            priceLineVisible: false,
-            crosshairMarkerVisible: false,
-          });
-          upperSeries.setData(uPts);
-        }
-      }
-      if (Array.isArray(trendlines.lower_line) && trendlines.lower_line.length >= 2) {
-        const lPts = trendlines.lower_line
-          .map((pt) => ({ time: normalizeTime(pt.time), value: Number(pt.price) }))
-          .filter((pt) => pt.time && !isNaN(pt.value));
-        if (lPts.length >= 2 && lPts[0].time !== lPts[lPts.length - 1].time) {
-          const lowerSeries = chart.addSeries(LineSeries, {
-            color: COLOR_SEMANTICS.REF,
-            lineWidth: 1,
-            lineStyle: LineStyle.Dashed,
-            title: '',
-            lastValueVisible: false,
-            priceLineVisible: false,
-            crosshairMarkerVisible: false,
-          });
-          lowerSeries.setData(lPts);
-        }
-      }
-    }
-
-    // 6. Render Maksimal 6 Garis Horizontal Terkurasi
-    curatedHorizontalLevels.forEach((lv) => {
-      candleSeries.createPriceLine({
-        price: lv.price,
-        color: lv.color,
-        lineWidth: lv.lineWidth,
-        lineStyle: lv.lineStyle,
-        axisLabelVisible: false,
-        title: '',
-      });
+    // 5. Geometric Trendlines (Upper & Lower)
+    const upperSeries = chart.addSeries(LineSeries, {
+      color: COLOR_SEMANTICS.REF,
+      lineWidth: 1,
+      lineStyle: LineStyle.Dashed,
+      title: '',
+      lastValueVisible: false,
+      priceLineVisible: false,
+      crosshairMarkerVisible: false,
+      visible: showTrendlines,
     });
+    const lowerSeries = chart.addSeries(LineSeries, {
+      color: COLOR_SEMANTICS.REF,
+      lineWidth: 1,
+      lineStyle: LineStyle.Dashed,
+      title: '',
+      lastValueVisible: false,
+      priceLineVisible: false,
+      crosshairMarkerVisible: false,
+      visible: showTrendlines,
+    });
+    upperTrendSeriesRef.current = upperSeries;
+    lowerTrendSeriesRef.current = lowerSeries;
 
-    // 7. Stochastic Slow (Inputs: %K Length=14, %K Smoothing=3, %D Smoothing=3) di Panel Terpisah (Pane 1)
+    // 6. Stochastic Slow (Pane 1)
     stochKSeriesRef.current = null;
     stochDSeriesRef.current = null;
-    if (showStoch && stochData.k.length > 0) {
+    if (showStoch) {
       const kSeries = chart.addSeries(
         LineSeries,
         {
@@ -792,12 +776,9 @@ const TradingViewChart = React.memo(function TradingViewChart({
         },
         1
       );
-      kSeries.setData(stochData.k);
-      dSeries.setData(stochData.d);
       stochKSeriesRef.current = kSeries;
       stochDSeriesRef.current = dSeries;
 
-      // Garis batas Upper Band (80), Middle Band (50), Lower Band (20) standar TradingView Stoch
       kSeries.createPriceLine({
         price: stochConfig.upperBand,
         color: 'rgba(148, 163, 184, 0.45)',
@@ -834,10 +815,7 @@ const TradingViewChart = React.memo(function TradingViewChart({
       }
     }
 
-    chart.timeScale().fitContent();
-
-    const rafId = requestAnimationFrame(() => syncOverlays());
-    const handleTimeRangeChange = () => syncOverlays();
+    const handleTimeRangeChange = () => syncOverlaysRef.current();
     chart.timeScale().subscribeVisibleLogicalRangeChange(handleTimeRangeChange);
 
     // Crosshair hover listener untuk OHLCV & Stochastic Legend Bar
@@ -879,14 +857,13 @@ const TradingViewChart = React.memo(function TradingViewChart({
         chartInstanceRef.current.applyOptions({
           width: chartContainerRef.current.clientWidth,
         });
-        syncOverlays();
+        syncOverlaysRef.current();
       }
     };
 
     window.addEventListener('resize', handleResize);
 
     return () => {
-      cancelAnimationFrame(rafId);
       window.removeEventListener('resize', handleResize);
       if (chartInstanceRef.current) {
         chartInstanceRef.current.remove();
@@ -895,62 +872,225 @@ const TradingViewChart = React.memo(function TradingViewChart({
         volumeSeriesRef.current = null;
         ema20SeriesRef.current = null;
         ema50SeriesRef.current = null;
+        upperTrendSeriesRef.current = null;
+        lowerTrendSeriesRef.current = null;
         stochKSeriesRef.current = null;
         stochDSeriesRef.current = null;
+        priceLinesRef.current = [];
       }
     };
   }, [
-    formattedCandles,
-    formattedVolume,
-    trendlines,
+    symbol,
+    period,
     activeHeight,
     decimals,
     minMove,
+    showStoch,
+    stochPaneHeight,
+    stochConfig.upperBand,
+    stochConfig.lowerBand,
+  ]);
+
+  // 2. Sinkronisasi Data Series & Garis Horizontal Secara In-Place (Tanpa Mereset Zoom / Menghapus Chart!)
+  useEffect(() => {
+    const chart = chartInstanceRef.current;
+    const candleSeries = candleSeriesRef.current;
+    if (!chart || !candleSeries || formattedCandles.length === 0) return;
+
+    // Update anchor harga untuk autoscale
+    const anchors = curatedHorizontalLevels
+      .filter((lv) => lv.tier === 1)
+      .map((lv) => Number(lv.price))
+      .filter((p) => !isNaN(p) && p > 0);
+    computedZones.forEach((z) => {
+      if (!isNaN(Number(z.low)) && Number(z.low) > 0) anchors.push(Number(z.low));
+      if (!isNaN(Number(z.high)) && Number(z.high) > 0) anchors.push(Number(z.high));
+    });
+    scaleAnchorPricesRef.current = anchors;
+
+    // Gabungkan data candle dari API dengan live candle terbaru jika live tick sudah membuka bar baru atau harga lebih baru
+    const mergedCandles = formattedCandles.map((c) => ({ ...c }));
+    const serverLast = mergedCandles[mergedCandles.length - 1];
+    const prevLive = lastCandleRef.current;
+    const fitKey = `${symbol || 'SYM'}_${period || 'TF'}`;
+    const isInitialFit = hasFittedKeyRef.current !== fitKey;
+
+    if (!isInitialFit && prevLive && typeof prevLive.time === 'number' && typeof serverLast.time === 'number') {
+      if (prevLive.time === serverLast.time) {
+        serverLast.high = Math.max(serverLast.high, prevLive.high);
+        serverLast.low = Math.min(serverLast.low, prevLive.low);
+        serverLast.close = prevLive.close;
+      } else if (prevLive.time > serverLast.time) {
+        mergedCandles.push({ ...prevLive });
+      }
+    }
+
+    candleSeries.setData(mergedCandles);
+    candleCountRef.current = mergedCandles.length;
+    const newestBar = mergedCandles[mergedCandles.length - 1];
+    lastCandleRef.current = { ...newestBar };
+    setLiveCandleState({ ...newestBar });
+
+    if (volumeSeriesRef.current) {
+      volumeSeriesRef.current.setData(formattedVolume);
+    }
+
+    if (ema20SeriesRef.current) {
+      ema20SeriesRef.current.applyOptions({ visible: showEma20 });
+      ema20SeriesRef.current.setData(calculateEMA(mergedCandles, 20));
+    }
+
+    if (ema50SeriesRef.current) {
+      ema50SeriesRef.current.applyOptions({ visible: showEma50 });
+      ema50SeriesRef.current.setData(calculateEMA(mergedCandles, 50));
+    }
+
+    if (upperTrendSeriesRef.current && lowerTrendSeriesRef.current) {
+      upperTrendSeriesRef.current.applyOptions({ visible: showTrendlines });
+      lowerTrendSeriesRef.current.applyOptions({ visible: showTrendlines });
+      if (showTrendlines && trendlines) {
+        const uPts = Array.isArray(trendlines.upper_line)
+          ? trendlines.upper_line
+              .map((pt) => ({ time: normalizeTime(pt.time), value: Number(pt.price) }))
+              .filter((pt) => pt.time && !isNaN(pt.value))
+          : [];
+        const lPts = Array.isArray(trendlines.lower_line)
+          ? trendlines.lower_line
+              .map((pt) => ({ time: normalizeTime(pt.time), value: Number(pt.price) }))
+              .filter((pt) => pt.time && !isNaN(pt.value))
+          : [];
+        upperTrendSeriesRef.current.setData(uPts.length >= 2 && uPts[0].time !== uPts[uPts.length - 1].time ? uPts : []);
+        lowerTrendSeriesRef.current.setData(lPts.length >= 2 && lPts[0].time !== lPts[lPts.length - 1].time ? lPts : []);
+      } else {
+        upperTrendSeriesRef.current.setData([]);
+        lowerTrendSeriesRef.current.setData([]);
+      }
+    }
+
+    // Perbarui garis horizontal (Price Lines) secara in-place
+    if (priceLinesRef.current.length > 0) {
+      priceLinesRef.current.forEach((pl) => {
+        try {
+          candleSeries.removePriceLine(pl);
+        } catch {
+          // Ignore
+        }
+      });
+      priceLinesRef.current = [];
+    }
+    curatedHorizontalLevels.forEach((lv) => {
+      const pl = candleSeries.createPriceLine({
+        price: lv.price,
+        color: lv.color,
+        lineWidth: lv.lineWidth,
+        lineStyle: lv.lineStyle,
+        axisLabelVisible: false,
+        title: '',
+      });
+      priceLinesRef.current.push(pl);
+    });
+
+    if (showStoch && stochKSeriesRef.current && stochDSeriesRef.current) {
+      stochKSeriesRef.current.applyOptions({
+        color: stochConfig.kColor,
+        visible: stochConfig.showK,
+      });
+      stochDSeriesRef.current.applyOptions({
+        color: stochConfig.dColor,
+        visible: stochConfig.showD,
+      });
+      stochKSeriesRef.current.setData(stochData.k);
+      stochDSeriesRef.current.setData(stochData.d);
+    }
+
+    if (isInitialFit) {
+      hasFittedKeyRef.current = fitKey;
+      chart.timeScale().fitContent();
+    }
+
+    const rafId = requestAnimationFrame(() => syncOverlaysRef.current());
+    return () => cancelAnimationFrame(rafId);
+  }, [
+    symbol,
+    period,
+    formattedCandles,
+    formattedVolume,
+    trendlines,
     curatedHorizontalLevels,
+    computedZones,
     showTrendlines,
     showStoch,
     showEma20,
     showEma50,
     stochData,
     stochConfig,
-    stochPaneHeight,
-    syncOverlays,
   ]);
 
-  // Real-time live tick update handler
+  // 3. Real-time Live Tick & Automatic New-Candle Rollover Handler (Bergerak Nyata di Timeframe Kecil 1s/1m/5m Tanpa Reload!)
   useEffect(() => {
     if (!candleSeriesRef.current || !liveTick || !lastCandleRef.current) return;
     const p = Number(liveTick.price);
     if (isNaN(p) || p <= 0) return;
 
     const last = lastCandleRef.current;
-    const updatedCandle = {
-      time: last.time,
-      open: last.open,
-      high: Math.max(last.high, p),
-      low: Math.min(last.low, p),
-      close: p,
-    };
-    lastCandleRef.current = updatedCandle;
-    candleSeriesRef.current.update(updatedCandle);
+    const barSeconds = PERIOD_SECONDS_MAP[period] || 900;
+    const tickTsSec = liveTick.timestamp && Number(liveTick.timestamp) > 1e9
+      ? Math.floor(Number(liveTick.timestamp))
+      : Math.floor(Date.now() / 1000);
 
-    if (volumeSeriesRef.current && liveTick.volume) {
-      volumeSeriesRef.current.update({
+    let nextCandle;
+    if (typeof last.time === 'number' && last.time > 1e9) {
+      const currentBucketTime = Math.floor(tickTsSec / barSeconds) * barSeconds;
+      if (currentBucketTime > last.time) {
+        // Buka bar candle baru secara otomatis ketika batas waktu timeframe terlewati!
+        nextCandle = {
+          time: currentBucketTime,
+          open: last.close,
+          high: Math.max(last.close, p),
+          low: Math.min(last.close, p),
+          close: p,
+        };
+        candleCountRef.current += 1;
+      } else {
+        nextCandle = {
+          time: last.time,
+          open: last.open,
+          high: Math.max(last.high, p),
+          low: Math.min(last.low, p),
+          close: p,
+        };
+      }
+    } else {
+      nextCandle = {
         time: last.time,
+        open: last.open,
+        high: Math.max(last.high, p),
+        low: Math.min(last.low, p),
+        close: p,
+      };
+    }
+
+    lastCandleRef.current = nextCandle;
+    candleSeriesRef.current.update(nextCandle);
+    setLiveCandleState(nextCandle);
+
+    if (volumeSeriesRef.current && liveTick.volume && nextCandle.time === last.time) {
+      volumeSeriesRef.current.update({
+        time: nextCandle.time,
         value: liveTick.volume,
-        color: p >= last.open ? 'rgba(16, 185, 129, 0.25)' : 'rgba(239, 68, 68, 0.25)',
+        color: p >= nextCandle.open ? 'rgba(16, 185, 129, 0.25)' : 'rgba(239, 68, 68, 0.25)',
       });
     }
-    syncOverlays();
-  }, [liveTick, syncOverlays]);
+    syncOverlaysRef.current();
+  }, [liveTick, period]);
 
-  const displayOhlc = hoverInfo || (lastCandle ? {
-    open: lastCandle.open,
-    high: lastCandle.high,
-    low: lastCandle.low,
-    close: lastCandle.close,
-    change: lastCandle.open ? ((lastCandle.close - lastCandle.open) / lastCandle.open) * 100 : 0,
-    volume: candlesSource[candlesSource.length - 1]?.volume || 0,
+  const displayOhlc = hoverInfo || (activeLastCandle ? {
+    open: activeLastCandle.open,
+    high: activeLastCandle.high,
+    low: activeLastCandle.low,
+    close: activeLastCandle.close,
+    change: activeLastCandle.open ? ((activeLastCandle.close - activeLastCandle.open) / activeLastCandle.open) * 100 : 0,
+    volume: liveTick?.volume || candlesSource[candlesSource.length - 1]?.volume || 0,
   } : null);
 
   const activeStochValues = hoverStoch || latestStoch;

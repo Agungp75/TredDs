@@ -17,7 +17,8 @@ export default function ScreenerTable({
   timeframe = '15m',
   onTimeframeChange = null,
 }) {
-  const { liveTicks } = useMarket();
+  const { liveTicks, marketType } = useMarket();
+  const isSpot = marketType === 'spot';
   const [activeStrategy, setActiveStrategy] = useState('all');
   const [search, setSearch] = useState('');
   const [minScore, setMinScore] = useState(0);
@@ -181,7 +182,7 @@ export default function ScreenerTable({
                         className="group block"
                       >
                         <div className="flex items-center gap-1.5 font-bold text-on-surface group-hover:text-primary transition-colors">
-                          <span>{item.symbol}</span>
+                          <span>{isSpot ? item.symbol.replace('_', '/') : item.symbol}</span>
                           <span
                             className={`text-[9px] uppercase font-mono px-1.5 py-0.5 rounded font-bold ${
                               item.direction === 'SHORT'
@@ -189,7 +190,7 @@ export default function ScreenerTable({
                                 : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
                             }`}
                           >
-                            {item.direction || 'LONG'}
+                            {isSpot ? (item.direction === 'SHORT' ? 'SELL / AVOID' : 'SPOT BUY') : (item.direction || 'LONG')}
                           </span>
                         </div>
                         <div className="flex items-center gap-2 text-[10px] text-on-surface-variant mt-0.5">

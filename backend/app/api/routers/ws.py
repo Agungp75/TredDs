@@ -47,13 +47,14 @@ def _price_decimals(price: float) -> int:
     return 2
 
 
-def get_current_real_tick(symbol: str) -> dict:
+def get_current_real_tick(symbol: str, force_fresh: bool = False) -> dict:
     """
     Mengambil data tick pasar riil MEXC USDT-M (lastPrice, fairPrice, indexPrice,
     fundingRate, holdVol/openInterest) tanpa micro-tick buatan (+/-0.03%).
+    Jika force_fresh=True, bypass cache bulk dan ambil harga terbaru langsung dari bursa.
     """
     norm_symbol = resolve_symbol(symbol, "futures")
-    quote = fetch_live_quote(norm_symbol)
+    quote = fetch_live_quote(norm_symbol, force_fresh=force_fresh)
     base_price = float(quote.get("price") or 0.0)
     prev_known = _last_known_prices.get(norm_symbol, base_price)
 
@@ -95,8 +96,13 @@ async def websocket_ticks(websocket: WebSocket):
     """
     WebSocket endpoint untuk real-time price tick streaming
     khusus Kripto MEXC USDT-M Perpetual & Spot.
+    Mendukung pesan klien {"type": "SUBSCRIBE", "symbol": "..."} agar simbol yang sedang
+    dibuka di chart selalu mendapatkan stream real-time (force_fresh=True) setiap < 1 detik!
     """
     await manager.connect(websocket)
+    subscribed_symbol = websocket.query_params.get("symbol") or "BTC_USDT"
+    subscribed_symbol = resolve_symbol(subscribed_symbol, "futures")
+
     try:
         symbols = list(DEFAULT_ASSETS.keys())
         initial_snapshot = {}
@@ -129,6 +135,7 @@ async def websocket_ticks(websocket: WebSocket):
             "type": "CONNECTION_ESTABLISHED",
             "message": f"Connected to ATRED v3.0 MEXC Real-Time Stream ({settings.MEXC_WS_URL})",
             "exchange": "MEXC_USDT_M",
+            "subscribed_symbol": subscribed_symbol,
             "snapshot": initial_snapshot,
         })
 
@@ -141,17 +148,44 @@ async def websocket_ticks(websocket: WebSocket):
         all_syms = list(DEFAULT_ASSETS.keys())
 
         while True:
+            # Cek apakah klien mengirimkan pesan SUBSCRIBE untuk simbol yang sedang dibuka di chart
+            try:
+                raw_msg = await asyncio.wait_for(websocket.receive_text(), timeout=0.05)
+                if raw_msg:
+                    msg_obj = json.loads(raw_msg)
+                    if isinstance(msg_obj, dict) and msg_obj.get("symbol"):
+                        subscribed_symbol = resolve_symbol(str(msg_obj["symbol"]), "futures")
+            except asyncio.TimeoutError:
+                pass
+            except WebSocketDisconnect:
+                raise
+            except Exception:
+                pass
+
+            # 1. Selalu kirim tick REAL-TIME (force_fresh=True) untuk simbol yang sedang dibuka user!
+            if subscribed_symbol:
+                try:
+                    active_tick = await asyncio.to_thread(get_current_real_tick, subscribed_symbol, True)
+                    await websocket.send_json(active_tick)
+                except WebSocketDisconnect:
+                    raise
+                except Exception:
+                    pass
+
+            # 2. Kirim juga 1 simbol rotasi untuk menyegarkan daftar di screener/navbar
             if random.random() < 0.6:
                 symbol = random.choice(priority_symbols)
             else:
                 symbol = all_syms[index % len(all_syms)]
             index += 1
 
-            tick_payload = await asyncio.to_thread(get_current_real_tick, symbol)
-            await websocket.send_json(tick_payload)
+            if symbol != subscribed_symbol:
+                tick_payload = await asyncio.to_thread(get_current_real_tick, symbol, False)
+                await websocket.send_json(tick_payload)
+            else:
+                tick_payload = active_tick if subscribed_symbol else await asyncio.to_thread(get_current_real_tick, symbol, False)
 
             # Kirim alert HANYA jika terjadi pergerakan harian nyata yang signifikan (>= 4%)
-            # atau spread Fair Price vs Last Price ekstrem
             now_ts = time.time()
             chg_pct = abs(float(tick_payload.get("change_pct") or 0.0))
             if (
@@ -177,7 +211,7 @@ async def websocket_ticks(websocket: WebSocket):
                     "timestamp": now_ts,
                 })
 
-            await asyncio.sleep(1.0)
+            await asyncio.sleep(0.75)
 
     except WebSocketDisconnect:
         manager.disconnect(websocket)

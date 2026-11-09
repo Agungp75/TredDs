@@ -4,15 +4,45 @@ import { connectMarketWebSocket } from '../services/api';
 const MarketContext = createContext();
 
 export function MarketProvider({ children }) {
-  const [activeAsset, setActiveAsset] = useState('BTC-USD');
+  const [activeAsset, setActiveAsset] = useState('BTC_USDT');
+  const [marketType, setMarketTypeState] = useState(() => {
+    try {
+      const saved = localStorage.getItem('atred_market_type');
+      return saved === 'spot' || saved === 'future' ? saved : 'future';
+    } catch {
+      return 'future';
+    }
+  });
   const [liveTicks, setLiveTicks] = useState({});
   const [wsConnected, setWsConnected] = useState(false);
   const [alerts, setAlerts] = useState([]);
   const [lastTick, setLastTick] = useState(null);
 
+  const setMarketType = useCallback((type) => {
+    const normalized = type === 'spot' ? 'spot' : 'future';
+    setMarketTypeState(normalized);
+    try {
+      localStorage.setItem('atred_market_type', normalized);
+    } catch {
+      // Ignore storage errors
+    }
+  }, []);
+
   const wsRef = useRef(null);
+  const activeAssetRef = useRef(activeAsset);
   const reconnectTimeoutRef = useRef(null);
   const isUnmountingRef = useRef(false);
+
+  useEffect(() => {
+    activeAssetRef.current = activeAsset;
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN && activeAsset) {
+      try {
+        wsRef.current.send(JSON.stringify({ type: 'SUBSCRIBE', symbol: activeAsset }));
+      } catch {
+        // Ignore send errors if socket is closing
+      }
+    }
+  }, [activeAsset]);
 
   const setupWebSocket = useCallback(() => {
     if (isUnmountingRef.current) return;
@@ -26,6 +56,13 @@ export function MarketProvider({ children }) {
         (data) => {
           if (data.type === 'CONNECTION_ESTABLISHED') {
             setWsConnected(true);
+            if (ws.readyState === WebSocket.OPEN && activeAssetRef.current) {
+              try {
+                ws.send(JSON.stringify({ type: 'SUBSCRIBE', symbol: activeAssetRef.current }));
+              } catch {
+                // Ignore
+              }
+            }
             // Inisialisasi snapshot jika ada
             if (data.snapshot) {
               setLiveTicks((prev) => ({
@@ -105,6 +142,8 @@ export function MarketProvider({ children }) {
       value={{
         activeAsset,
         setActiveAsset,
+        marketType,
+        setMarketType,
         liveTicks,
         wsConnected,
         alerts,

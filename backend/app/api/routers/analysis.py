@@ -246,7 +246,9 @@ async def query_ai_analysis(symbol: str, req: AIQueryRequest):
 @router.get("/{symbol}")
 async def get_deep_analysis(
     symbol: str,
-    period: str = Query("15m", description="MEXC Timeframe: 1m, 5m, 15m, 30m, 1h, 4h, 1d"),
+    period: str = Query("15m", description="MEXC Timeframe: 1s, 1m, 5m, 15m, 30m, 1h, 4h, 1d"),
+    light: bool = Query(False, description="Mode ringan untuk sinkronisasi grafik real-time (tanpa panggil ulang AI/GitHub)"),
+    market_type: str = Query("future", description="Market type: spot | future"),
 ):
     """
     ATRED v3.0 3-Layer Deep Quantitative & MEXC Derivatives Engine:
@@ -254,8 +256,9 @@ async def get_deep_analysis(
       - Layer 2: MEXC Derivatives & Orderflow Microstructure (Funding Rate, OI Matrix, 20-Level OBI, CVD, Slippage Guard)
       - Layer 3 & Execution: 0% Maker Fee Limit Entry, Split TP1/TP2, FAIR_PRICE SL, Net EV, Half-Kelly, Safe Max Leverage
     """
+    m_type = "spot" if str(market_type or "future").lower().startswith("spot") else "futures"
     resolved_sym = resolve_symbol(symbol, "futures")
-    df = await asyncio.to_thread(fetch_ohlcv, resolved_sym, period=period)
+    df = await asyncio.to_thread(fetch_ohlcv, resolved_sym, period=period, market_type=m_type)
     if df.empty or len(df) < 15:
         raise HTTPException(status_code=404, detail="Data time-series tidak ditemukan untuk simbol ini.")
 
@@ -263,6 +266,14 @@ async def get_deep_analysis(
         asyncio.to_thread(get_asset_overview, resolved_sym),
         asyncio.to_thread(analyze_mexc_derivatives, resolved_sym, df, period),
     )
+    # Sinkronkan candle terakhir (berjalan) dengan harga live quote terbaru agar grafik langsung bergerak real-time!
+    live_quote_price = float(overview.get("price") or 0.0)
+    if live_quote_price > 0 and len(df) > 0:
+        last_idx = df.index[-1]
+        df.at[last_idx, "Close"] = live_quote_price
+        df.at[last_idx, "High"] = max(float(df.at[last_idx, "High"]), live_quote_price)
+        df.at[last_idx, "Low"] = min(float(df.at[last_idx, "Low"]), live_quote_price)
+
     data_status = df_data_status(df, resolved_sym, period)
     latest_close = float(df['Close'].iloc[-1])
     dec = _dec(latest_close)
@@ -550,7 +561,15 @@ async def get_deep_analysis(
     }
 
     repo_target = CRYPTO_GITHUB_REPOS.get(resolved_sym, "bitcoin/bitcoin")
-    dev_data = await get_github_metrics(repo_target)
+    if light:
+        dev_data = None
+        ai_summary = None
+        scalping_analysis = None
+        swing_analysis = None
+        investing_analysis = None
+        scenarios_analysis = None
+    else:
+        dev_data = await get_github_metrics(repo_target)
 
     layer_2_legacy = {
         "dev_metrics": dev_data,
@@ -565,17 +584,19 @@ async def get_deep_analysis(
         },
     }
 
-    ai_summary, scalping_analysis, swing_analysis, investing_analysis, scenarios_analysis = await asyncio.gather(
-        generate_ai_analysis(mode="overview", asset_data=overview, technical_data=layer_1, dev_data=dev_data, macro_data=mexc_derivatives),
-        generate_ai_analysis(mode="scalping", asset_data=overview, technical_data=layer_1, dev_data=dev_data, macro_data=mexc_derivatives),
-        generate_ai_analysis(mode="swing", asset_data=overview, technical_data=layer_1, dev_data=dev_data, macro_data=mexc_derivatives),
-        generate_ai_analysis(mode="investing", asset_data=overview, technical_data=layer_1, dev_data=dev_data, macro_data=mexc_derivatives),
-        generate_ai_analysis(mode="scenarios", asset_data=overview, technical_data=layer_1, dev_data=dev_data, macro_data=mexc_derivatives),
-    )
+    if not light:
+        ai_summary, scalping_analysis, swing_analysis, investing_analysis, scenarios_analysis = await asyncio.gather(
+            generate_ai_analysis(mode="overview", asset_data=overview, technical_data=layer_1, dev_data=dev_data, macro_data=mexc_derivatives),
+            generate_ai_analysis(mode="scalping", asset_data=overview, technical_data=layer_1, dev_data=dev_data, macro_data=mexc_derivatives),
+            generate_ai_analysis(mode="swing", asset_data=overview, technical_data=layer_1, dev_data=dev_data, macro_data=mexc_derivatives),
+            generate_ai_analysis(mode="investing", asset_data=overview, technical_data=layer_1, dev_data=dev_data, macro_data=mexc_derivatives),
+            generate_ai_analysis(mode="scenarios", asset_data=overview, technical_data=layer_1, dev_data=dev_data, macro_data=mexc_derivatives),
+        )
 
     return {
         "symbol": resolved_sym,
-        "exchange": "MEXC_FUTURES_USDT_M",
+        "exchange": "MEXC_SPOT" if m_type == "spot" else "MEXC_FUTURES_USDT_M",
+        "market_type": m_type,
         "timeframe": period,
         "data_integrity": {
             "status": data_status.get("status", "LIVE_OK"),

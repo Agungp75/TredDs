@@ -8,10 +8,17 @@ import AtredLogo from './AtredLogo';
 export default function Navbar() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { wsConnected, liveTicks, alerts } = useMarket();
+  const { wsConnected, liveTicks, alerts, marketType, setMarketType } = useMarket();
   const { openSettings, isConfigured, aiConfig } = useAI();
   const [notifOpen, setNotifOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+
+  const isSpot = marketType === 'spot';
+
+  const marketModes = [
+    { id: 'spot', label: 'Spot' },
+    { id: 'future', label: 'Future' },
+  ];
 
   const navLinks = [
     { path: '/', label: 'MEXC Opportunity Screener' },
@@ -20,14 +27,14 @@ export default function Navbar() {
   ];
 
   const ribbonTickers = [
-    { sym: 'BTC_USDT', label: 'BTC/USDT.P', type: 'crypto' },
-    { sym: 'ETH_USDT', label: 'ETH/USDT.P', type: 'crypto' },
-    { sym: 'SOL_USDT', label: 'SOL/USDT.P', type: 'crypto' },
-    { sym: 'BNB_USDT', label: 'BNB/USDT.P', type: 'crypto' },
-    { sym: 'XRP_USDT', label: 'XRP/USDT.P', type: 'crypto' },
-    { sym: 'DOGE_USDT', label: 'DOGE/USDT.P', type: 'crypto' },
-    { sym: 'SUI_USDT', label: 'SUI/USDT.P', type: 'crypto' },
-    { sym: 'PEPE_USDT', label: 'PEPE/USDT.P', type: 'crypto' },
+    { sym: 'BTC_USDT', label: isSpot ? 'BTC/USDT' : 'BTC/USDT.P', type: 'crypto' },
+    { sym: 'ETH_USDT', label: isSpot ? 'ETH/USDT' : 'ETH/USDT.P', type: 'crypto' },
+    { sym: 'SOL_USDT', label: isSpot ? 'SOL/USDT' : 'SOL/USDT.P', type: 'crypto' },
+    { sym: 'BNB_USDT', label: isSpot ? 'BNB/USDT' : 'BNB/USDT.P', type: 'crypto' },
+    { sym: 'XRP_USDT', label: isSpot ? 'XRP/USDT' : 'XRP/USDT.P', type: 'crypto' },
+    { sym: 'DOGE_USDT', label: isSpot ? 'DOGE/USDT' : 'DOGE/USDT.P', type: 'crypto' },
+    { sym: 'SUI_USDT', label: isSpot ? 'SUI/USDT' : 'SUI/USDT.P', type: 'crypto' },
+    { sym: 'PEPE_USDT', label: isSpot ? 'PEPE/USDT' : 'PEPE/USDT.P', type: 'crypto' },
   ];
 
   const handleSearchSubmit = (e) => {
@@ -68,7 +75,7 @@ export default function Navbar() {
                     <span className={`font-medium ${isPos ? 'text-tertiary' : 'text-error'}`}>
                       {formatPercent(change)}
                     </span>
-                    {funding && (
+                    {!isSpot && funding && (
                       <span className="text-[10px] text-cyan-400/80">F:{funding}</span>
                     )}
                     <span className="text-outline mx-1">|</span>
@@ -80,9 +87,9 @@ export default function Navbar() {
         </div>
       </div>
 
-      {/* 2. Main Navigation Bar */}
-      <div className="h-16 max-w-[1720px] mx-auto px-6 xl:px-10 flex items-center justify-between gap-6">
-        <div className="flex items-center gap-8">
+      {/* 2. Main Navigation Bar (Logo + Spot/Future Selector + Controls) */}
+      <div className="h-14 max-w-[1720px] mx-auto px-6 xl:px-10 flex items-center justify-between gap-6 border-b border-outline-variant/40">
+        <div className="flex items-center gap-6">
           <Link to="/" className="flex items-center gap-3 group">
             <AtredLogo size={32} className="h-8 w-auto object-contain transition-transform group-hover:scale-105" />
             <div className="flex items-center gap-2">
@@ -95,26 +102,31 @@ export default function Navbar() {
             </div>
           </Link>
 
-          <nav className="hidden xl:flex items-center gap-2.5 h-16">
-            {navLinks.map((link) => {
-              const isActive = link.matchPrefix
-                ? location.pathname.startsWith(link.matchPrefix)
-                : location.pathname === link.path;
+          {/* Tombol Pilihan Spot / Future */}
+          <div className="flex items-center gap-2" role="group" aria-label="Pilih Mode Pasar Spot atau Future">
+            {marketModes.map((mode) => {
+              const isModeActive = marketType === mode.id;
               return (
-                <Link
-                  key={link.path}
-                  to={link.path}
-                  className={`px-3.5 py-1.5 rounded-[6px] text-sm font-medium bg-transparent border transition-all duration-150 flex items-center ${
-                    isActive
-                      ? 'border-[#0d6efd] text-[#3b82f6] hover:bg-[#0d6efd]/15'
-                      : 'border-[#6c757d]/80 text-[#9ca3af] hover:border-[#adb5bd] hover:text-white hover:bg-white/5'
+                <button
+                  key={mode.id}
+                  type="button"
+                  onClick={() => setMarketType(mode.id)}
+                  className={`px-4 py-1.5 rounded-[6px] text-sm font-semibold border transition-all duration-150 flex items-center gap-2 cursor-pointer ${
+                    isModeActive
+                      ? 'border-[#0d6efd] text-[#3b82f6] bg-[#0d6efd]/10 shadow-sm'
+                      : 'border-[#6c757d]/80 text-[#9ca3af] bg-transparent hover:border-[#adb5bd] hover:text-white hover:bg-white/5'
                   }`}
                 >
-                  {link.label}
-                </Link>
+                  <span
+                    className={`w-1.5 h-1.5 rounded-full ${
+                      isModeActive ? 'bg-[#3b82f6] animate-pulse' : 'bg-[#6c757d]/60'
+                    }`}
+                  />
+                  <span>{mode.label}</span>
+                </button>
               );
             })}
-          </nav>
+          </div>
         </div>
 
         {/* Status Telemetry & Controls */}
@@ -127,7 +139,11 @@ export default function Navbar() {
               }`}
             ></span>
             <span className="text-tertiary font-semibold uppercase tracking-wider">
-              {wsConnected ? 'MEXC WS EDGE • 0% MAKER' : 'SYNCING MEXC'}
+              {wsConnected
+                ? isSpot
+                  ? 'MEXC SPOT • 0% MAKER'
+                  : 'MEXC FUTURES • 0% MAKER'
+                : 'SYNCING MEXC'}
             </span>
           </div>
 
@@ -221,6 +237,45 @@ export default function Navbar() {
           >
             <span className="material-symbols-outlined text-[18px]">candlestick_chart</span>
           </Link>
+        </div>
+      </div>
+
+      {/* 3. Sub-Navigation Bar (Menu Halaman di Bawah Tombol Spot / Future) */}
+      <div className="w-full bg-surface-container-lowest/90 backdrop-blur-md">
+        <div className="max-w-[1720px] mx-auto px-6 xl:px-10 py-2 flex items-center justify-between gap-4 overflow-x-auto">
+          <nav className="flex items-center gap-2.5">
+            {navLinks.map((link) => {
+              const isActive = link.matchPrefix
+                ? location.pathname.startsWith(link.matchPrefix)
+                : location.pathname === link.path;
+              return (
+                <Link
+                  key={link.path}
+                  to={link.path}
+                  className={`px-3.5 py-1.5 rounded-[6px] text-xs sm:text-sm font-medium bg-transparent border transition-all duration-150 flex items-center whitespace-nowrap ${
+                    isActive
+                      ? 'border-[#0d6efd] text-[#3b82f6] bg-[#0d6efd]/10 hover:bg-[#0d6efd]/15'
+                      : 'border-[#6c757d]/80 text-[#9ca3af] hover:border-[#adb5bd] hover:text-white hover:bg-white/5'
+                  }`}
+                >
+                  {link.label}
+                </Link>
+              );
+            })}
+          </nav>
+
+          <div className="hidden lg:flex items-center gap-2 text-[11px] font-mono text-on-surface-variant shrink-0">
+            <span>Active Feed:</span>
+            <span
+              className={`px-2 py-0.5 rounded font-semibold uppercase ${
+                isSpot
+                  ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
+                  : 'bg-cyan-500/15 text-cyan-400 border border-cyan-500/30'
+              }`}
+            >
+              {isSpot ? 'MEXC SPOT (USDT)' : 'MEXC FUTURE (USDT-M PERP)'}
+            </span>
+          </div>
         </div>
       </div>
     </header>

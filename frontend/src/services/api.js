@@ -15,19 +15,20 @@ export default apiClient;
 
 export const api = {
   // MEXC Two-Stage Full-Market Screener
-  getScreener: async (assetType = 'crypto', minScore = 0, timeframe = '15m', strategy = 'all') => {
+  getScreener: async (assetType = 'crypto', minScore = 0, timeframe = '15m', strategy = 'all', marketType = 'future') => {
     const params = {};
     if (assetType) params.asset_type = assetType;
     if (minScore) params.min_score = minScore;
     if (timeframe) params.timeframe = timeframe;
     if (strategy && strategy !== 'all') params.strategy = strategy;
+    if (marketType) params.market_type = marketType;
     const res = await apiClient.get('/screener', { params });
     return res.data;
   },
 
   // MEXC Crypto Explorer
-  getCryptoTokens: async () => {
-    const res = await apiClient.get('/crypto/tokens');
+  getCryptoTokens: async (marketType = 'future') => {
+    const res = await apiClient.get('/crypto/tokens', { params: { market_type: marketType } });
     return res.data;
   },
 
@@ -50,9 +51,11 @@ export const api = {
   },
 
   // 3-Layer Deep Quant & MEXC Derivatives Analysis
-  getDeepAnalysis: async (symbol, period = '15m') => {
+  getDeepAnalysis: async (symbol, period = '15m', light = false, marketType = 'future') => {
+    const params = { period, market_type: marketType };
+    if (light) params.light = true;
     const res = await apiClient.get(`/analysis/${encodeURIComponent(symbol)}`, {
-      params: { period },
+      params,
     });
     return res.data;
   },
@@ -101,13 +104,14 @@ export const api = {
   },
 
   // Draw-to-Search Pattern Matching (Dynamic Top-40 MEXC Coins)
-  searchDrawnPattern: async (points, topK = 12, timeframe = 'auto') => {
+  searchDrawnPattern: async (points, topK = 12, timeframe = 'auto', marketType = 'future') => {
     const res = await apiClient.post(
       '/crypto/pattern-search',
       {
         points,
         top_k: topK,
         timeframe,
+        market_type: marketType,
       },
       { timeout: 35000 }
     );

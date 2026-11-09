@@ -16,8 +16,8 @@ _all_tickers_cache: tuple[list[dict], float] = ([], 0.0)
 # Adaptive ISP DNS-block circuit state so blocked domains don't stall requests
 _mexc_direct_unreachable_until: float = 0.0
 
-_QUOTE_TTL = 4.0
-_ALL_TICKERS_TTL = 10.0
+_QUOTE_TTL = 1.0
+_ALL_TICKERS_TTL = 3.0
 
 DATA_SOURCE_LIVE = "live"
 DATA_SOURCE_SPOT_FALLBACK = "spot_fallback"
@@ -34,6 +34,7 @@ MEXC_INTERVAL_MAP = {
 }
 
 SPOT_INTERVAL_MAP = {
+    "1s": "1s",
     "1m": "1m",
     "5m": "5m",
     "15m": "15m",
@@ -368,18 +369,21 @@ def fetch_all_mexc_tickers(top_n: int = 60) -> list[dict]:
     return normalized[:top_n] if top_n else normalized
 
 
-def fetch_live_quote(symbol: str) -> dict:
+def fetch_live_quote(symbol: str, force_fresh: bool = False) -> dict:
     """
     Mengambil quote real-time (Last Price, Fair Price, Index Price, Bid/Ask, Funding, OI)
     untuk satu simbol kripto MEXC. Tanpa data sintetis.
+    Jika `force_fresh=True`, langsung mengambil ticker simbol tunggal terbaru (<1 detik)
+    agar grafik candlestick bergerak real-time tanpa jeda cache bulk.
     """
     now_ts = time.time()
     f_sym = resolve_symbol(symbol, "futures")
     spot_sym = resolve_symbol(symbol, "spot")
 
+    ttl = 0.6 if force_fresh else _QUOTE_TTL
     if f_sym in _quote_cache:
         cached_q, ts = _quote_cache[f_sym]
-        if now_ts - ts < _QUOTE_TTL:
+        if now_ts - ts < ttl:
             return cached_q
 
     meta = DEFAULT_ASSETS.get(
@@ -387,15 +391,17 @@ def fetch_live_quote(symbol: str) -> dict:
         {"name": get_base_token(f_sym), "type": "crypto", "category": "l1", "base_price": 1.0},
     )
 
-    # 1. Cek dari bulk ticker cache jika masih segar
-    all_t = fetch_all_mexc_tickers(top_n=250)
-    matched = next((t for t in all_t if t["symbol"] == f_sym), None)
+    matched = None
+    # 1. Jika tidak force_fresh, cek dari bulk ticker cache jika masih segar
+    if not force_fresh:
+        all_t = fetch_all_mexc_tickers(top_n=250)
+        matched = next((t for t in all_t if t["symbol"] == f_sym), None)
 
-    # 2. Jika tidak ada di top 250, panggil endpoint spesifik simbol
+    # 2. Panggil endpoint spesifik simbol jika force_fresh atau tidak ada di top 250
     if matched is None:
         try:
             url = f"{settings.LIVE_CRYPTO_MIRROR_URL}/ticker/24hr?symbol={spot_sym}"
-            resp = _client.get(url, timeout=2.5)
+            resp = _client.get(url, timeout=2.0)
             if resp.status_code == 200:
                 item = resp.json()
                 last_p = float(item.get("lastPrice") or 0.0)
@@ -425,6 +431,9 @@ def fetch_live_quote(symbol: str) -> dict:
                     }
         except Exception:
             matched = None
+        if matched is None and force_fresh:
+            all_t = fetch_all_mexc_tickers(top_n=250)
+            matched = next((t for t in all_t if t["symbol"] == f_sym), None)
 
     if matched is not None:
         price = float(matched["lastPrice"])
@@ -553,6 +562,7 @@ def fetch_ohlcv(
     force_live: bool = True,
     limit: int = 240,
     timeframe: str = None,
+    market_type: str = "futures",
 ) -> pd.DataFrame:
     """
     Mengambil data Kline / OHLCV asli dari MEXC Contract API v1 / Spot API v3
@@ -561,24 +571,29 @@ def fetch_ohlcv(
     global _mexc_direct_unreachable_until
     f_sym = resolve_symbol(symbol, "futures")
     spot_sym = resolve_symbol(symbol, "spot")
+    m_type = "spot" if str(market_type or "futures").lower().startswith("spot") else "futures"
 
     tf_raw = (timeframe or interval or period or "15m").lower().strip()
     if tf_raw in ("max", "730d", "365d", "3mo", "1y", "2y"):
         tf_raw = (interval or "1d").lower()
     if tf_raw not in SPOT_INTERVAL_MAP:
-        tf_raw = "1m" if tf_raw == "1s" else "15m"
+        tf_raw = "15m"
 
-    cache_key = f"{f_sym}_{tf_raw}_{limit}"
+    cache_key = f"{f_sym}_{m_type}_{tf_raw}_{limit}"
     now_ts = time.time()
-    ttl = 5.0 if tf_raw in ("1m", "5m") else (12.0 if tf_raw in ("15m", "30m") else 30.0)
+    ttl = 0.8 if tf_raw == "1s" else (1.5 if tf_raw in ("1m", "5m") else (3.0 if tf_raw in ("15m", "30m") else 8.0))
 
-    if cache_key in _ohlcv_cache:
+    if not force_live and cache_key in _ohlcv_cache:
         cached_df, ts = _ohlcv_cache[cache_key]
         if now_ts - ts < ttl:
             return cached_df.copy()
+    elif cache_key in _ohlcv_cache:
+        cached_df, ts = _ohlcv_cache[cache_key]
+        if now_ts - ts < min(ttl, 1.2):
+            return cached_df.copy()
 
-    # 1. Coba MEXC Contract API v1 (/kline/{symbol}?interval=Min15) jika tidak terblokir ISP
-    if now_ts >= _mexc_direct_unreachable_until:
+    # 1. Coba MEXC Contract API v1 (/kline/{symbol}?interval=Min15) jika market_type == futures dan tidak terblokir ISP
+    if m_type == "futures" and tf_raw != "1s" and now_ts >= _mexc_direct_unreachable_until:
         mexc_iv = MEXC_INTERVAL_MAP.get(tf_raw, "Min15")
         try:
             url = f"{settings.MEXC_CONTRACT_BASE_URL}/kline/{f_sym}?interval={mexc_iv}"

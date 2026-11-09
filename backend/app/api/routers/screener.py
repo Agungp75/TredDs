@@ -325,22 +325,24 @@ async def get_screener_opportunities(
     timeframe: str = Query("15m", description="MEXC Timeframe: 1m, 5m, 15m, 30m, 1h, 4h, 1d"),
     min_score: int = Query(0, description="Minimum opportunity score 0-100"),
     strategy: str = Query("all", description="Strategy tab: all | squeeze | sfp | high_ev"),
+    market_type: str = Query("future", description="Market type: spot | future"),
 ):
     """
     ATRED v3.0 Two-Stage MEXC Full-Market Screener:
-      - Stage 1: Fast Ticker Funnel dari seluruh pasar MEXC USDT-M
+      - Stage 1: Fast Ticker Funnel dari seluruh pasar MEXC USDT-M / Spot
       - Stage 2: Deep Quant Scan (Layer 1 RANSAC/SFP + Layer 2 Orderflow/OI + Layer 3 Stat Edge + Net EV%)
     """
     tf = timeframe.lower() if timeframe else "15m"
     if tf == "1s":
         tf = "1m"
-    cache_key = f"mexc_v3:{min_score}:{tf}"
+    m_type = "spot" if str(market_type or "future").lower().startswith("spot") else "future"
+    cache_key = f"mexc_v3:{m_type}:{min_score}:{tf}"
     now = time.time()
 
     if cache_key in _SCREENER_CACHE:
         cached_items, timestamp = _SCREENER_CACHE[cache_key]
         if now - timestamp < _CACHE_TTL:
-            return _filter_by_strategy(cached_items, tf, strategy)
+            return _filter_by_strategy(cached_items, tf, strategy, m_type)
 
     candidates = _select_stage1_funnel_candidates(max_candidates=24)
 
@@ -352,16 +354,20 @@ async def get_screener_opportunities(
             try:
                 res = future.result()
                 if res and res["score"] >= min_score:
+                    res["market_type"] = "MEXC_SPOT" if m_type == "spot" else "MEXC_USDT_M"
+                    res["exchange"] = "MEXC_SPOT" if m_type == "spot" else "MEXC_USDT_M"
+                    if m_type == "spot":
+                        res["safe_max_leverage"] = "1x (Spot)"
                     results.append(res)
             except Exception:
                 pass
 
     results.sort(key=lambda x: x["score"], reverse=True)
     _SCREENER_CACHE[cache_key] = (results, now)
-    return _filter_by_strategy(results, tf, strategy)
+    return _filter_by_strategy(results, tf, strategy, m_type)
 
 
-def _filter_by_strategy(items: list[dict], timeframe: str, strategy: str) -> dict:
+def _filter_by_strategy(items: list[dict], timeframe: str, strategy: str, market_type: str = "future") -> dict:
     strat = (strategy or "all").lower().strip()
     if strat == "squeeze":
         filtered = [it for it in items if it.get("strategy_tags", {}).get("is_squeeze")]
@@ -375,7 +381,8 @@ def _filter_by_strategy(items: list[dict], timeframe: str, strategy: str) -> dic
     return {
         "total": len(filtered),
         "total_scanned": len(items),
-        "exchange": "MEXC_USDT_M",
+        "exchange": "MEXC_SPOT" if market_type == "spot" else "MEXC_USDT_M",
+        "market_type": market_type,
         "timeframe": timeframe,
         "strategy": strat,
         "items": filtered,

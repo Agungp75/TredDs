@@ -131,6 +131,7 @@ class PatternSearchRequest(BaseModel):
     points: List[Point]
     top_k: Optional[int] = 12
     timeframe: Optional[str] = "auto"
+    market_type: Optional[str] = "future"
 
 
 FAST_AUTO_TIMEFRAMES = ["15m", "1h", "4h"]

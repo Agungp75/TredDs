@@ -17,7 +17,7 @@ export default function App() {
           <div className="min-h-screen flex flex-col bg-background font-body text-on-surface antialiased selection:bg-primary-container selection:text-on-primary-container">
             <Navbar />
             <AISettingsModal />
-            <main className="w-full pt-28 pb-16 bg-background flex-1 px-4 sm:px-6 xl:px-10">
+            <main className="w-full pt-36 pb-16 bg-background flex-1 px-4 sm:px-6 xl:px-10">
               <Routes>
                 <Route path="/" element={<HomeDashboard />} />
                 <Route path="/crypto" element={<CryptoDashboard />} />

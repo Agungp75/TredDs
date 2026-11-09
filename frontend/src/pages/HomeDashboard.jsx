@@ -2,11 +2,13 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Activity, Flame, Shield, BarChart2, Sparkles, ChevronRight, Zap } from 'lucide-react';
 import { api } from '../services/api';
+import { useMarket } from '../context/MarketContext';
 import ScreenerTable from '../components/screener/ScreenerTable';
 import CryptoCorrelationMatrix from '../components/widgets/CryptoCorrelationMatrix';
 import CryptoCatalystCalendar from '../components/widgets/CryptoCatalystCalendar';
 
 export default function HomeDashboard() {
+  const { marketType } = useMarket();
   const [screenerData, setScreenerData] = useState({ total: 0, items: [] });
   const [timeframe, setTimeframe] = useState('15m');
   const [loading, setLoading] = useState(true);
@@ -15,7 +17,7 @@ export default function HomeDashboard() {
     async function loadData() {
       setLoading(true);
       try {
-        const res = await api.getScreener('crypto', 0, timeframe);
+        const res = await api.getScreener('crypto', 0, timeframe, 'all', marketType);
         setScreenerData(res || { total: 0, items: [] });
       } catch (err) {
         console.error('Failed fetching MEXC screener', err);
@@ -24,7 +26,7 @@ export default function HomeDashboard() {
       }
     }
     loadData();
-  }, [timeframe]);
+  }, [timeframe, marketType]);
 
   const sfpOrSurgeCount = screenerData.items.filter(
     (i) => i.sfp_detected !== 'NONE' || i.volume_anomaly
